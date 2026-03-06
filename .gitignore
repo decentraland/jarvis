@@ -4,3 +4,5 @@ dist
 .auth.json
 .gitkeep
 settings.local.json
+temp
+tmp
