@@ -8,7 +8,8 @@
   ],
   "scripts": {
     "build": "tsc --noEmit",
-    "generate": "tsx --env-file=.env src/generate.ts"
+    "generate": "tsx --env-file=.env src/generate.ts",
+    "semantic-release": "semantic-release"
   },
   "publishConfig": {
     "access": "public",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@mariozechner/pi-coding-agent": "^0.55.0",
     "@types/node": "^22.0.0",
+    "semantic-release": "^15.9.3",
     "tsx": "^4.19.0",
     "typescript": "^5.8.2"
   }
