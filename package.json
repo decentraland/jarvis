@@ -16,14 +16,13 @@
     "provenance": true
   },
   "engines": {
-    "node": ">=22.14.0",
+    "node": ">=20.0.0",
     "npm": ">=10.0.0"
   },
   "license": "Apache-2.0",
   "devDependencies": {
     "@mariozechner/pi-coding-agent": "^0.55.0",
     "@types/node": "^22.0.0",
-    "semantic-release": "^25.0.3",
     "tsx": "^4.19.0",
     "typescript": "^5.8.2"
   }
