@@ -8,8 +8,7 @@
   ],
   "scripts": {
     "build": "tsc --noEmit",
-    "generate": "tsx --env-file=.env src/generate.ts",
-    "semantic-release": "semantic-release"
+    "generate": "tsx --env-file=.env src/generate.ts"
   },
   "publishConfig": {
     "access": "public",
