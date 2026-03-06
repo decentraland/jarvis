@@ -16,7 +16,7 @@
     "provenance": true
   },
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22.14.0",
     "npm": ">=10.0.0"
   },
   "license": "Apache-2.0",
