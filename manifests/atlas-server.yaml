@@ -1,0 +1,133 @@
+schema_version: "1.0"
+
+service:
+  name: atlas-server
+  display_name: Atlas Server
+  description: Provides REST API for querying Decentraland's Genesis City map data (parcels, estates, districts) and generating map visualizations as PNG images. Serves as the data layer for the Decentraland Atlas interface.
+  team: foundation
+  repository: https://github.com/decentraland/atlas-server
+  language: typescript
+  layer: feature-servers
+  ai-agent-context: https://github.com/decentraland/atlas-server/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Tile
+      definition: A single parcel coordinate on the Genesis City map with ownership, type (owned/unowned/plaza/road/district), and connectivity metadata.
+      examples:
+        - Parcel at coordinate 10,10 owned by an Ethereum address
+      not_to_be_confused_with: Estate (which is a collection of parcels)
+
+    - term: Estate
+      definition: A collection of adjacent parcels owned by the same entity, represented as an NFT on the Ethereum blockchain.
+
+    - term: District
+      definition: A named region in Genesis City consisting of multiple parcels, often with a specific theme or purpose.
+      examples:
+        - Fashion Street
+        - Dragon City
+
+    - term: Contribution
+      definition: Record of parcels contributed by an address to a specific district during the initial land auction.
+
+  concept_relationships:
+    internal:
+      - from: Estate
+        to: Tile
+        relationship: has_many
+        description: An Estate is composed of one or more adjacent Tiles
+
+      - from: District
+        to: Tile
+        relationship: contains
+        description: A District encompasses multiple Tiles in a geographic region
+
+      - from: Contribution
+        to: District
+        relationship: references
+        description: Contributions track parcel donations to Districts by address
+
+    cross_service:
+      - local_concept: Tile
+        remote_service: marketplace-server
+        remote_concept: Parcel Listing
+        mapping_type: references
+        description: Tiles can reference marketplace listings when parcels are on sale
+
+  invariants:
+    - rule: Tiles must have unique coordinate pairs (x, y)
+      enforced_at: database
+      severity: hard
+
+    - rule: Estate tiles must be adjacent to at least one other tile in the same estate
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Serve tile data for Genesis City parcels with ownership and metadata
+    - Generate PNG map visualizations with customizable parameters
+    - Provide OpenSea-compatible metadata for parcels and estates
+    - Cache map tiles in S3 for performance
+    - Query The Graph subgraph for blockchain ownership data
+    - Support spatial queries with bounding box filters
+
+  out_of_scope:
+    - Blockchain transactions for land purchases (handled by marketplace contracts)
+    - Content deployed to parcels (handled by Catalyst)
+    - Real-time user positions (handled by Archipelago)
+    - World (non-Genesis) map data (handled by worlds services)
+
+  owned_entities:
+    - name: Tile
+      description: Parcel coordinate with ownership and metadata
+      persistence: postgres
+      identity_field: id (string: "x,y")
+
+    - name: Map Image Cache
+      description: Generated PNG map visualizations
+      persistence: s3
+      identity_field: cacheKey
+
+api:
+  openapi_url: https://github.com/decentraland/atlas-server/blob/main/docs/openapi.yaml
+
+db:
+  schema_url: https://github.com/decentraland/atlas-server/blob/main/docs/database-schemas.md
+
+dependencies:
+  services: []
+
+  external:
+    - name: PostgreSQL
+      purpose: Tile metadata, ownership data storage
+      type: storage
+
+    - name: AWS S3
+      purpose: Cached map tiles and generated PNG images
+      type: storage
+
+    - name: The Graph (Decentraland Marketplace Subgraph)
+      purpose: Blockchain indexer for parcel ownership, marketplace listings, contributions
+      type: api
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: SUBGRAPH_URL
+      description: URL for The Graph subgraph providing blockchain data
+      affects: Ownership and marketplace data accuracy
+
+    - name: AWS_S3_BUCKET
+      description: S3 bucket for caching map tiles and images
+      affects: Performance and storage costs
+
+    - name: API_BATCH_SIZE
+      description: Number of records to process per batch when querying subgraph
+      affects: Query performance and API load
+
+    - name: REFRESH_INTERVAL
+      description: Interval in seconds for refreshing tile data from subgraph
+      affects: Data freshness

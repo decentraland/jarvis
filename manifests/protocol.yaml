@@ -1,0 +1,184 @@
+schema_version: "1.0"
+
+service:
+  name: protocol
+  display_name: Protocol Definitions
+  description: Protobuf protocol definitions for Decentraland that define the communication contracts between client, kernel, Unity renderer, SDK toolchain, and comms services. Provides code generation for TypeScript and other languages to ensure type-safe cross-service and cross-platform communication.
+  team: foundation
+  repository: https://github.com/decentraland/protocol
+  language: protobuf
+  layer: Shared Libraries
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Protocol Buffer
+      definition: Language-neutral, platform-neutral extensible mechanism for serializing structured data used to define message formats and service contracts across Decentraland services and clients.
+    
+    - term: SDK Component
+      definition: Protocol message definitions for components used in the Decentraland SDK (Software Development Kit) that define entity behaviors and properties in scenes.
+      examples:
+        - "Transform component for position, rotation, scale"
+        - "MeshRenderer component for 3D model display"
+    
+    - term: RPC API Definition
+      definition: Protocol definitions for Remote Procedure Call interfaces between scene runtime and kernel/renderer services, enabling SDK scenes to interact with the platform.
+    
+    - term: Comms Protocol
+      definition: Protocol definitions for real-time communication messages between clients including position updates, chat messages, and voice data.
+    
+    - term: Public Proto
+      definition: Protocol buffer files in the public/ folder that are exposed externally with import public statements for cross-module definitions.
+    
+    - term: Code Generation
+      definition: Process of compiling .proto files into TypeScript, JavaScript, or other language implementations using protoc compiler with custom plugins.
+    
+    - term: Breaking Change
+      definition: A protocol modification that requires coordinated updates across dependent repositories (unity-renderer, js-sdk-toolchain, kernel, scene-runtime) to maintain compatibility.
+    
+    - term: Merge Order
+      definition: The required sequence for merging protocol changes across repositories to avoid build failures, typically: protocol → unity-renderer → js-sdk-toolchain or protocol → kernel → scene-runtime → js-sdk-toolchain.
+    
+    - term: Buf Configuration
+      definition: Linting and compatibility checking configuration for protocol buffers defined in proto/buf.yml following Buf best practices style guide.
+
+  concept_relationships:
+    internal:
+      - from: SDKComponent
+        to: ProtocolBuffer
+        relationship: is_a
+        description: SDK components are defined as protocol buffer messages
+      
+      - from: RPCAPIDefinition
+        to: ProtocolBuffer
+        relationship: is_a
+        description: RPC APIs are defined as protocol buffer services and messages
+      
+      - from: CommsProtocol
+        to: ProtocolBuffer
+        relationship: is_a
+        description: Comms messages are defined as protocol buffer messages
+      
+      - from: CodeGeneration
+        to: ProtocolBuffer
+        relationship: depends_on
+        description: Code generation processes protocol buffer definitions
+    
+    cross_service:
+      - local_concept: SDKComponent
+        remote_service: js-sdk-toolchain
+        remote_concept: Component
+        mapping_type: equivalent
+        description: Protocol SDK components map to runtime components in js-sdk-toolchain
+      
+      - local_concept: SDKComponent
+        remote_service: unity-renderer
+        remote_concept: Component
+        mapping_type: equivalent
+        description: Protocol SDK components map to Unity ECS components in the renderer
+      
+      - local_concept: RPCAPIDefinition
+        remote_service: kernel
+        remote_concept: RPCEndpoint
+        mapping_type: equivalent
+        description: Protocol RPC definitions map to kernel RPC implementations
+      
+      - local_concept: RPCAPIDefinition
+        remote_service: scene-runtime
+        remote_concept: RPCClient
+        mapping_type: equivalent
+        description: Protocol RPC definitions map to scene runtime client calls
+      
+      - local_concept: CommsProtocol
+        remote_service: archipelago-workers
+        remote_concept: Message
+        mapping_type: equivalent
+        description: Comms protocol messages map to archipelago message handlers
+      
+      - local_concept: CommsProtocol
+        remote_service: comms-message-sfu
+        remote_concept: Message
+        mapping_type: equivalent
+        description: Comms protocol messages are validated and routed by comms-message-sfu
+
+  invariants:
+    - rule: All .proto files must use snake_case naming
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Pascal or camel case must be deterministically derived from snake case
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Public proto files must only use import public statements
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Breaking changes must be coordinated across unity-renderer and js-sdk-toolchain
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Protocol PRs must not merge until Unity implementation is complete
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: All protocol changes must pass buf linting checks
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Define protocol buffer message formats for SDK components
+    - Define RPC service contracts between scene runtime and kernel/renderer
+    - Define comms protocol messages for real-time client-to-client communication
+    - Provide TypeScript code generation for protocol definitions
+    - Provide JavaScript code generation for protocol definitions
+    - Maintain backward compatibility checking for protocol changes
+    - Publish versioned protocol packages to npm (@dcl/protocol)
+    - Generate test npm packages from pull requests for development
+    - Define style guidelines and linting rules for protocol files
+    - Coordinate merge order across dependent repositories
+
+  out_of_scope:
+    - Implementation of protocol message handlers (handled by consuming services)
+    - Runtime message serialization/deserialization logic (provided by protobuf libraries)
+    - Network transport mechanisms (handled by HTTP, WebSocket, WebRTC in services)
+    - Business logic for processing messages (defined in kernel, renderer, comms services)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: protoc compiler
+      purpose: Compile protocol buffer definitions into language-specific code
+      type: tool
+    
+    - name: buf
+      purpose: Linting and compatibility checking for protocol buffers
+      type: tool
+    
+    - name: protobuf-ts
+      purpose: TypeScript code generation plugin for protoc
+      type: tool
+    
+    - name: ts-proto
+      purpose: Custom TypeScript protocol buffer compiler plugin
+      type: tool
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  
+  key_env_vars: []
+
+adrs: []

@@ -1,0 +1,108 @@
+schema_version: "1.0"
+
+service:
+  name: architecture
+  display_name: Decentraland Architecture Diagram
+  description: Repository containing the main Decentraland backend architecture diagram defined using D2 language. Provides comprehensive documentation of architectural layers (Entry Points, Real-Time, Content, Feature Servers), service responsibilities, and communication patterns to help understand how components interact.
+  team: foundation
+  repository: https://github.com/decentraland/architecture
+  language: d2
+  layer: Other
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: D2 Language
+      definition: A modern diagram scripting language that uses simple, human-readable syntax to define architecture diagrams as code.
+    
+    - term: Architecture Layer
+      definition: One of four distinct layers in the Decentraland backend (Entry Points, Real-Time, Content, Feature Servers) that organizes services by their primary purpose.
+    
+    - term: Entry Points Layer
+      definition: Layer providing two client communication mechanisms - WebSocket Connector for bidirectional push notifications and HTTP Gateway for request-response polling.
+    
+    - term: Real-Time Layer
+      definition: Layer handling user-to-user communication including positions, chat, voice, and streaming via LiveKit transport.
+    
+    - term: Content Layer
+      definition: Layer providing centralized content registry with asset bundle processing pipeline ensuring eventual consistency for multiplayer experiences.
+    
+    - term: Feature Servers Layer
+      definition: Layer implementing business logic services accessible via HTTP Gateway with event-driven inter-service communication via AWS SQS.
+    
+    - term: Architecture Documentation
+      definition: Markdown documentation in docs/ describing components, responsibilities, and interaction patterns for each architectural layer.
+
+  concept_relationships:
+    internal:
+      - from: D2Diagram
+        to: ArchitectureLayers
+        relationship: documents
+        description: D2 diagram visually represents the four architectural layers
+      
+      - from: ArchitectureDocumentation
+        to: D2Diagram
+        relationship: explains
+        description: Markdown documentation provides detailed explanations of components in the diagram
+    
+    cross_service:
+      - local_concept: ArchitectureDiagram
+        remote_service: all-services
+        remote_concept: System
+        mapping_type: documents
+        description: Architecture diagram documents all Decentraland backend services and their interactions
+
+  invariants:
+    - rule: Documentation must stay synchronized with diagram changes
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Diagram must accurately reflect current service architecture
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Define and maintain architecture diagram using D2 language
+    - Document architectural layers and their purposes
+    - Describe service responsibilities and communication patterns
+    - Provide visual representation of service dependencies
+    - Generate architecture images (SVG and PNG) from D2 source
+    - Publish documentation to Technical Documentation Site
+    - Maintain architectural guidelines for new services
+
+  out_of_scope:
+    - Implementation of services (diagram only documents existing services)
+    - Service deployment configuration (handled by individual services)
+    - Runtime monitoring (handled by observability stack)
+    - Code generation (diagram is for documentation only)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: D2 Compiler
+      purpose: Compile D2 diagram definitions into SVG and PNG images
+      type: tool
+    
+    - name: Technical Documentation Site
+      purpose: Publish architecture documentation
+      type: other
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  
+  key_env_vars: []
+
+adrs: []

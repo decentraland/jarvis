@@ -1,0 +1,24 @@
+schema_version: "1.0"
+
+# Cross-service dependency graph
+# Generated from individual service manifests
+
+nodes:
+  - name: example-service              # matches service.name in manifest
+    display_name: Example Service
+    layer: platform                     # infrastructure | platform | application | client
+    repository: https://github.com/decentraland/example-service
+
+edges:
+  - from: example-service              # caller / dependent
+    to: other-service                   # callee / dependency
+    relationship: sync                  # sync | async | event
+    description: Fetches user profiles via REST API
+
+event_flows:
+  - publisher: example-service
+    event_name: user.created
+    channel: nats                       # nats | sqs | sns | kafka | redis | webhook
+    consumers:
+      - notifications-workers
+      - badges

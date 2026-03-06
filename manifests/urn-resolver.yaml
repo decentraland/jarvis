@@ -1,0 +1,126 @@
+schema_version: "1.0"
+
+service:
+  name: urn-resolver
+  display_name: "@dcl/urn-resolver"
+  description: TypeScript library that resolves and parses Decentraland asset URNs within the urn:decentraland namespace. Provides type-safe parsing of LAND, wearables, collections v1/v2, and third-party assets for ownership validation and content URL generation.
+  team: core
+  repository: https://github.com/decentraland/urn-resolver
+  language: typescript
+  layer: shared-library
+  ai-agent-context: https://github.com/decentraland/urn-resolver/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: URN (Uniform Resource Name)
+      definition: A persistent identifier for Decentraland assets following the urn:decentraland namespace format (e.g., urn:decentraland:matic:collections-v2:0x...:1). Includes network, asset type, contract address, and optional query parameters.
+      examples:
+        - "urn:decentraland:sepolia:LAND:-10,-13?atBlock=151231111"
+        - "urn:decentraland:matic:collections-v2:0xabc:1"
+      
+    - term: Extended URN
+      definition: A URN that includes a tokenId suffix to identify a specific NFT instance rather than just the asset definition. Distinguishes between an asset type and a minted token.
+      examples:
+        - "urn:decentraland:matic:collections-v2:0xabc:1:12345 (item with tokenId 12345)"
+      
+    - term: Collections v1
+      definition: Legacy wearable collections deployed on Ethereum mainnet. Uses contract address and item name as identifiers. Referenced via urn:decentraland:{network}:collections-v1:{contract}:{name}.
+
+    - term: Collections v2
+      definition: Current wearable collections deployed on Polygon network. Uses contract address and numeric item ID. Referenced via urn:decentraland:{network}:collections-v2:{contract}:{id}.
+
+    - term: Third-party Collections
+      definition: Linked wearables from external NFT contracts mapped to Decentraland. Allows external NFT holders to use their assets in-world. Includes provider name, collection ID, item ID, and optionally the NFT chain details.
+
+    - term: Off-chain Asset
+      definition: Assets not stored on any blockchain, such as base wearables provided by Decentraland Foundation. Referenced via urn:decentraland:off-chain:{registry}:{name}.
+
+    - term: LAND Asset
+      definition: Virtual land parcels in Decentraland that can be referenced by x,y coordinates or tokenId. Referenced via urn:decentraland:{network}:LAND:{x},{y} or tokenId format.
+
+    - term: Asset vs Item
+      definition: Asset refers to the wearable definition or metadata; Item refers to a specific NFT instance with a tokenId. Assets define what can be minted, items represent what has been minted.
+
+    - term: Content URL Resolution
+      definition: Process of converting a URN to a content server URL where the actual asset data (3D models, metadata) can be fetched.
+
+  concept_relationships:
+    internal:
+      - from: URN
+        to: DecentralandAssetIdentifier
+        relationship: parses_to
+        description: URN strings are parsed into structured DecentralandAssetIdentifier types with network, contract address, and other components
+
+      - from: Extended URN
+        to: Item
+        relationship: identifies
+        description: Extended URNs with tokenId suffixes resolve to Item types representing specific NFT instances
+
+      - from: Asset
+        to: Item
+        relationship: has_many
+        description: An asset definition can have multiple minted items (NFT instances) with different tokenIds
+
+      - from: Collections v1
+        to: Collections v2
+        relationship: superseded_by
+        description: Collections v2 is the current standard, replacing v1 which remains for legacy Ethereum mainnet assets
+
+      - from: LAND Asset
+        to: x,y coordinates
+        relationship: identified_by
+        description: LAND parcels can be identified by both x,y grid coordinates or unique tokenIds
+
+  invariants:
+    - rule: All URNs must follow the urn:decentraland:{network}:{asset-type}:... format with proper component structure for their asset type
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Extended URNs must include a valid tokenId suffix to distinguish items from assets
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: LAND coordinates must be valid integers and can be negative, while tokenIds must be non-negative
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Third-party items must include nftChain, nftContractAddress, and nftTokenId to link to the external NFT
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Parse URNs for on-chain assets (LAND, collections v1, collections v2, third-party collections)
+    - Parse URNs for off-chain assets (base wearables)
+    - Extract URN components (network, contract address, token ID, coordinates, query parameters)
+    - Resolve URNs to content server URLs for fetching asset data
+    - Provide type-safe structures for all parsed URN results
+    - Support legacy dcl: protocol URLs for backwards compatibility
+    - Distinguish between asset definitions and item instances via extended URN syntax
+    - Convert LAND coordinates to token IDs and vice versa
+    - Follow URN namespace standards from common-metaverse/urn-namespaces
+
+  out_of_scope:
+    - Fetching actual content data from content servers
+    - Validating blockchain ownership of assets
+    - Storing or caching asset metadata
+    - Managing smart contract interactions
+    - Authenticating users or verifying permissions
+    - Content validation or format conversion
+
+  owned_entities:
+    - name: DecentralandAssetIdentifier
+      description: Union type representing all possible parsed URN structures including blockchain assets, LAND, collections v1/v2, third-party assets, and off-chain assets
+      persistence: none (parse result)
+      identity_field: uri
+
+dependencies:
+  services: []
+
+  external:
+    - name: Content Servers
+      purpose: Target for resolved content URLs to fetch asset data (configurable, not directly called by library)
+      type: api
+
+    - name: common-metaverse/urn-namespaces
+      purpose: URN namespace specification that this library implements
+      type: other

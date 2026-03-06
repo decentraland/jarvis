@@ -1,0 +1,78 @@
+schema_version: "1.0"
+
+service:
+  name: prometheus-nats-exporter
+  display_name: Prometheus NATS Exporter
+  description: Docker wrapper for the official NATS Prometheus exporter that exposes NATS messaging metrics for Prometheus monitoring. Runs as a sidecar container alongside NATS servers to provide observability into message broker performance and health.
+  team: foundation
+  repository: https://github.com/decentraland/prometheus-nats-exporter
+  language: go
+  layer: Other
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Prometheus Exporter
+      definition: A service that exposes metrics in Prometheus format on an HTTP endpoint for scraping and monitoring.
+    
+    - term: NATS Metrics
+      definition: Performance and health metrics from NATS messaging servers including connection counts, message rates, byte rates, and slow consumers.
+    
+    - term: Sidecar Container
+      definition: A container deployed alongside another container (NATS server) to provide auxiliary functionality like metrics collection.
+
+  concept_relationships:
+    internal: []
+    
+    cross_service:
+      - local_concept: NATSMetrics
+        remote_service: prometheus
+        remote_concept: Metrics
+        mapping_type: exports
+        description: Exports NATS metrics to Prometheus for monitoring and alerting
+
+  invariants: []
+
+  responsibilities:
+    - Expose NATS server metrics in Prometheus format on HTTP endpoint
+    - Provide observability into NATS message broker performance
+    - Track connection counts, message rates, and byte throughput
+    - Monitor slow consumers and connection health
+    - Support Prometheus metric scraping
+
+  out_of_scope:
+    - NATS server operation (handled by NATS itself)
+    - Prometheus metric storage (handled by Prometheus server)
+    - Alerting rules (configured in Prometheus)
+    - Custom metric generation (uses standard NATS metrics)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: NATS Server
+      relationship: sync
+      purpose: Collect metrics from NATS messaging server
+      critical: true
+
+  external:
+    - name: Prometheus
+      purpose: Metric collection and monitoring
+      type: monitoring
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  
+  key_env_vars: []
+
+adrs: []

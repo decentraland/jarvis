@@ -1,0 +1,79 @@
+schema_version: "1.0"
+
+service:
+  name: credits-server
+  display_name: Credits Server
+  description: Manages user credits system for Decentraland, integrating on-chain credit consumption tracking with off-chain credit grants. Handles credit issuance, tracking, expiration, and status calculation by combining database-stored grants with Squid indexer on-chain consumption data.
+  team: foundation
+  repository: https://github.com/decentraland/credits-server
+  language: typescript
+  layer: feature-servers
+  ai-agent-context: https://github.com/decentraland/credits-server/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Credit
+      definition: Off-chain grant of MANA that users can spend in smart contracts. Includes cryptographic signature for on-chain verification and tracks consumption via Squid indexer.
+
+    - term: Credit Season
+      definition: Time-bounded period during which credits are valid, with defined expiration dates.
+
+    - term: Credit Status
+      definition: State of a credit (AVAILABLE, PARTIALLY_USED, FULLY_USED, EXPIRED) calculated by combining database grants with on-chain consumption.
+
+  concept_relationships:
+    internal:
+      - from: Credit
+        to: Credit Season
+        relationship: belongs_to
+        description: Credits are issued within seasons and expire at season end
+
+  invariants:
+    - rule: Credits must have valid cryptographic signatures for smart contract verification
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Available credit amount equals granted amount minus on-chain consumption
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Grant credits to users with cryptographic signatures
+    - Track credit status by combining database and on-chain data
+    - Manage credit seasons with expiration dates
+    - Calculate available credit amounts
+    - Integrate with Squid indexer for consumption tracking
+    - Sign credits for smart contract verification
+
+  out_of_scope:
+    - On-chain credit consumption (handled by smart contracts)
+    - Blockchain indexing (handled by Squid indexer)
+
+  owned_entities:
+    - name: Credit
+      description: Off-chain credit grant with signature
+      persistence: postgres
+      identity_field: uuid
+
+api:
+  openapi_url: https://github.com/decentraland/credits-server/blob/main/docs/openapi.yaml
+
+dependencies:
+  services: []
+  external:
+    - name: PostgreSQL
+      purpose: Credits grants, seasons, goals, progress
+      type: storage
+    - name: Squid Indexer
+      purpose: On-chain consumption tracking via GraphQL
+      type: api
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: SQUID_URL
+      description: Squid indexer GraphQL endpoint for consumption queries
+      affects: On-chain data accuracy

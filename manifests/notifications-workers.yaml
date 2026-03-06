@@ -1,0 +1,91 @@
+schema_version: "1.0"
+
+service:
+  name: notifications-workers
+  display_name: Notifications Workers
+  description: Manages user notifications across the Decentraland platform. Split into Processor and Inbox workers for scalability. Handles notification production, storage, delivery via Server-Sent Events, and email notifications via SendGrid.
+  team: foundation
+  repository: https://github.com/decentraland/notifications-workers
+  language: typescript
+  layer: feature-servers
+  ai-agent-context: https://github.com/decentraland/notifications-workers/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Notification
+      definition: User alert generated from platform events (marketplace, social, profile updates) with metadata and delivery preferences.
+
+    - term: Subscription
+      definition: User preferences for notification channels (in-app, email) and types.
+
+    - term: Server-Sent Events (SSE)
+      definition: Real-time notification stream delivered to connected clients via HTTP.
+
+  concept_relationships:
+    internal:
+      - from: Notification
+        to: Subscription
+        relationship: respects
+        description: Notifications are delivered based on user subscription preferences
+
+  invariants:
+    - rule: Email notifications require confirmed email addresses
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Produce notifications from external events
+    - Store and validate notifications
+    - Serve REST API for notification retrieval
+    - Manage Server-Sent Events subscriptions
+    - Handle email notifications via SendGrid
+    - Manage user notification preferences
+
+  owned_entities:
+    - name: Notification
+      description: User notification with metadata
+      persistence: postgres
+      identity_field: id
+
+    - name: Subscription
+      description: User notification preferences
+      persistence: postgres
+      identity_field: address
+
+api:
+  openapi_url: https://github.com/decentraland/notifications-workers/blob/main/docs/openapi.yaml
+
+db:
+  schema_url: https://github.com/decentraland/notifications-workers/blob/main/docs/database-schema.md
+
+dependencies:
+  services:
+    - name: events-notifier
+      relationship: async
+      purpose: Receives notification events
+      critical: true
+
+  external:
+    - name: PostgreSQL
+      purpose: Notification storage, subscriptions
+      type: storage
+    - name: AWS SNS
+      purpose: Notification event source
+      type: messaging
+    - name: SendGrid
+      purpose: Email delivery
+      type: api
+
+events:
+  publishes: []
+  consumes:
+    - name: marketplace_events
+      source_service: events-notifier
+      description: Marketplace transactions
+      channel: AWS SNS
+
+configuration:
+  key_env_vars:
+    - name: SENDGRID_API_KEY
+      description: SendGrid API key for email delivery
+      affects: Email notification capability

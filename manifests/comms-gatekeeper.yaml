@@ -1,0 +1,200 @@
+schema_version: "1.0"
+
+service:
+  name: comms-gatekeeper
+  display_name: Comms Gatekeeper
+  description: Acts as the guardian of LiveKit tokens within Decentraland's communication architecture. Processes signed fetch requests from clients and generates tokens that grant access to LiveKit rooms dedicated to specific scenes or worlds. Manages scene administration, streaming access, voice chat, and user moderation.
+  team: foundation
+  repository: https://github.com/decentraland/comms-gatekeeper
+  language: typescript
+  layer: real-time
+  ai-agent-context: https://github.com/decentraland/comms-gatekeeper/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: LiveKit Token
+      definition: Secure JWT token granting access to a specific LiveKit room for voice/video communication. Tokens include permissions, expiration, and user identity.
+
+    - term: Scene Administration
+      definition: Permission system allowing designated users to manage access control, ban users, and control streaming in specific scenes.
+
+    - term: Streaming Access
+      definition: RTMP streaming URLs and keys granted to content creators for broadcasting to scenes, with time-to-live expiration.
+
+    - term: Request-to-Speak
+      definition: Moderation mechanism in community voice chats where users request permission from admins to speak.
+
+    - term: Scene Ban
+      definition: Administrative action blocking a user from accessing communication channels in a specific scene.
+
+  concept_relationships:
+    internal:
+      - from: LiveKit Token
+        to: Scene
+        relationship: references
+        description: Each LiveKit token grants access to a specific scene's communication room
+
+      - from: Scene Administration
+        to: Scene
+        relationship: belongs_to
+        description: Scene admins have permissions for specific scenes
+
+      - from: Streaming Access
+        to: Scene
+        relationship: references
+        description: Streaming access is granted per scene with TTL expiration
+
+      - from: Scene Ban
+        to: Scene
+        relationship: belongs_to
+        description: Bans are scoped to specific scenes
+
+    cross_service:
+      - local_concept: LiveKit Token
+        remote_service: comms-message-sfu
+        remote_concept: Room Access
+        mapping_type: projects_as
+        description: LiveKit tokens enable access to LiveKit rooms managed by comms-message-sfu
+
+      - local_concept: Scene
+        remote_service: catalyst
+        remote_concept: Scene Entity
+        mapping_type: references
+        description: Scene information is fetched from Catalyst for validation
+
+      - local_concept: Scene
+        remote_service: places-api
+        remote_concept: Place
+        mapping_type: equivalent
+        description: Scene metadata is enriched with place information
+
+  invariants:
+    - rule: LiveKit tokens must expire after a configured TTL
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Only scene admins can ban users from scenes
+      enforced_at: api_validation
+      severity: hard
+
+    - rule: Streaming access must have expiration timestamp
+      enforced_at: database
+      severity: hard
+
+    - rule: Scene bans must be validated before token generation
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Generate secure LiveKit tokens for scene/world communication rooms
+    - Manage scene administration permissions
+    - Provide RTMP streaming URLs and keys for content creators
+    - Handle private and community voice chat sessions
+    - Implement request-to-speak functionality for moderated chats
+    - Manage streaming access lifecycle with expiration
+    - Handle user privacy settings and access control
+    - Process LiveKit webhooks for real-time event handling
+
+  out_of_scope:
+    - Actual voice/video streaming (handled by LiveKit)
+    - Island clustering logic (handled by archipelago-workers)
+    - Message routing and validation (handled by comms-message-sfu)
+    - Content moderation of messages (handled by police-server)
+
+  owned_entities:
+    - name: Scene Admin
+      description: User with administrative permissions for a scene
+      persistence: postgres
+      identity_field: composite (scene_id, eth_address)
+
+    - name: Scene Stream Access
+      description: RTMP streaming credentials for a scene
+      persistence: postgres
+      identity_field: id
+
+    - name: Scene Ban
+      description: User banned from scene communication
+      persistence: postgres
+      identity_field: composite (scene_id, eth_address)
+
+    - name: Voice Chat User
+      description: Participant in private or community voice chat
+      persistence: postgres
+      identity_field: composite (room_id, eth_address)
+
+api:
+  openapi_url: https://github.com/decentraland/comms-gatekeeper/blob/main/docs/openapi.yaml
+
+db:
+  schema_url: https://github.com/decentraland/comms-gatekeeper/blob/main/docs/database-schemas.md
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      purpose: Fetches scene metadata and validates scene entities
+      critical: true
+
+    - name: places-api
+      relationship: sync
+      purpose: Enriches scene information with place metadata
+      critical: false
+
+    - name: social-service-ea
+      relationship: sync
+      purpose: Retrieves user relationships and social data
+      critical: false
+
+    - name: comms-message-sfu
+      relationship: sync
+      purpose: LiveKit room management and message routing
+      critical: true
+
+  external:
+    - name: PostgreSQL
+      purpose: Scene administration, streaming access, voice chat users, bans
+      type: storage
+
+    - name: LiveKit
+      purpose: Real-time voice communication infrastructure and token generation
+      type: other
+
+    - name: AWS SNS
+      purpose: Event notifications for streaming and communication events
+      type: messaging
+
+events:
+  publishes:
+    - name: streaming_access_granted
+      description: Published when streaming access is granted to a user
+      channel: AWS SNS
+      key_payload_fields:
+        - sceneId
+        - ethAddress
+        - expiresAt
+
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
+      description: PostgreSQL connection string for gatekeeper data
+      affects: Data persistence and query performance
+
+    - name: LIVEKIT_HOST
+      description: LiveKit server host URL
+      affects: Token generation and room connectivity
+
+    - name: LIVEKIT_API_KEY
+      description: LiveKit API key for token generation
+      affects: Security and authentication
+
+    - name: TOKEN_TTL
+      description: Time-to-live for generated LiveKit tokens in seconds
+      affects: Security and session management
+
+adrs:
+  - id: ADR-44
+    title: Signed Fetch Authentication
+    url: https://adr.decentraland.org/adr/ADR-44
+    relevance: Defines authentication mechanism for all API endpoints

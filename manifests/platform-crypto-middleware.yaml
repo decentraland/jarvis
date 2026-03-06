@@ -1,0 +1,131 @@
+schema_version: "1.0"
+
+service:
+  name: platform-crypto-middleware
+  display_name: Platform Authentication Middleware
+  description: Multi-framework HTTP middleware library for authenticating requests signed with @decentraland/SignedFetch. Validates cryptographic signatures (AuthChain) in HTTP headers to verify request authenticity and extract wallet addresses, supporting optional and required authentication modes.
+  team: foundation
+  repository: https://github.com/decentraland/platform-crypto-middleware
+  language: typescript
+  layer: Shared Libraries
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: SignedFetch
+      definition: Decentraland's client-side library that signs HTTP requests with user wallet private keys, creating an AuthChain in request headers.
+    
+    - term: AuthChain
+      definition: Chain of cryptographic signatures in HTTP headers proving request authenticity and wallet ownership. Sent as headers prefixed with x-identity-auth-chain-.
+    
+    - term: AuthChain Header
+      definition: HTTP headers containing signature chain data including payload, type, and signature values. Multiple headers form the complete chain.
+    
+    - term: Signature Verification
+      definition: Process of validating AuthChain signatures against request method, path, timestamp, and metadata to ensure request hasn't been tampered with.
+    
+    - term: Optional Authentication
+      definition: Middleware mode where signature verification is attempted but requests without signatures are allowed to proceed.
+    
+    - term: Required Authentication
+      definition: Middleware mode where signature verification must succeed or request is rejected with 401/403 status.
+    
+    - term: Metadata Header
+      definition: Optional header (x-identity-metadata) containing additional context about the request like origin or intent.
+    
+    - term: Timestamp Header
+      definition: Header (x-identity-timestamp) containing request timestamp in ISO 8601 format, used to prevent replay attacks.
+    
+    - term: Well-Known Components
+      definition: Framework-agnostic component pattern allowing middleware to work with different HTTP server implementations.
+
+  concept_relationships:
+    internal:
+      - from: AuthChainHeader
+        to: SignatureVerification
+        relationship: verified_by
+        description: AuthChain headers are parsed and verified by signature verification logic
+      
+      - from: SignatureVerification
+        to: DecentralandCrypto
+        relationship: uses
+        description: Signature verification uses @dcl/crypto library for cryptographic operations
+    
+    cross_service:
+      - local_concept: SignedFetch
+        remote_service: client
+        remote_concept: RequestSigning
+        mapping_type: verifies
+        description: Middleware verifies signatures created by client-side SignedFetch library
+      
+      - local_concept: AuthChain
+        remote_service: all-services
+        remote_concept: Authentication
+        mapping_type: provides
+        description: Middleware provides authentication capabilities to all Decentraland HTTP services
+
+  invariants:
+    - rule: AuthChain signatures must be valid for request method, path, timestamp, and metadata
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Required authentication mode must reject requests without valid signatures
+      enforced_at: middleware
+      severity: hard
+    
+    - rule: Optional authentication mode must allow unsigned requests
+      enforced_at: middleware
+      severity: soft
+    
+    - rule: Timestamp must be in valid ISO 8601 format
+      enforced_at: api_validation
+      severity: hard
+
+  responsibilities:
+    - Parse AuthChain headers from HTTP requests
+    - Verify cryptographic signatures using @dcl/crypto library
+    - Extract wallet address from verified AuthChain
+    - Validate request method, path, timestamp, and metadata against signature
+    - Support optional authentication mode (signature attempted but not required)
+    - Support required authentication mode (signature must be valid)
+    - Provide framework-agnostic middleware for Well-Known Components
+    - Return clear error responses for invalid signatures
+    - Attach verification results to request context for downstream handlers
+
+  out_of_scope:
+    - Wallet management or private key storage (handled by client)
+    - Request signing implementation (handled by @dcentraland/SignedFetch)
+    - User session management (middleware is stateless)
+    - Rate limiting or DDoS protection
+    - Authorization/permissions (middleware only handles authentication)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: "@dcl/crypto"
+      purpose: Cryptographic signature verification
+      type: api
+    
+    - name: "@well-known-components/interfaces"
+      purpose: Framework-agnostic HTTP component interfaces
+      type: api
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  
+  key_env_vars: []
+
+adrs: []

@@ -1,0 +1,117 @@
+schema_version: "1.0"
+
+service:
+  name: reels
+  display_name: "Reels Frontend"
+  description: Gatsby-based static site frontend for viewing and sharing Decentraland user snapshots (reels). Displays photo metadata including location, visible users, wearables, and realm information with Open Graph support for social media sharing. Deployed to Cloudflare Workers.
+  team: core
+  repository: https://github.com/decentraland/reels
+  language: typescript
+  layer: entry-points
+
+domain:
+  glossary:
+    - term: Reel
+      definition: A snapshot or photo taken by a user in Decentraland, including metadata about the location (scene), visible people, their wearables, and the realm where it was captured.
+      
+    - term: Image Metadata
+      definition: Contextual information captured with a snapshot including user name, user address, date/time, realm, scene name and coordinates, and list of visible people with their wearables.
+
+    - term: Visible People
+      definition: Other users who were present and visible in a snapshot at the time it was taken. Includes their username, address, guest status, and equipped wearables.
+
+    - term: Open Graph
+      definition: HTML meta tags that enable rich previews when sharing reel URLs on social media platforms, showing the snapshot image, scene location, and user information.
+
+  concept_relationships:
+    internal:
+      - from: Reel
+        to: Image Metadata
+        relationship: has_one
+        description: Each reel has associated metadata describing when, where, and with whom the photo was taken
+
+      - from: Image Metadata
+        to: Visible People
+        relationship: has_many
+        description: Metadata includes a list of all users who were visible in the scene when the snapshot was captured
+
+      - from: Visible People
+        to: Wearables
+        relationship: has_many
+        description: Each visible person has a list of wearable URNs they were wearing at snapshot time
+
+    cross_service:
+      - local_concept: Reel
+        remote_service: camera-reel-service
+        remote_concept: Image
+        mapping_type: equivalent
+        description: Reels in the frontend correspond to Images stored and managed by the camera-reel-service backend
+
+      - local_concept: Wearables
+        remote_service: urn-resolver
+        remote_concept: URN
+        mapping_type: references
+        description: Wearable identifiers are URNs that can be parsed and resolved via urn-resolver
+
+  invariants:
+    - rule: Each reel must have a unique ID that serves as the primary identifier for fetching metadata and images
+      enforced_at: api_validation
+      severity: hard
+
+    - rule: Image URLs must point to valid snapshot image resources hosted by camera-reel-service
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Display individual reel pages with full metadata and large image view
+    - Display user gallery pages listing all reels for a specific wallet address
+    - Generate Open Graph meta tags for social media sharing with image previews
+    - Fetch reel metadata and images from camera-reel-service backend
+    - Parse and display wearable information for users visible in snapshots
+    - Show scene location (name and coordinates) where photo was taken
+    - Render landing page for visitors accessing root URL
+    - Serve static assets via Cloudflare Workers CDN
+
+  out_of_scope:
+    - Taking or uploading snapshots
+    - Storing snapshot images or metadata
+    - User authentication or profile management
+    - Image processing or thumbnail generation
+    - Managing wearable collections or metadata
+    - Scene validation or metadata enrichment
+
+  owned_entities:
+    - name: Reel Display
+      description: Frontend representation of a snapshot with metadata display and social sharing capabilities
+      persistence: none (rendered from API data)
+      identity_field: id
+
+api:
+  openapi_url: ""
+
+dependencies:
+  services:
+    - name: camera-reel-service
+      relationship: sync
+      purpose: Fetch snapshot metadata, image URLs, and user gallery listings
+      critical: true
+
+    - name: urn-resolver
+      relationship: sync
+      purpose: Resolve wearable URNs to displayable metadata for visible people in snapshots
+      critical: false
+
+  external:
+    - name: Cloudflare Workers
+      purpose: Serverless execution environment for request routing and Open Graph injection
+      type: other
+
+    - name: Cloudflare CDN
+      purpose: Static asset hosting and delivery for Gatsby-built site
+      type: cdn
+
+configuration:
+  key_env_vars:
+    - name: REEL_SERVICE_URL
+      description: URL of the camera-reel-service backend API
+      affects: All API calls to fetch snapshot data (default https://camera-reel-service.decentraland.org)

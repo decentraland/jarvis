@@ -1,0 +1,432 @@
+schema_version: "1.0"
+
+# ============================================================
+# IDENTITY
+# ============================================================
+service:
+  name: schemas
+  display_name: Decentraland Schemas
+  description: Shared TypeScript type definitions and JSON Schema validators for all Decentraland data structures. Provides compile-time type safety and runtime validation for entities, profiles, scenes, wearables, events, and marketplace data across the entire platform.
+  team: multiple (dapps, platform, core-developers)
+  repository: https://github.com/decentraland/schemas
+  language: typescript
+  layer: shared-library
+  ai-agent-context: ""
+
+# ============================================================
+# DOMAIN & RESPONSIBILITIES
+# ============================================================
+domain:
+  
+  # ----------------------------------------------------------
+  # GLOSSARY
+  # ----------------------------------------------------------
+  glossary:
+    - term: Entity
+      definition: A versioned, content-addressable deployment unit in Decentraland consisting of an entity type (scene, profile, wearable, emote, store, outfits), pointers (identifiers), content files, metadata, and a cryptographic signature chain
+      examples:
+        - "A scene entity deployed to parcels 0,0 and 0,1 with metadata describing the experience"
+        - "A profile entity pointing to a user's Ethereum address with avatar configuration"
+      not_to_be_confused_with: "A database entity or domain entity - this is specifically a Catalyst content deployment artifact"
+
+    - term: Scene
+      definition: Spatial content deployed to specific parcel coordinates or world instances, containing 3D assets, scripts, and metadata that define an interactive experience in Decentraland
+      examples:
+        - "A museum scene spanning 4 parcels with art galleries and interactive displays"
+        - "A portable experience scene that follows the user across parcels"
+      
+    - term: Wearable
+      definition: Avatar customization item (clothing, accessories, body parts) with 3D representations for different body shapes, categorized by slot (e.g., hat, upper_body), and subject to hiding/replacing rules for other wearables
+      examples:
+        - "A hat wearable that hides hair and replaces the helmet slot"
+        - "A third-party wearable with merkle proof for off-chain verification"
+    
+    - term: Emote
+      definition: Avatar animation that can be triggered by users to express emotion or perform actions, with loop and play-once modes
+      examples:
+        - "A wave emote that plays once when triggered"
+        - "A dance emote that loops continuously"
+    
+    - term: Profile
+      definition: User identity container holding one or more avatar configurations, including selected wearables, emotes, name, description, and social links
+      
+    - term: Avatar
+      definition: Visual representation of a user including body shape selection, equipped wearables, equipped emotes, snapshots (preview images), and customization options like skin color
+      
+    - term: AuthChain
+      definition: Array of cryptographic signatures linking an entity deployment to its authorizing wallet address, supporting ephemeral keys and multiple signature schemes (ECDSA, EIP-1654)
+      not_to_be_confused_with: "OAuth or session-based authentication - this is specifically for content deployment authorization"
+    
+    - term: Pointer
+      definition: Unique identifier that routes to an entity - either parcel coordinates for scenes, Ethereum addresses for profiles, or URNs for wearables/emotes/stores
+      examples:
+        - "Parcel pointer: 0,0 or -10,25"
+        - "Profile pointer: 0x1234...5678"
+        - "Wearable URN: urn:decentraland:ethereum:collections-v2:0x..."
+    
+    - term: Content Mapping
+      definition: Association between a file path and its content hash (IPFS CID), enabling content-addressable storage and retrieval of entity files
+      
+    - term: NFT
+      definition: Blockchain-based non-fungible token representing ownership of digital assets like wearables, emotes, LANDs, or NAMEs in Decentraland's marketplaces
+      
+    - term: Collection
+      definition: Smart contract grouping multiple related items (wearables/emotes) published together, with shared metadata and royalty configuration
+      
+    - term: Rarity
+      definition: Scarcity tier of an item (unique, mythic, legendary, epic, rare, uncommon, common) affecting visual appearance, value, and market dynamics
+      
+    - term: Event (Platform)
+      definition: Structured notification message published by services to communicate state changes asynchronously, typed by category (blockchain, social, marketplace, etc.) and subtype, carrying metadata payloads
+      examples:
+        - "A friendship_accepted event when two users become friends"
+        - "A bid_received event when someone bids on an NFT"
+      not_to_be_confused_with: "User-created events in the events platform - this refers to system-level event messaging"
+    
+    - term: World
+      definition: Named instance of a Decentraland space with custom configuration, distinct from the main Genesis City grid, supporting private or community-owned experiences
+      
+    - term: Outfits
+      definition: Saved combinations of wearables and body shape that users can quickly switch between, stored as profile entities
+      
+    - term: Merkle Proof
+      definition: Cryptographic proof enabling verification of third-party content inclusion in a merkle tree without storing all content on-chain
+      
+    - term: Body Shape
+      definition: Base avatar form factor (currently BaseMale or BaseFemale) that determines which wearable representations can be equipped
+      
+    - term: Required Permission
+      definition: Scene capability flag requesting access to sensitive APIs like moving the player, triggering emotes, fetching external content, or using Web3
+      
+    - term: Parcel
+      definition: Coordinate-based land unit in Decentraland's grid system, represented as comma-separated integers (x,y)
+      
+    - term: IPFSv1/IPFSv2
+      definition: Content-addressable hash formats for storing entity files - IPFSv1 uses Qm-prefixed CIDv0, IPFSv2 uses ba-prefixed CIDv1
+
+  # ----------------------------------------------------------
+  # CONCEPT RELATIONSHIPS
+  # ----------------------------------------------------------
+  concept_relationships:
+    internal:
+      - from: Entity
+        to: Content Mapping
+        relationship: has_many
+        description: An Entity contains multiple Content Mappings linking file paths to IPFS hashes
+      
+      - from: Entity
+        to: Pointer
+        relationship: has_many
+        description: An Entity has one or more Pointers that serve as lookup keys (e.g., parcel coordinates, wallet addresses)
+      
+      - from: Entity
+        to: AuthChain
+        relationship: has_one
+        description: Each Entity deployment includes one AuthChain proving authorization from the owner
+      
+      - from: Scene
+        to: Parcel
+        relationship: references
+        description: A Scene entity declares which Parcels it occupies via its parcels array and base coordinate
+      
+      - from: Scene
+        to: Required Permission
+        relationship: has_many
+        description: A Scene may request multiple Required Permissions to access restricted client APIs
+      
+      - from: Profile
+        to: Avatar
+        relationship: has_many
+        description: A Profile contains one or more Avatar configurations the user can switch between
+      
+      - from: Avatar
+        to: Wearable
+        relationship: references
+        description: An Avatar references multiple Wearables by URN to compose its appearance
+      
+      - from: Avatar
+        to: Emote
+        relationship: references
+        description: An Avatar references equipped Emotes by URN that the user can trigger
+      
+      - from: Avatar
+        to: Body Shape
+        relationship: has_one
+        description: An Avatar has exactly one Body Shape determining its form factor
+      
+      - from: Wearable
+        to: Collection
+        relationship: belongs_to
+        description: A Wearable belongs to a Collection smart contract that governs minting and ownership
+      
+      - from: Wearable
+        to: Rarity
+        relationship: has_one
+        description: Each Wearable has a Rarity tier that indicates its scarcity level
+      
+      - from: Wearable
+        to: Merkle Proof
+        relationship: has_one
+        description: Third-party Wearables include a Merkle Proof for off-chain content verification
+      
+      - from: NFT
+        to: Wearable
+        relationship: is_a
+        description: A Wearable NFT represents on-chain ownership of a wearable item
+      
+      - from: NFT
+        to: Emote
+        relationship: is_a
+        description: An Emote NFT represents on-chain ownership of an emote animation
+      
+      - from: Event (Platform)
+        to: Entity
+        relationship: references
+        description: Many platform Events reference Entity deployments as their trigger (e.g., CatalystDeploymentEvent)
+      
+      - from: Outfits
+        to: Wearable
+        relationship: references
+        description: An Outfits entity references a saved combination of Wearables for quick switching
+
+    cross_service:
+      - local_concept: Entity
+        remote_service: catalyst
+        remote_concept: Entity
+        mapping_type: equivalent
+        description: The Entity type defined in schemas is the canonical structure stored and retrieved by Catalyst content servers
+      
+      - local_concept: Scene
+        remote_service: worlds-content-server
+        remote_concept: Scene
+        mapping_type: equivalent
+        description: Worlds content server stores Scene entities using the same schema definition for world deployments
+      
+      - local_concept: Profile
+        remote_service: catalyst
+        remote_concept: Profile
+        mapping_type: equivalent
+        description: User profiles are deployed to Catalyst as Profile entities following this schema
+      
+      - local_concept: Event (Platform)
+        remote_service: notifications-workers
+        remote_concept: Event
+        mapping_type: equivalent
+        description: Platform events consumed by notifications-workers for user notifications use these event schemas
+      
+      - local_concept: Event (Platform)
+        remote_service: events-notifier
+        remote_concept: Event
+        mapping_type: equivalent
+        description: Events-notifier publishes events conforming to these schemas via SNS/SQS
+      
+      - local_concept: Wearable
+        remote_service: marketplace-server
+        remote_concept: Item
+        mapping_type: equivalent
+        description: Marketplace items represent Wearables using this schema for metadata validation
+      
+      - local_concept: NFT
+        remote_service: marketplace-server
+        remote_concept: NFT
+        mapping_type: equivalent
+        description: Marketplace NFT listings and trades use this NFT schema definition
+      
+      - local_concept: AuthChain
+        remote_service: content-validator
+        remote_concept: AuthChain
+        mapping_type: equivalent
+        description: Content-validator library uses this AuthChain schema to verify deployment signatures
+      
+      - local_concept: World
+        remote_service: worlds-content-server
+        remote_concept: World
+        mapping_type: equivalent
+        description: Worlds content server uses the World schema for world configuration validation
+
+  # ----------------------------------------------------------
+  # INVARIANTS
+  # ----------------------------------------------------------
+  invariants:
+    - rule: An Entity must have at least one Pointer
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Entity content mappings must use valid IPFS hashes (IPFSv1 or IPFSv2 format)
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: AuthChain must have at least one link and terminate with a SIGNER type
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Wearables must be either standard (with collectionAddress and rarity) XOR third-party (with merkleProof and content)
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Scene parcels must be contiguous (all parcels must be adjacent)
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Scene requiredPermissions must be unique (no duplicates)
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: If a Scene requests ALLOW_MEDIA_HOSTNAMES permission, it must define allowedMediaHostnames with at least one entry
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Avatar body shape must be either BaseMale or BaseFemale
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Wearable representations must exist for at least one body shape
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: EthAddress fields must match pattern ^0x[a-fA-F0-9]{40}$
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Event types must match their declared subtype category (e.g., BLOCKCHAIN type only with Blockchain subtypes)
+      enforced_at: api_validation
+      severity: hard
+
+  # ----------------------------------------------------------
+  # RESPONSIBILITIES
+  # ----------------------------------------------------------
+  responsibilities:
+    - Provide canonical TypeScript type definitions for all Decentraland platform data structures
+    - Export runtime JSON Schema validators using AJV for type-safe validation across services
+    - Define event schemas for asynchronous inter-service communication via SNS/SQS
+    - Maintain domain-specific schema namespaces (dapps, platform, misc, core, sdk) for organizational clarity
+    - Enforce data structure invariants through compile-time types and runtime validation
+    - Enable zero-cost type imports through TypeScript namespace pattern (types that are also values)
+    - Version schema changes and track API surface through automated API extraction reports
+    - Provide validation utilities for common patterns (email, URLs, parcel coordinates, Ethereum addresses)
+    - Define authentication and authorization schemas (AuthChain, AuthLink) for content deployments
+    - Support both on-chain (standard) and off-chain (third-party) content verification patterns
+
+  out_of_scope:
+    - Implementing business logic or service-specific behavior (schemas define structure, not behavior)
+    - Storing or persisting data (this is a type definition library, not a database or service)
+    - Handling network communication or API requests (consuming services implement communication)
+    - Managing deployment workflows (schemas validate deployments, not orchestrate them)
+    - Providing UI components or frontend logic (this is backend/shared type definitions)
+    - Blockchain interaction or smart contract deployment (schemas define data, not execute transactions)
+    - Content storage or IPFS pinning (schemas define content mappings, not manage storage)
+    - User authentication or session management (provides auth chain schemas, not auth services)
+
+  # ----------------------------------------------------------
+  # OWNED ENTITIES
+  # ----------------------------------------------------------
+  owned_entities:
+    - name: Entity
+      description: Core deployment unit containing type, pointers, content mappings, metadata, and authentication chain
+      persistence: none (library)
+      identity_field: id
+      
+    - name: Scene
+      description: Spatial experience metadata with parcels, permissions, spawn points, and display information
+      persistence: none (library)
+      identity_field: main
+      
+    - name: Profile
+      description: User identity container with avatar configurations
+      persistence: none (library)
+      identity_field: avatars
+      
+    - name: Wearable
+      description: Avatar customization item with representations, category, and ownership proof
+      persistence: none (library)
+      identity_field: id
+      
+    - name: Emote
+      description: Avatar animation with play mode and representations
+      persistence: none (library)
+      identity_field: id
+      
+    - name: Event
+      description: Platform event message with type, subtype, metadata, and timestamp
+      persistence: none (library)
+      identity_field: key
+      
+    - name: NFT
+      description: Blockchain asset with ownership, pricing, and marketplace metadata
+      persistence: none (library)
+      identity_field: id
+
+# ============================================================
+# API REFERENCE
+# ============================================================
+api:
+  openapi_url: ""
+
+# ============================================================
+# DB Schema
+# ============================================================
+db:
+  schema_url: ""
+
+# ============================================================
+# DEPENDENCIES
+# ============================================================
+dependencies:
+  services:
+    []
+
+  external:
+    - name: ajv
+      purpose: JSON Schema validation library for runtime type checking
+      type: other
+    
+    - name: ajv-errors
+      purpose: Enhanced error messages for AJV validation failures
+      type: other
+    
+    - name: ajv-keywords
+      purpose: Additional validation keywords extending AJV's capabilities
+      type: other
+    
+    - name: mitt
+      purpose: Lightweight event emitter for pub/sub patterns
+      type: other
+
+# ============================================================
+# EVENTS
+# ============================================================
+events:
+  publishes:
+    []
+
+  consumes:
+    []
+
+# ============================================================
+# CONFIGURATION & FEATURE FLAGS
+# ============================================================
+configuration:
+  feature_flags:
+    []
+
+  key_env_vars:
+    []
+
+# ============================================================
+# ADRs
+# ============================================================
+adrs:
+  - id: ADR-45
+    title: Entity Content Mappings
+    url: ""
+    relevance: Defines the structure of content mappings in Entity deployments using IPFS hashes
+
+  - id: ADR-74
+    title: Emote Data Format (original)
+    url: ""
+    relevance: Original emote data structure and representation format
+
+  - id: ADR-287
+    title: Emote Data Format (updated)
+    url: ""
+    relevance: Updated emote data structure with enhanced metadata and outcome support

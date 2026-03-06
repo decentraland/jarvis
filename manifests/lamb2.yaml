@@ -1,0 +1,53 @@
+schema_version: "1.0"
+
+service:
+  name: lamb2
+  display_name: Lambdas v2
+  description: Provides utility APIs for Decentraland clients to interact with Catalyst Content Servers. Replaces the legacy lambdas service with improved architecture, offering entity resolution, ownership validation, asset queries, and client helper functions.
+  team: foundation
+  repository: https://github.com/decentraland/lamb2
+  language: typescript
+  layer: content
+  ai-agent-context: https://github.com/decentraland/lamb2/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Entity Query
+      definition: API request to resolve entities by address, pointer, or other criteria with filtering and pagination.
+
+    - term: Ownership Validation
+      definition: Verification of asset ownership through blockchain data and The Graph subgraphs.
+
+  responsibilities:
+    - Query entities by address/pointer with filtering
+    - Validate ownership of wearables, emotes, names
+    - Resolve entity metadata and content
+    - Provide user profile queries
+    - Support sorting, filtering, and pagination
+
+  owned_entities: []
+
+api:
+  openapi_url: https://decentraland.github.io/catalyst-api-specs/#tag/Lambdas
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      purpose: Fetches entity data
+      critical: true
+
+  external:
+    - name: The Graph
+      purpose: Blockchain ownership verification
+      type: api
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: CATALYST_URL
+      description: Catalyst content server URL
+      affects: Entity data source

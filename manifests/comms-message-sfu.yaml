@@ -1,0 +1,113 @@
+schema_version: "1.0"
+
+service:
+  name: comms-message-sfu
+  display_name: Comms Message SFU
+  description: Real-time message routing and validation service for Decentraland's LiveKit communications infrastructure. Acts as a LiveKit participant that receives directed chat messages, validates community context, and re-publishes them to appropriate recipients.
+  team: foundation
+  repository: https://github.com/decentraland/comms-message-sfu
+  language: typescript
+  layer: real-time
+  ai-agent-context: https://github.com/decentraland/comms-message-sfu/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: SFU Replica
+      definition: Service instance acting as a LiveKit participant that receives and forwards community messages. Multiple replicas can run for horizontal scaling.
+
+    - term: Destination Identities
+      definition: List of LiveKit participant identities that should receive a message, resolved from community membership.
+
+    - term: Community Message
+      definition: Chat message targeted at members of a community, validated and routed by the SFU service.
+
+  concept_relationships:
+    internal:
+      - from: Community Message
+        to: Destination Identities
+        relationship: resolves_to
+        description: Community messages are resolved to specific user identities for delivery
+
+    cross_service:
+      - local_concept: Community Message
+        remote_service: social-service-ea
+        remote_concept: Community Membership
+        mapping_type: derived_from
+        description: Destination identities are resolved from Social Service community membership data
+
+      - local_concept: SFU Replica
+        remote_service: comms-gatekeeper
+        remote_concept: LiveKit Token
+        mapping_type: uses
+        description: SFU replicas authenticate to LiveKit rooms using tokens from comms-gatekeeper
+
+  invariants:
+    - rule: Sender must be a valid community member to send messages
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Destination identities must be resolved from Social Service before forwarding
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Intercept and forward community messages via LiveKit
+    - Validate sender community membership
+    - Resolve active members of target communities
+    - Re-publish messages with resolved destination identities
+    - Support horizontal scaling via multiple replicas
+    - Maintain stateless client-side logic
+
+  out_of_scope:
+    - Content moderation (handled by police-server)
+    - Token generation (handled by comms-gatekeeper)
+    - Island clustering (handled by archipelago-workers)
+    - User privacy settings (handled by comms-gatekeeper)
+
+  owned_entities: []
+
+api:
+  openapi_url: https://github.com/decentraland/comms-message-sfu/blob/main/docs/openapi.yaml
+
+dependencies:
+  services:
+    - name: social-service-ea
+      relationship: sync
+      purpose: Validates community membership and resolves active members
+      critical: true
+
+    - name: comms-gatekeeper
+      relationship: sync
+      purpose: Provides LiveKit tokens for SFU replica authentication
+      critical: true
+
+  external:
+    - name: LiveKit
+      purpose: Real-time communication infrastructure for message transport
+      type: other
+
+    - name: PostgreSQL
+      purpose: Optional caching of membership data
+      type: storage
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: LIVEKIT_HOST
+      description: LiveKit server host URL
+      affects: Message transport connectivity
+
+    - name: LIVEKIT_API_KEY
+      description: LiveKit API key for authentication
+      affects: Service authentication
+
+    - name: LIVEKIT_ROOM_ID
+      description: LiveKit room ID to join as participant
+      affects: Message routing scope
+
+    - name: REPLICA_ID
+      description: Unique identifier for this SFU replica instance
+      affects: Load distribution and scaling

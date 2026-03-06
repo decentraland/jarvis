@@ -1,0 +1,328 @@
+schema_version: "1.0"
+
+service:
+  name: referral
+  display_name: Reward Services
+  description: Comprehensive reward and campaign management system for the Decentraland ecosystem that enables creation of reward campaigns, distribution of NFTs and tokens, management of referral codes, blockchain transaction handling, and tracking of user referrals with support for multiple blockchain networks (Ethereum, Polygon).
+  team: foundation
+  repository: https://github.com/decentraland/referral
+  language: typescript
+  layer: Feature Servers Layer
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Campaign
+      definition: A reward distribution program with configurable parameters including stock items, API keys, activation periods, blockchain network, and user restrictions. Campaigns are owned by specific wallet addresses and can be enabled or disabled.
+      examples:
+        - "Summer Rewards Campaign distributing wearables on Polygon"
+        - "Launch event NFT distribution with time-limited availability"
+    
+    - term: Stock
+      definition: A finite pool of wearables or NFTs that can be assigned to users, represented as future contract calls for minting. Stock items are grouped and prioritized to control distribution order and can run out if minted elsewhere.
+      examples:
+        - "100 limited edition wearables from a specific collection"
+        - "Priority-ordered items where rare items are distributed first"
+    
+    - term: API Key
+      definition: Authentication mechanism for assigning rewards to users with configurable restrictions including assignation limits, user signature requirements, world connection requirements, and position-based restrictions. Keys can assign rewards from same collection/item or grouped items.
+      not_to_be_confused_with: Campaign keys which are a different mechanism for referrals
+    
+    - term: Reward
+      definition: An assigned NFT or token allocated to a specific user wallet with delivery status tracking. Rewards progress through states from assigned to sent to confirmed on blockchain.
+      examples:
+        - "Wearable NFT assigned but pending blockchain delivery"
+        - "Successfully minted token with transaction hash"
+    
+    - term: Campaign Key
+      definition: A referral or promotional code tied to a campaign that enables reward distribution through specific distribution channels. Each key is isolated with independent assignation limits.
+    
+    - term: Supply
+      definition: The available inventory of rewards for a campaign including NFTs, wearables, or tokens with metadata about collection addresses, token IDs, and distribution groups.
+    
+    - term: Claim
+      definition: User-initiated request to receive assigned rewards, triggering blockchain transaction processing and minting. Claims aggregate multiple rewards into batch transactions.
+    
+    - term: Referral
+      definition: Tracking relationship between users where one user (referrer) invites another user (referred) through a referral code, enabling reward distribution based on referral success.
+    
+    - term: Campaign Wallet
+      definition: Blockchain wallet address controlled by the campaign that has minting permissions for collections and executes reward distribution transactions. Private keys are split between AWS Secrets Manager and environment configuration.
+    
+    - term: Assignation Limit
+      definition: Restriction on API key or campaign key that limits the number of rewards a single user address can receive, preventing reward farming.
+    
+    - term: User Position Requirement
+      definition: Restriction requiring users to be connected to a specific Decentraland realm and positioned on specified parcels to receive rewards, preventing bot exploitation.
+
+  concept_relationships:
+    internal:
+      - from: Campaign
+        to: Stock
+        relationship: has_many
+        description: A Campaign contains multiple Stock items with different priority and group settings
+      
+      - from: Campaign
+        to: CampaignKey
+        relationship: has_many
+        description: A Campaign has multiple CampaignKeys for different distribution channels
+      
+      - from: Campaign
+        to: Reward
+        relationship: has_many
+        description: A Campaign generates multiple Rewards when users claim via API keys
+      
+      - from: Campaign
+        to: CampaignWallet
+        relationship: has_one
+        description: Each Campaign has one CampaignWallet that executes blockchain transactions
+      
+      - from: Reward
+        to: Claim
+        relationship: belongs_to
+        description: Multiple Rewards are grouped into a single Claim for batch processing
+      
+      - from: Reward
+        to: CampaignKey
+        relationship: references
+        description: Each Reward is assigned through a specific CampaignKey
+      
+      - from: User
+        to: Referral
+        relationship: has_many
+        description: Users can have multiple referrals they created or were referred through
+      
+      - from: APIKey
+        to: Reward
+        relationship: has_many
+        description: An APIKey can assign multiple Rewards subject to its restrictions
+    
+    cross_service:
+      - local_concept: Reward
+        remote_service: catalyst
+        remote_concept: Wearable
+        mapping_type: references
+        description: Rewards often reference Wearables and NFTs stored in Catalyst's content system
+      
+      - local_concept: User Position Requirement
+        remote_service: archipelago-workers
+        remote_concept: PeerConnection
+        mapping_type: references
+        description: Position requirements validate user connectivity through archipelago realm data
+      
+      - local_concept: CampaignWallet
+        remote_service: ethereum/polygon
+        remote_concept: WalletAddress
+        mapping_type: equivalent
+        description: Campaign wallets are standard blockchain addresses with minting permissions
+
+  invariants:
+    - rule: Campaign wallets must have minting permissions for all collections in their stock
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: API keys with assignation_limit=1 can only assign one reward per user address
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Stock cannot assign more rewards than available inventory
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: User position requirements must validate against live realm data
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Rewards cannot be claimed without valid user signature when user_sign is required
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Campaign wallet private keys must be split between AWS Secrets Manager and environment
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Each API key is isolated - limits do not apply across different keys
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Rewards must transition through states: assigned -> sending -> success/rejected
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Create and manage reward campaigns with configurable distribution parameters and blockchain networks
+    - Maintain finite stock pools of NFTs and wearables with grouping and priority management
+    - Generate and manage API keys with user restrictions for controlled reward distribution
+    - Assign rewards to users based on API key restrictions and campaign availability
+    - Process reward claims and execute blockchain transactions for minting and transfers
+    - Track referral relationships between users and manage referral code generation
+    - Create and manage campaign wallets with split private key security
+    - Validate user position and connection requirements against realm data
+    - Monitor transaction status and handle blockchain confirmation tracking
+    - Generate captchas for anti-bot protection during reward assignments
+    - Publish notification events for reward assignments and claims
+    - Manage campaign user roles and permissions for collaborative campaign management
+
+  out_of_scope:
+    - NFT metadata storage and content hosting (handled by catalyst)
+    - User wallet management and authentication (handled by decentraland-connect)
+    - Real-time user positioning and realm connectivity (handled by archipelago-workers)
+    - Blockchain node infrastructure and transaction broadcasting (uses external RPC providers)
+    - Wearable creation and builder tools (handled by builder services)
+    - Collection creation and contract deployment (handled by external tools)
+
+  owned_entities:
+    - name: Campaign
+      description: Reward distribution program with stock, keys, wallets, and configuration
+      persistence: postgres
+      identity_field: id (UUID)
+    
+    - name: CampaignKey
+      description: API key or referral code for assigning rewards with restrictions
+      persistence: postgres
+      identity_field: id (UUID)
+    
+    - name: Stock
+      description: Pool of available NFTs/wearables for a campaign with priority and grouping
+      persistence: postgres
+      identity_field: id (UUID)
+    
+    - name: Reward
+      description: Assigned NFT or token with delivery status and transaction tracking
+      persistence: postgres
+      identity_field: id (UUID)
+    
+    - name: Claim
+      description: User-initiated batch request for reward delivery with transaction hash
+      persistence: postgres
+      identity_field: id (UUID)
+    
+    - name: Referral
+      description: Relationship between referrer and referred user with referral code
+      persistence: postgres
+      identity_field: id (UUID)
+    
+    - name: CampaignWallet
+      description: Blockchain wallet for campaign with minting permissions and key management
+      persistence: postgres
+      identity_field: id (UUID)
+    
+    - name: CampaignUser
+      description: User permissions and roles for campaign management
+      persistence: postgres
+      identity_field: (campaign_id, user)
+    
+    - name: CampaignTransaction
+      description: Blockchain transaction record for reward deliveries with status
+      persistence: postgres
+      identity_field: id (UUID)
+
+api:
+  openapi_url: https://github.com/decentraland/referral/blob/master/docs/openapi.yaml
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      purpose: Fetch wearable metadata and NFT collection information
+      critical: false
+    
+    - name: archipelago-workers
+      relationship: sync
+      purpose: Validate user realm connectivity and position requirements
+      critical: false
+
+  external:
+    - name: AWS S3
+      purpose: Store captcha images for anti-bot protection
+      type: storage
+    
+    - name: AWS Secrets Manager
+      purpose: Store half of campaign wallet private keys for security
+      type: storage
+    
+    - name: AWS SNS
+      purpose: Publish notification events for reward assignments and claims
+      type: messaging
+    
+    - name: PostgreSQL
+      purpose: Primary database for campaigns, rewards, claims, referrals, and transactions
+      type: database
+    
+    - name: Ethereum RPC
+      purpose: Broadcast transactions and query blockchain state on Ethereum mainnet
+      type: blockchain
+    
+    - name: Polygon RPC
+      purpose: Broadcast transactions and query blockchain state on Polygon network
+      type: blockchain
+
+events:
+  publishes:
+    - name: reward.assigned
+      description: Published when a reward is assigned to a user via API key
+      channel: AWS SNS
+      key_payload_fields:
+        - reward_id
+        - user
+        - campaign_id
+        - campaign_key
+    
+    - name: reward.claimed
+      description: Published when a user claims assigned rewards
+      channel: AWS SNS
+      key_payload_fields:
+        - claim_id
+        - user
+        - reward_ids
+    
+    - name: transaction.success
+      description: Published when blockchain transaction is confirmed
+      channel: AWS SNS
+      key_payload_fields:
+        - transaction_hash
+        - block_number
+        - campaign_id
+    
+    - name: transaction.failed
+      description: Published when blockchain transaction fails
+      channel: AWS SNS
+      key_payload_fields:
+        - transaction_hash
+        - error_message
+        - campaign_id
+
+  consumes: []
+
+configuration:
+  feature_flags: []
+  
+  key_env_vars:
+    - name: CONNECTION_STRING
+      description: PostgreSQL database connection string
+      affects: Database connectivity and all data operations
+    
+    - name: AWS_WALLET_SECRET_ID
+      description: AWS Secrets Manager secret ID containing half of wallet private keys
+      affects: Campaign wallet security and transaction signing
+    
+    - name: AWS_PROFILE
+      description: AWS profile for S3, Secrets Manager, and SNS access
+      affects: Cloud service connectivity
+    
+    - name: AWS_ENDPOINT_URL
+      description: Custom endpoint for AWS services (used with LocalStack for development)
+      affects: AWS service routing for local development
+    
+    - name: ASSETS_BUCKET_NAME
+      description: S3 bucket name for captcha images
+      affects: Anti-bot captcha functionality
+    
+    - name: AWS_SNS_ARN
+      description: SNS topic ARN for publishing notification events
+      affects: Event notification delivery
+
+adrs: []

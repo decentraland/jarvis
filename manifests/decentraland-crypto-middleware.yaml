@@ -1,0 +1,113 @@
+schema_version: "1.0"
+
+service:
+  name: decentraland-crypto-middleware
+  display_name: "Decentraland Crypto Middleware"
+  description: Multi-framework authentication middleware for verifying requests signed with @decentraland/SignedFetch. Provides integrations for Express, Koa, PassportJS, and Well-Known Components to authenticate Decentraland users via cryptographic signature verification.
+  team: core
+  repository: https://github.com/decentraland/decentraland-crypto-middleware
+  language: typescript
+  layer: shared-library
+
+domain:
+  glossary:
+    - term: Auth Chain
+      definition: A cryptographic chain of signature links that proves a user controls an Ethereum address. Contains SIGNER and ECDSA signature types, with optional EIP-1654 ephemeral key support for smart contract wallets.
+      
+    - term: EIP-1654 Auth Chain
+      definition: A 2-3 link authentication chain that includes a SIGNER link followed by an ECDSA_EIP_1654_EPHEMERAL link, used for validating smart contract wallet signatures via Catalyst validation endpoint.
+      
+    - term: Signed Fetch
+      definition: HTTP request signing mechanism where the request method, path, timestamp, and metadata are concatenated and signed, with the signature transmitted via x-identity-auth-chain-* headers.
+
+    - term: Auth Chain Headers
+      definition: HTTP headers in the format x-identity-auth-chain-0, x-identity-auth-chain-1, etc. that contain JSON-serialized authentication chain links for signature verification.
+
+    - term: Timestamp Expiration
+      definition: Time window (default 60 seconds) within which a signed request is considered valid to prevent replay attacks. Enforced by comparing x-identity-timestamp against current server time.
+
+    - term: Personal Sign
+      definition: Standard Ethereum signature verification for externally owned accounts (EOAs), validated directly using the @dcl/crypto Authenticator without external service calls.
+
+  concept_relationships:
+    internal:
+      - from: Auth Chain
+        to: Signed Fetch
+        relationship: enables
+        description: Auth chain cryptographic signatures are verified to authenticate signed fetch requests
+
+      - from: EIP-1654 Auth Chain
+        to: Catalyst
+        relationship: depends_on
+        description: Smart contract wallet signatures require Catalyst /lambdas/crypto/validate-signature endpoint for verification
+
+      - from: Timestamp Expiration
+        to: Auth Chain
+        relationship: validates
+        description: Timestamp expiration prevents replay attacks by enforcing time-bound validity on auth chains
+
+  invariants:
+    - rule: Auth chains must contain at least 2 links to be considered valid (SIGNER + signature)
+      enforced_at: middleware
+      severity: hard
+
+    - rule: Request payload for signing is formed by concatenating method:path:timestamp:metadata in lowercase
+      enforced_at: middleware
+      severity: hard
+
+    - rule: Signed requests must be received within expiration window (default 60 seconds) from timestamp to prevent replay attacks
+      enforced_at: middleware
+      severity: hard
+
+    - rule: EIP-1654 (smart contract wallet) signatures must be validated by Catalyst endpoint, not locally
+      enforced_at: middleware
+      severity: hard
+
+  responsibilities:
+    - Verify cryptographic signatures on HTTP requests signed with @decentraland/SignedFetch
+    - Extract and parse authentication chain headers from HTTP requests
+    - Validate auth chain structure and signature validity
+    - Enforce timestamp-based expiration to prevent replay attacks
+    - Verify personal signatures for EOAs directly via @dcl/crypto
+    - Verify EIP-1654 smart contract wallet signatures via Catalyst validation endpoint
+    - Provide middleware integrations for Express, Koa, PassportJS, and Well-Known Components
+    - Attach authenticated user address and metadata to request context
+
+  out_of_scope:
+    - Generating signed requests or auth chains
+    - Managing user sessions or session tokens
+    - Storing authentication state
+    - Blockchain transaction signing or verification
+    - User profile or metadata storage
+
+  owned_entities:
+    - name: DecentralandSignatureData
+      description: Authenticated request context containing verified Ethereum address and optional metadata
+      persistence: none (request-scoped)
+      identity_field: auth
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      purpose: Validates EIP-1654 smart contract wallet signatures via /lambdas/crypto/validate-signature endpoint
+      critical: true
+
+  external:
+    - name: "@dcl/crypto"
+      purpose: Provides core cryptographic verification utilities and Authenticator for validating auth chains
+      type: other
+
+configuration:
+  key_env_vars:
+    - name: catalyst
+      description: Catalyst URL for smart contract wallet signature validation
+      affects: EIP-1654 signature verification endpoint
+
+    - name: expiration
+      description: Time in milliseconds for signature validity window (default 60000)
+      affects: Replay attack prevention and timestamp validation
+
+    - name: optional
+      description: Whether to allow unauthenticated requests to pass through (default false)
+      affects: Authentication enforcement behavior

@@ -1,0 +1,188 @@
+# ============================================================
+# service.yaml — Architectural & Domain Definition (v2)
+# ============================================================
+# This file is the canonical source for a service's role,
+# domain knowledge, and relationships within the system.
+# It complements OpenAPI specs with context that endpoint
+# definitions cannot express.
+
+schema_version: "1.0"
+
+# ============================================================
+# IDENTITY
+# ============================================================
+service:
+  name: string                    # Unique service identifier (e.g., "realm-provider")
+  display_name: string            # Human-readable name
+  description: string             # 1-3 sentence summary of what this service does and WHY it exists
+  team: string                    # Owning team identifier
+  repository: string              # Git repository URL
+  language: string                # Primary language (e.g., "typescript", "go", "rust")
+  layer: string                   # Architectural layer 
+  ai-agent-context: string        # URL to the ai agent context file to search more information about the service capabilities 
+  
+
+# ============================================================
+# DOMAIN & RESPONSIBILITIES
+# ============================================================
+domain:
+  
+  # ----------------------------------------------------------
+  # GLOSSARY — The domain's vocabulary
+  # ----------------------------------------------------------
+  # This is the most impactful section for AI comprehension.
+  # Define every concept that someone new to this service
+  # would need to understand. Write definitions as if
+  # explaining to a senior engineer on their first day.
+  #
+  # Guidelines:
+  # - Define the concept in business/domain terms, not code terms
+  # - If a concept exists in multiple services with different
+  #   meanings, be explicit about THIS service's interpretation
+  # - Include concrete examples where they clarify meaning
+  # - Keep each definition to 1-3 sentences
+  glossary:
+    - term: string                # The concept name (e.g., "Realm")
+      definition: string          # What it means IN THIS SERVICE's context
+      examples:                   # Optional: concrete examples that clarify the concept
+        - string
+      not_to_be_confused_with: string  # Optional: disambiguation from similar terms
+
+  # ----------------------------------------------------------
+  # CONCEPT RELATIONSHIPS — How domain concepts connect
+  # ----------------------------------------------------------
+  # Captures the structural relationships between concepts.
+  # This is what lets an AI understand that "a World contains
+  # Scenes" or that "a Realm is analogous to a World."
+  #
+  # Also maps concepts ACROSS services, which is critical for
+  # understanding where data flows and how services interact
+  # at the domain level (not just the API level).
+  concept_relationships:
+    # Internal relationships (within this service)
+    internal:
+      - from: string              # e.g., "World"
+        to: string                # e.g., "Scene"
+        relationship: string      # "has_many" | "has_one" | "belongs_to" | "is_a" |
+                                  # "contains" | "references" | "transitions_to" |
+                                  # "depends_on" | "extends"
+        description: string       # e.g., "A World contains one or more Scenes that define its spatial layout"
+
+    # Cross-service concept mappings
+    # This is how the AI understands that "World" in worlds-service
+    # maps to "Realm" in realm-provider at a conceptual level
+    cross_service:
+      - local_concept: string     # Concept in THIS service (e.g., "World")
+        remote_service: string    # The other service name (e.g., "realm-provider")
+        remote_concept: string    # Concept in the OTHER service (e.g., "Realm")
+        mapping_type: string      # "equivalent" | "subset_of" | "superset_of" |
+                                  # "projects_as" | "derived_from" | "references"
+        description: string       # e.g., "A World in worlds-service functions like a Realm
+                                  #  in realm-provider — both represent a connectable space,
+                                  #  but World includes scene composition while Realm
+                                  #  describes the connection configuration"
+
+  # ----------------------------------------------------------
+  # INVARIANTS — Business rules that must never be violated
+  # ----------------------------------------------------------
+  # These are the "thou shalt not" rules of the domain.
+  # An AI generating code must respect these, and they're
+  # impossible to express in OpenAPI.
+  #
+  # Good invariants are specific and testable:
+  #   ✅ "A World must have at least one Scene"
+  #   ❌ "Content should be valid" (too vague)
+  invariants:
+    - rule: string                # The business rule in plain language
+      enforced_at: string         # Where this is enforced: "domain_layer" | "database" |
+                                  # "api_validation" | "event_handler" | "middleware"
+      severity: string            # "hard" (system rejects violations) | "soft" (warning/degraded)
+
+ 
+  # ----------------------------------------------------------
+  # RESPONSIBILITIES
+  # ----------------------------------------------------------
+  responsibilities:
+    - string
+
+  out_of_scope:
+    - string
+
+  # ----------------------------------------------------------
+  # OWNED ENTITIES (enriched from v1)
+  # ----------------------------------------------------------
+  owned_entities:
+    - name: string                # e.g., "World"
+      description: string         # Brief description
+      persistence: string         # e.g., "postgres", "mongodb"
+      identity_field: string      # e.g., "worldId" — how other services reference this entity
+      state_machine: string       # Optional: reference to state_machines entry by entity name
+
+# ============================================================
+# API REFERENCE (not the spec itself)
+# ============================================================
+api:
+  openapi_url: string
+
+# ============================================================
+# DB Schema
+# ============================================================
+db:
+  schema_url: string
+
+  
+# ============================================================
+# DEPENDENCIES
+# ============================================================
+dependencies:
+  services:
+    - name: string
+      relationship: string        # "sync" | "async" | "both"
+      purpose: string
+      critical: boolean
+
+  external:
+    - name: string
+      purpose: string
+      type: string                # "api" | "storage" | "messaging" | "cdn" | "blockchain" | "other"
+
+# ============================================================
+# EVENTS (Async Service to Service Communication)
+# ============================================================
+events:
+  publishes:
+    - name: string
+      description: string
+      channel: string
+      key_payload_fields:
+        - string
+
+  consumes:
+    - name: string
+      source_service: string
+      description: string
+      channel: string
+
+# ============================================================
+# CONFIGURATION & FEATURE FLAGS
+# ============================================================
+configuration:
+  feature_flags:
+    - name: string
+      description: string
+      default: string
+
+  key_env_vars:
+    - name: string
+      description: string
+      affects: string
+
+# ============================================================
+# Architectural decission records affected by this project
+# ============================================================
+
+adrs:
+- id: string
+  title: string
+  url: string
+  relevance: strin

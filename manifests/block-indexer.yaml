@@ -1,0 +1,117 @@
+schema_version: "1.0"
+
+service:
+  name: block-indexer
+  display_name: Block Indexer Library
+  description: TypeScript component library that finds the blockchain block that was at the tip of the blockchain at a given timestamp. Provides efficient timestamp-to-block-number lookup with caching for Ethereum and other EVM-compatible chains, essential for historical queries and timestamp-based content validation.
+  team: foundation
+  repository: https://github.com/decentraland/block-indexer
+  language: typescript
+  layer: Shared Libraries
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Block Search
+      definition: Algorithm to find the blockchain block number that corresponds to a specific timestamp by binary searching through the blockchain history.
+    
+    - term: Block Repository
+      definition: Component that retrieves blockchain block information from Ethereum providers with built-in caching to minimize RPC calls.
+    
+    - term: Caching Ethereum Provider
+      definition: Wrapper around Ethereum RPC providers that caches block data in memory using LRU (Least Recently Used) cache to improve performance.
+    
+    - term: Block Timestamp
+      definition: The Unix timestamp recorded in a blockchain block indicating when the block was mined.
+    
+    - term: Timestamp Lookup
+      definition: Process of finding which block was mined at or just before a specific timestamp, used for historical queries and validations.
+
+  concept_relationships:
+    internal:
+      - from: BlockSearch
+        to: BlockRepository
+        relationship: depends_on
+        description: Block search uses block repository to retrieve block data
+      
+      - from: BlockRepository
+        to: CachingEthereumProvider
+        relationship: depends_on
+        description: Block repository uses caching provider to minimize RPC calls
+      
+      - from: CachingEthereumProvider
+        to: EthereumProvider
+        relationship: wraps
+        description: Caching provider wraps standard Ethereum RPC providers
+    
+    cross_service:
+      - local_concept: BlockSearch
+        remote_service: content-validator
+        remote_concept: TimestampValidation
+        mapping_type: provides
+        description: Content validator uses block indexer for timestamp-based access validation
+      
+      - local_concept: BlockSearch
+        remote_service: catalyst
+        remote_concept: HistoricalQuery
+        mapping_type: provides
+        description: Catalyst uses block indexer for historical content queries
+
+  invariants:
+    - rule: Block search must use binary search algorithm for efficiency
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Block timestamps are monotonically increasing (later blocks have later timestamps)
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Cached block data must match on-chain data
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Find blockchain block number for a given timestamp using binary search
+    - Cache block data to minimize RPC calls to Ethereum providers
+    - Provide efficient timestamp-to-block lookups for historical queries
+    - Support multiple Ethereum-compatible chains (mainnet, L2s)
+    - Implement LRU caching strategy for block data
+    - Handle edge cases for timestamps before first block or after latest block
+
+  out_of_scope:
+    - Blockchain indexing (this is not a full blockchain indexer like The Graph)
+    - Transaction parsing or event decoding
+    - Block production or mining
+    - RPC provider implementation (uses existing providers)
+    - Full block data storage (only caches what's needed for timestamp lookups)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: Ethereum RPC Provider
+      purpose: Query blockchain for block data
+      type: blockchain
+    
+    - name: Web3
+      purpose: Ethereum provider interface
+      type: api
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  
+  key_env_vars: []
+
+adrs: []

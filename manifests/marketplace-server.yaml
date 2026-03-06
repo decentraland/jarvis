@@ -1,0 +1,118 @@
+schema_version: "1.0"
+
+service:
+  name: marketplace-server
+  display_name: Marketplace Server
+  description: Provides comprehensive marketplace APIs for the Decentraland Marketplace. Enables browsing, searching, and interacting with NFTs (wearables, emotes, LAND, estates, ENS names), managing trades and orders, and accessing marketplace analytics.
+  team: foundation
+  repository: https://github.com/decentraland/marketplace-server
+  language: typescript
+  layer: feature-servers
+  ai-agent-context: https://github.com/decentraland/marketplace-server/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Trade
+      definition: Peer-to-peer exchange (BID, PUBLIC_ITEM_ORDER, PUBLIC_NFT_ORDER) with blockchain signature validation and expiration.
+
+    - term: Favorites List
+      definition: User-curated NFT collection with privacy controls (public/private) and collaborative access via ACL.
+
+    - term: Catalog
+      definition: Marketplace items with extensive filtering by category, rarity, price, creator, and NFT attributes.
+
+  concept_relationships:
+    internal:
+      - from: Trade
+        to: Trade Asset
+        relationship: has_many
+        description: Trades contain multiple assets (ERC20, ERC721, Collection Items) with direction and beneficiary
+
+      - from: Favorites List
+        to: Pick
+        relationship: has_many
+        description: Lists contain picks (items) added by users
+
+    cross_service:
+      - local_concept: Trade
+        remote_service: squid-indexer
+        remote_concept: Marketplace Transaction
+        mapping_type: equivalent
+        description: Trades represent marketplace transactions indexed by Squid
+
+  invariants:
+    - rule: Trade signatures must be unique
+      enforced_at: database
+      severity: hard
+
+    - rule: Trade assets cascade delete when trade is deleted
+      enforced_at: database
+      severity: hard
+
+  responsibilities:
+    - Query NFTs with extensive filtering
+    - Manage trades, bids, and orders
+    - Provide marketplace catalog
+    - Support favorites lists with privacy controls
+    - Deliver sales history and analytics
+    - Integrate payment gateways (Wert, Transak)
+
+  owned_entities:
+    - name: Trade
+      description: Marketplace order or bid with signature
+      persistence: postgres
+      identity_field: id
+
+    - name: Favorites List
+      description: User-curated NFT collection
+      persistence: postgres
+      identity_field: id
+
+api:
+  openapi_url: https://github.com/decentraland/marketplace-server/blob/main/docs/openapi.yaml
+
+db:
+  schema_url: https://github.com/decentraland/marketplace-server/blob/main/docs/database-schema.md
+
+dependencies:
+  services: []
+  external:
+    - name: PostgreSQL
+      purpose: Trades, favorites, Squid indexer data
+      type: storage
+    - name: Redis
+      purpose: Caching with memory fallback
+      type: storage
+    - name: Squid Indexer
+      purpose: On-chain marketplace data
+      type: api
+    - name: The Graph
+      purpose: Rentals subgraph for LAND
+      type: api
+    - name: AWS SNS
+      purpose: Trade and marketplace event publishing
+      type: messaging
+
+events:
+  publishes:
+    - name: trade_created
+      description: New trade created
+      channel: AWS SNS
+      key_payload_fields:
+        - tradeId
+        - type
+        - signature
+
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: SQUID_URL
+      description: Squid indexer endpoint
+      affects: Marketplace data source
+
+adrs:
+  - id: ADR-44
+    title: Signed Fetch Authentication
+    url: https://adr.decentraland.org/adr/ADR-44
+    relevance: Authentication for marketplace operations

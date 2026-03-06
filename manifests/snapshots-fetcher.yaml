@@ -1,0 +1,179 @@
+schema_version: "1.0"
+
+service:
+  name: snapshots-fetcher
+  display_name: "@dcl/snapshots-fetcher"
+  description: Component library for fetching and synchronizing entity snapshots from Catalyst content servers. Downloads entity deployments with their content files, supports incremental snapshot synchronization, and provides resilient fetching with retry logic and queue management.
+  team: core
+  repository: https://github.com/decentraland/snapshots-fetcher
+  language: typescript
+  layer: shared-library
+
+domain:
+  glossary:
+    - term: Entity Snapshot
+      definition: A point-in-time capture of deployed entities from a Catalyst content server, packaged into a downloadable file containing entity metadata and references to content files. Used for efficient bulk synchronization.
+      
+    - term: Deployed Entity
+      definition: A content entity (scene, profile, wearable) that has been deployed to Catalyst servers with its metadata and associated content files. Includes deployment timestamp and entity type.
+
+    - term: Synchronizer Component
+      definition: High-level component that orchestrates the synchronization process between local storage and remote Catalyst servers, managing both snapshot downloads and incremental pointer-changes polling.
+
+    - term: Pointer Changes
+      definition: Incremental entity deployment events streamed from Catalyst /pointer-changes endpoint, providing real-time updates after initial snapshot synchronization is complete.
+
+    - term: Content Mapping
+      definition: A file-to-hash mapping that associates each file in an entity deployment with its content hash. Used to download the complete set of files for an entity.
+
+    - term: Snapshot Metadata
+      definition: Information about a snapshot including its hash, time range, number of entities, generation timestamp, and optionally replaced snapshot hashes.
+
+    - term: Deployer Component
+      definition: Interface for handling entity deployments. Schedules entity deployments (potentially asynchronously via queues) and tracks when deployment work is complete.
+
+    - term: Exponential Fallback Retry
+      definition: Retry mechanism that increases wait time exponentially between attempts, used for handling temporary network failures and server unavailability.
+
+  concept_relationships:
+    internal:
+      - from: Synchronizer Component
+        to: Entity Snapshot
+        relationship: downloads
+        description: Synchronizer downloads entity snapshots from Catalyst servers during initial bootstrap phase
+
+      - from: Synchronizer Component
+        to: Pointer Changes
+        relationship: polls
+        description: After snapshot bootstrap, synchronizer polls pointer-changes endpoint for incremental updates
+
+      - from: Deployed Entity
+        to: Content Mapping
+        relationship: has_many
+        description: Each deployed entity contains content mappings that reference the files to be downloaded
+
+      - from: Entity Snapshot
+        to: Deployed Entity
+        relationship: contains
+        description: Snapshots package multiple deployed entities for efficient bulk transfer
+
+      - from: Deployer Component
+        to: Deployed Entity
+        relationship: processes
+        description: Deployer component receives deployed entities and handles their local deployment
+
+    cross_service:
+      - local_concept: Entity Snapshot
+        remote_service: catalyst
+        remote_concept: Snapshot
+        mapping_type: equivalent
+        description: Entity snapshots are generated and served by Catalyst content servers
+
+      - local_concept: Deployed Entity
+        remote_service: catalyst
+        remote_concept: Entity
+        mapping_type: equivalent
+        description: Deployed entities correspond to entities stored in Catalyst content servers
+
+  invariants:
+    - rule: All entity content files must be downloaded before the entity is marked as fully synchronized
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Profile entities with avatar snapshots must download referenced snapshot images even if not listed in content mappings (legacy fix for missing content references)
+      enforced_at: domain_layer
+      severity: soft
+
+    - rule: Snapshot processing must be idempotent - processing the same snapshot multiple times should not cause errors
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Downloaded files should be verified against their content hash before being marked as successfully downloaded (TODO in code)
+      enforced_at: domain_layer
+      severity: soft
+
+  responsibilities:
+    - Download entity snapshots from Catalyst content servers
+    - Fetch entity metadata and all associated content files
+    - Poll pointer-changes endpoint for incremental entity updates after initial bootstrap
+    - Manage download queues with concurrency control and retry logic
+    - Handle temporary failures with exponential backoff retry mechanism
+    - Track processed snapshots to avoid redundant downloads
+    - Synchronize local storage with one or more remote Catalyst servers
+    - Support custom deployer components for handling downloaded entities
+    - Provide metrics for monitoring download progress and server response times
+    - Special handling for profile entities to download avatar snapshot images
+    - Stream entities from snapshots and pointer-changes for processing
+
+  out_of_scope:
+    - Generating or creating entity snapshots (Catalyst responsibility)
+    - Validating entity content or metadata schemas
+    - Serving downloaded content to clients
+    - Managing entity deployments to Catalyst servers (upload direction)
+    - Content transformation or processing
+    - Blockchain interaction or ownership validation
+
+  owned_entities:
+    - name: DeployableEntity
+      description: An entity deployment ready to be processed by a deployer component, including optional markAsDeployed callback and snapshot hash reference
+      persistence: none (transient during sync)
+      identity_field: entityId
+
+    - name: SnapshotMetadata
+      description: Metadata describing a snapshot including time range, entity count, and generation timestamp
+      persistence: tracked by IProcessedSnapshotStorageComponent
+      identity_field: hash
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      purpose: Fetch entity snapshots, pointer-changes stream, and download entity content files
+      critical: true
+
+  external:
+    - name: "@dcl/catalyst-storage"
+      purpose: Provides storage abstraction for downloaded entity content files
+      type: other
+
+    - name: "@dcl/hashing"
+      purpose: Used for content hash calculations and verification
+      type: other
+
+    - name: "@dcl/schemas"
+      purpose: Provides entity deployment schema validation (SyncDeployment, PointerChangesSyncDeployment)
+      type: other
+
+    - name: p-queue
+      purpose: Manages concurrent download operations with queue and retry mechanisms
+      type: other
+
+configuration:
+  key_env_vars:
+    - name: fromTimestamp
+      description: Starting timestamp for snapshot and pointer-changes synchronization
+      affects: Determines which historical entities to fetch during bootstrap
+
+    - name: pointerChangesWaitTime
+      description: Polling interval for pointer-changes endpoint (0 disables polling)
+      affects: Real-time incremental update frequency after bootstrap
+
+    - name: concurrency
+      description: Maximum concurrent download jobs in the queue
+      affects: Download throughput and server load
+
+    - name: requestMaxRetries
+      description: Maximum number of retry attempts for failed HTTP requests
+      affects: Resilience to temporary network failures
+
+    - name: requestRetryWaitTime
+      description: Base wait time between retry attempts
+      affects: Retry backoff timing
+
+    - name: tmpDownloadFolder
+      description: Temporary folder for downloading snapshot files
+      affects: Location for intermediate snapshot storage
+
+    - name: deleteSnapshotAfterUsage
+      description: Whether to delete snapshot files after processing (default true)
+      affects: Disk space management

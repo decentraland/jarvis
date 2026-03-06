@@ -1,0 +1,60 @@
+schema_version: "1.0"
+
+service:
+  name: linker-server
+  display_name: Linker Server
+  description: Acts as an intermediary for deploying content to Decentraland's Catalyst network. Validates authorization for specific parcels and proxies upload requests to Catalyst with server-signed authentication.
+  team: foundation
+  repository: https://github.com/decentraland/linker-server
+  language: typescript
+  layer: feature-servers
+  ai-agent-context: https://github.com/decentraland/linker-server/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Parcel Authorization
+      definition: Permission granted to specific users to deploy content to Foundation-owned parcels.
+
+    - term: Auth Chain
+      definition: Chain of signed messages proving ownership of a wallet address.
+
+  invariants:
+    - rule: Users must be pre-authorized to deploy to specific parcels
+      enforced_at: api_validation
+      severity: hard
+
+  responsibilities:
+    - Validate parcel deployment authorization
+    - Verify auth chain signatures
+    - Proxy entity uploads to Catalyst
+    - Sign entities with server wallet
+
+  owned_entities: []
+
+api:
+  openapi_url: https://github.com/decentraland/linker-server/blob/main/docs/openapi.yaml
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      purpose: Proxies content deployments
+      critical: true
+
+  external:
+    - name: AWS Secrets Manager
+      purpose: Stores server wallet private key
+      type: other
+    - name: GitHub Pages
+      purpose: Authorization data source
+      type: other
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: CATALYST_URL
+      description: Catalyst content server URL
+      affects: Deployment target

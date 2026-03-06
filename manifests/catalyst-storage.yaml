@@ -1,0 +1,111 @@
+schema_version: "1.0"
+
+service:
+  name: catalyst-storage
+  display_name: "@dcl/catalyst-storage"
+  description: Storage abstraction library providing unified API for file storage across multiple backends (S3, filesystem, in-memory). Handles content streaming, compression, and metadata for Catalyst content servers.
+  team: core
+  repository: https://github.com/decentraland/catalyst-storage
+  language: typescript
+  layer: shared-library
+
+domain:
+  glossary:
+    - term: Content Item
+      definition: A stored file with metadata including size, encoding, and methods to retrieve the content as a stream. Automatically handles decompression if content is stored in compressed format.
+      
+    - term: File Info
+      definition: Metadata about a stored file including its encoding (null or 'gzip') and size in bytes. Retrieved without loading the full content.
+      
+    - term: Storage Component
+      definition: Interface defining file storage operations (store, retrieve, delete, check existence). Implementations include S3, folder-based (local filesystem), and in-memory storage.
+
+    - term: Stream Compression
+      definition: Transparent gzip compression and decompression of content streams. Files stored compressed are automatically decompressed when retrieved via asStream() but available raw via asRawStream().
+
+    - term: File ID
+      definition: Unique identifier for stored content, typically a content hash. Used as the key for all storage operations across different backends.
+
+  concept_relationships:
+    internal:
+      - from: Storage Component
+        to: Content Item
+        relationship: produces
+        description: Storage component retrieve operations return Content Item instances with metadata and stream accessors
+
+      - from: Content Item
+        to: File Info
+        relationship: extends
+        description: Content Item extends File Info with stream retrieval methods (asStream, asRawStream)
+
+      - from: Stream Compression
+        to: Content Item
+        relationship: handled_by
+        description: Content Items handle transparent decompression based on encoding metadata when asStream() is called
+
+  invariants:
+    - rule: Content Items must provide both asStream (decompressed) and asRawStream (as stored) accessors to support different retrieval patterns
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: File IDs must be unique within a storage backend and serve as the primary key for all operations
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Compressed content must have encoding set to 'gzip' in metadata to enable automatic decompression
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Provide unified interface for file storage operations across S3, filesystem, and in-memory backends
+    - Store and retrieve content as streams to handle large files efficiently
+    - Transparently compress and decompress content using gzip
+    - Track file metadata (size, encoding) without loading full content
+    - Support batch operations for existence checks and file info retrieval
+    - Enable iteration over all stored file IDs with optional prefix filtering
+    - Convert between streams and buffers for testing and in-memory operations
+
+  out_of_scope:
+    - Content validation or hash verification
+    - Access control or authentication
+    - Content deduplication
+    - Version control or history tracking
+    - Content type detection beyond compression encoding
+    - Cross-backend replication or synchronization
+
+  owned_entities:
+    - name: ContentItem
+      description: Stored content with metadata and stream retrieval methods
+      persistence: varies by implementation (S3, filesystem, memory)
+      identity_field: fileId
+
+    - name: FileInfo
+      description: File metadata without content payload
+      persistence: none (derived from storage backend)
+      identity_field: fileId
+
+dependencies:
+  services: []
+
+  external:
+    - name: AWS S3
+      purpose: Cloud storage backend for production content storage
+      type: storage
+
+    - name: aws-sdk
+      purpose: AWS SDK for S3 operations in S3-based storage component
+      type: other
+
+    - name: "@well-known-components/interfaces"
+      purpose: Provides component interfaces for filesystem, config, and logging
+      type: other
+
+configuration:
+  key_env_vars:
+    - name: AWS S3 bucket configuration
+      description: S3 bucket name, region, and credentials for S3-based storage
+      affects: S3 storage backend operations
+
+    - name: Filesystem path
+      description: Root directory path for folder-based storage
+      affects: Local filesystem storage location

@@ -1,0 +1,193 @@
+schema_version: "1.0"
+
+service:
+  name: asset-bundle-registry
+  display_name: Asset Bundle Registry
+  description: Orchestrates and tracks the availability of optimized Decentraland entities (scenes, worlds, wearables, emotes, profiles). Acts as a state management service coordinating between entity deployments, optimization services, and client requests to ensure optimized content is always available.
+  team: foundation
+  repository: https://github.com/decentraland/asset-bundle-registry
+  language: typescript
+  layer: content
+  ai-agent-context: https://github.com/decentraland/asset-bundle-registry/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Entity Registry
+      definition: Record tracking optimization status and metadata for deployed entities including deployer ownership, pointers, and optimization state for Asset Bundles and LODs across platforms.
+      examples:
+        - Scene entity with Asset Bundle optimization status for Windows, Mac, WebGL
+
+    - term: Optimization Status
+      definition: State tracking whether an entity has been optimized by Asset Bundle Converter (pending/complete/failed) for each platform.
+
+    - term: State Rotation
+      definition: Process where redeployment of an entity marks the previous version as obsolete and creates a new registry entry.
+
+    - term: Profile
+      definition: User profile entity from Catalyst containing avatar configuration and metadata, validated and cached for rapid access.
+
+  concept_relationships:
+    internal:
+      - from: Entity Registry
+        to: Optimization Status
+        relationship: has_one
+        description: Each entity registry tracks optimization status for Asset Bundles and LODs per platform
+
+      - from: Entity Registry
+        to: Profile
+        relationship: references
+        description: Registry can track profile entities from Catalyst
+
+    cross_service:
+      - local_concept: Entity Registry
+        remote_service: catalyst
+        remote_concept: Entity
+        mapping_type: references
+        description: Registry tracks optimization status for entities deployed to Catalyst
+
+      - local_concept: Entity Registry
+        remote_service: worlds-content-server
+        remote_concept: World Entity
+        mapping_type: references
+        description: Registry tracks optimization status for world entities
+
+      - local_concept: Optimization Status
+        remote_service: asset-bundle-converter
+        remote_concept: Asset Bundle
+        mapping_type: derived_from
+        description: Optimization status updates when Asset Bundle Converter completes conversions
+
+  invariants:
+    - rule: When an entity is redeployed, the previous version must be marked as obsolete
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Entity optimization status must be tracked separately per platform (Windows, Mac, WebGL)
+      enforced_at: database
+      severity: hard
+
+    - rule: Profiles in cache must be periodically validated for ownership
+      enforced_at: domain_layer
+      severity: soft
+
+  responsibilities:
+    - Track optimization status for Asset Bundles and LODs across platforms
+    - Manage entity registry with deployer ownership and pointers
+    - Listen to deployment events and AssetBundleConversionFinished events
+    - Provide REST API for querying entity optimization status
+    - Handle state rotation when entities are redeployed
+    - Maintain historical deployment records for audit
+    - Periodically fetch and validate Catalyst profiles
+    - Cache validated profiles for rapid access
+
+  out_of_scope:
+    - Actual asset bundle conversion (handled by asset-bundle-converter)
+    - Content storage (handled by Catalyst and Worlds Content Server)
+    - Content delivery to clients (handled by CDN)
+    - Content validation (handled by content-validator)
+
+  owned_entities:
+    - name: Entity Registry Entry
+      description: Record of entity optimization status and metadata
+      persistence: postgres
+      identity_field: entityId
+
+    - name: Historical Deployment Record
+      description: Audit record of past entity deployments
+      persistence: postgres
+      identity_field: recordId
+
+    - name: Profile Cache Entry
+      description: Validated profile entity cached for rapid access
+      persistence: redis
+      identity_field: address
+
+api:
+  openapi_url: https://github.com/decentraland/asset-bundle-registry/blob/main/docs/openapi.yaml
+
+db:
+  schema_url: https://github.com/decentraland/asset-bundle-registry/blob/main/docs/database-schemas.md
+
+dependencies:
+  services:
+    - name: deployments-to-sqs
+      relationship: async
+      purpose: Receives deployment events to track new entity deployments
+      critical: true
+
+    - name: asset-bundle-converter
+      relationship: async
+      purpose: Receives AssetBundleConversionFinished events to update optimization status
+      critical: true
+
+    - name: worlds-content-server
+      relationship: both
+      purpose: Receives world deployment events and fetches world metadata
+      critical: true
+
+    - name: catalyst
+      relationship: sync
+      purpose: Fetches entity metadata and validates deployments, periodically syncs profiles
+      critical: true
+
+  external:
+    - name: PostgreSQL
+      purpose: Entity registry, optimization status, historical records
+      type: storage
+
+    - name: Redis
+      purpose: Profile cache and queue status management with in-memory fallback
+      type: storage
+
+    - name: AWS SQS
+      purpose: Consumes deployment events from deployments-to-sqs
+      type: messaging
+
+    - name: AWS SNS
+      purpose: Receives AssetBundleConversionFinished events
+      type: messaging
+
+    - name: Asset Bundle CDN
+      purpose: Queries bundle availability for validation
+      type: cdn
+
+events:
+  publishes: []
+
+  consumes:
+    - name: deployment_event
+      source_service: deployments-to-sqs
+      description: New entity deployed to Catalyst
+      channel: AWS SQS
+
+    - name: world_deployment_event
+      source_service: worlds-content-server
+      description: New world entity deployed
+      channel: AWS SQS
+
+    - name: AssetBundleConversionFinished
+      source_service: asset-bundle-converter
+      description: Asset bundle conversion completed successfully
+      channel: AWS SNS
+
+configuration:
+  key_env_vars:
+    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
+      description: PostgreSQL connection string for entity registry database
+      affects: Data persistence and query performance
+
+    - name: REDIS_URL
+      description: Redis connection URL for profile cache
+      affects: Profile caching performance
+
+    - name: SQS_QUEUE_URL
+      description: AWS SQS queue URL for deployment events
+      affects: Event consumption
+
+    - name: CATALYST_URL
+      description: Catalyst Load Balancer URL for entity metadata fetching
+      affects: Entity validation and profile sync
+
+    - name: AB_CDN_URL
+      description: Asset Bundle CDN URL for bundle availability queries
+      affects: Optimization status validation

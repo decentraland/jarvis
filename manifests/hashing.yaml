@@ -1,0 +1,83 @@
+schema_version: "1.0"
+
+service:
+  name: hashing
+  display_name: "@dcl/hashing"
+  description: Hashing utilities library that provides content identifier calculation functions for Decentraland. Generates IPFSv1 compatible hashes (ba-prefixed) for content addressing and ADR-32 compliant entity hashing for on-chain storage.
+  team: core
+  repository: https://github.com/decentraland/hashing
+  language: typescript
+  layer: shared-library
+
+domain:
+  glossary:
+    - term: Content Identifier (CID)
+      definition: A cryptographic hash that uniquely identifies content in Decentraland, compatible with IPFS CIDv1 format with ba prefix for modern hashing or deprecated Qm prefix for legacy compatibility.
+      
+    - term: ADR-32
+      definition: Architecture Decision Record that specifies how entity content hashes should be calculated consistently across builder and other content applications, particularly for on-chain storage. It defines sorting, metadata inclusion, and signing data preparation.
+      
+    - term: Entity Content Reference
+      definition: A file-hash pair structure that maps a file name to its content hash, used in ADR-32 compliant entity hashing to ensure deterministic hash calculation.
+
+    - term: hashV1
+      definition: Current hashing function that generates IPFSv1 compatible CIDs with ba prefix. Produces the same hash as an IPFS node would for the same content.
+
+    - term: hashV0
+      definition: Deprecated hashing function that generates Qm-prefixed hashes that are NOT IPFSv0 compatible despite using the same encoding. Maintained only for backwards compatibility.
+
+  concept_relationships:
+    internal:
+      - from: Entity Content Reference
+        to: Content Identifier
+        relationship: produces
+        description: Multiple entity content references are sorted and combined to produce a single deterministic content identifier via ADR-32 hashing
+
+      - from: hashV1
+        to: Content Identifier
+        relationship: generates
+        description: hashV1 function generates IPFS-compatible CIDv1 identifiers with ba prefix
+
+  invariants:
+    - rule: Content references in ADR-32 must be sorted deterministically by hash first, then by file name to ensure consistent hash calculation across all systems
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: ADR-32 hash calculation must include both content references and optional metadata in a specific JSON structure to maintain compatibility with on-chain storage
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Calculate IPFS CIDv1 compatible content identifiers from buffers, Uint8Arrays, or readable streams
+    - Generate ADR-32 compliant entity hashes for multi-file content with metadata
+    - Provide deterministic sorting of entity content references for consistent hashing
+    - Calculate keccak256 hashes for metadata verification (ADR-62)
+    - Maintain backwards compatibility with legacy Qm-prefixed hashing
+
+  out_of_scope:
+    - Storing or retrieving content from IPFS nodes
+    - Managing content uploads or downloads
+    - Validating content structure or metadata schemas
+    - Blockchain transaction signing or verification
+
+  owned_entities:
+    - name: EntityContentItemReference
+      description: Structure pairing a file name with its content hash for ADR-32 processing
+      persistence: none (in-memory data structure)
+      identity_field: file
+
+dependencies:
+  services: []
+
+  external:
+    - name: ipfs-unixfs-importer
+      purpose: Generates IPFS CIDv1 hashes compatible with IPFS nodes
+      type: other
+
+    - name: ethereum-cryptography
+      purpose: Provides keccak256 hashing for metadata verification (ADR-62)
+      type: other
+
+    - name: multiformats
+      purpose: Handles CID encoding and multiformat data structures
+      type: other

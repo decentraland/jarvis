@@ -1,0 +1,78 @@
+schema_version: "1.0"
+
+service:
+  name: realm-provider
+  display_name: Realm Provider
+  description: Provides realm configuration service for Decentraland clients. Implements ADR-110 realm descriptions, enabling clients to discover and connect to available Catalyst nodes, Lambdas services, and communication realms.
+  team: foundation
+  repository: https://github.com/decentraland/realm-provider
+  language: typescript
+  layer: feature-servers
+  ai-agent-context: https://github.com/decentraland/realm-provider/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Realm
+      definition: Communication/render configuration specifying which Catalyst, Lambdas, and comms services to use for client connections.
+
+    - term: MAIN Realm
+      definition: Default realm managed by Archipelago workers for Genesis City communication.
+
+    - term: Hot Scenes
+      definition: Popular/active scenes for user discovery and realm selection.
+
+  concept_relationships:
+    cross_service:
+      - local_concept: Realm
+        remote_service: catalyst
+        remote_concept: Catalyst Node
+        mapping_type: references
+        description: Realms specify which Catalyst nodes clients should connect to
+
+      - local_concept: MAIN Realm
+        remote_service: archipelago-workers
+        remote_concept: Archipelago Configuration
+        mapping_type: equivalent
+        description: MAIN realm configuration comes from Archipelago workers
+
+  responsibilities:
+    - List available realms in Catalyst Network
+    - Provide realm descriptions with service endpoints
+    - Expose hot scenes data
+    - Provide MAIN realm information
+    - Enable dynamic realm selection and load balancing
+
+  owned_entities: []
+
+api:
+  openapi_url: https://github.com/decentraland/realm-provider/blob/main/docs/openapi.yaml
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      purpose: Queries Catalyst nodes for realm information
+      critical: true
+
+    - name: archipelago-workers
+      relationship: sync
+      purpose: MAIN realm status and configuration
+      critical: true
+
+  external: []
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: CATALYST_NODES
+      description: List of Catalyst node URLs to query
+      affects: Realm availability
+
+adrs:
+  - id: ADR-110
+    title: Realm Descriptions
+    url: https://adr.decentraland.org/adr/ADR-110
+    relevance: Defines realm configuration format and API

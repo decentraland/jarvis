@@ -1,0 +1,162 @@
+schema_version: "1.0"
+
+service:
+  name: core-components
+  display_name: Core Components Library
+  description: Monorepo of reusable TypeScript components and utilities for the Decentraland backend ecosystem. Provides standardized implementations for infrastructure concerns including HTTP servers, databases, caching, messaging, observability, and distributed tracing that are shared across multiple Decentraland services.
+  team: foundation
+  repository: https://github.com/decentraland/core-components
+  language: typescript
+  layer: Shared Libraries
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Component
+      definition: A reusable, well-defined module that encapsulates a specific infrastructure concern with lifecycle management (start/stop) and dependency injection following the Well-Known Components pattern.
+      examples:
+        - "@dcl/pg-component for PostgreSQL database connections"
+        - "@dcl/redis-component for distributed caching"
+    
+    - term: Infrastructure Component
+      definition: Components that provide foundational infrastructure capabilities like HTTP servers, databases, and message queues rather than business logic.
+    
+    - term: Observability Component
+      definition: Components focused on monitoring, logging, metrics collection, and distributed tracing to provide visibility into system behavior.
+      examples:
+        - "@dcl/metrics for Prometheus metrics"
+        - "@dcl/traced-fetch for distributed tracing"
+    
+    - term: Monorepo Package
+      definition: An independently versioned npm package within the core-components monorepo that can be published and consumed separately.
+    
+    - term: Well-Known Component
+      definition: A component architecture pattern used by Decentraland that defines standard interfaces for lifecycle management, configuration, and dependency injection.
+    
+    - term: Changeset
+      definition: A file describing changes to one or more packages with semantic versioning impact, used for automated version management and changelog generation.
+
+  concept_relationships:
+    internal:
+      - from: Component
+        to: WellKnownComponent
+        relationship: implements
+        description: All components implement the Well-Known Component interface pattern
+      
+      - from: MonorepoPackage
+        to: Component
+        relationship: contains
+        description: Each monorepo package contains one or more components
+      
+      - from: HttpServerComponent
+        to: MetricsComponent
+        relationship: depends_on
+        description: HTTP server integrates metrics collection for request tracking
+      
+      - from: QueueConsumerComponent
+        to: SQSComponent
+        relationship: depends_on
+        description: Queue consumer uses SQS component for message retrieval
+      
+      - from: TracedFetchComponent
+        to: MetricsComponent
+        relationship: depends_on
+        description: Traced fetch integrates with metrics for request tracking
+    
+    cross_service:
+      - local_concept: Component
+        remote_service: all-services
+        remote_concept: Infrastructure
+        mapping_type: provides
+        description: Core components provide infrastructure capabilities consumed by all Decentraland services
+
+  invariants:
+    - rule: All components must implement Well-Known Component interfaces
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Each package must be independently versioned and publishable
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Pull requests introducing changes must include changeset files
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Components must follow semantic versioning
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Provide standardized HTTP server implementation with routing, middleware, CORS, and WebSocket support
+    - Provide PostgreSQL database component with connection pooling, transactions, and migration support
+    - Provide Redis distributed caching component with connection management
+    - Provide AWS S3 storage component for object operations
+    - Provide AWS SQS queue component for message publishing and consumption
+    - Provide AWS SNS component for pub/sub messaging
+    - Provide queue consumer component with event-based handler routing
+    - Provide in-memory LRU cache component for local caching
+    - Provide Prometheus metrics collection and instrumentation
+    - Provide distributed tracing capabilities for HTTP requests
+    - Provide Slack messaging and notification integration
+    - Provide analytics event tracking integration
+    - Provide job scheduling and execution capabilities
+    - Provide JSON schema validation middleware
+    - Provide shared utilities, types, and constants across packages
+
+  out_of_scope:
+    - Business logic implementation (components provide infrastructure, not domain logic)
+    - Application-specific configuration (components are configurable but don't enforce app configs)
+    - Service orchestration (components are building blocks, not orchestrators)
+    - Data models and schemas (components handle infrastructure, not domain models)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: PostgreSQL
+      purpose: Database connection pooling and transaction management via pg-component
+      type: database
+    
+    - name: Redis
+      purpose: Distributed caching via redis-component
+      type: storage
+    
+    - name: AWS S3
+      purpose: Object storage operations via s3-component
+      type: storage
+    
+    - name: AWS SQS
+      purpose: Queue management via sqs-component
+      type: messaging
+    
+    - name: AWS SNS
+      purpose: Pub/sub messaging via sns-component
+      type: messaging
+    
+    - name: Prometheus
+      purpose: Metrics collection and aggregation via metrics component
+      type: monitoring
+    
+    - name: Slack API
+      purpose: Messaging and notifications via slack-component
+      type: api
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  
+  key_env_vars: []
+
+adrs: []

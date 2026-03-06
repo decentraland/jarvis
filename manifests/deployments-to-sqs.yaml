@@ -1,0 +1,76 @@
+schema_version: "1.0"
+
+service:
+  name: deployments-to-sqs
+  display_name: Deployments to SQS
+  description: Monitors Catalyst content servers for new entity deployments and publishes deployment events to AWS SNS. Acts as the event source for downstream optimization services that process wearables, emotes, and scenes.
+  team: foundation
+  repository: https://github.com/decentraland/deployments-to-sqs
+  language: typescript
+  layer: feature-servers
+  ai-agent-context: https://github.com/decentraland/deployments-to-sqs/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Deployment Event
+      definition: Notification that a new entity (wearable, emote, scene) has been deployed to Catalyst, including entity metadata and content server URLs.
+
+  concept_relationships:
+    cross_service:
+      - local_concept: Deployment Event
+        remote_service: catalyst
+        remote_concept: Entity Deployment
+        mapping_type: derived_from
+        description: Deployment events are derived from Catalyst entity deployments
+
+  invariants:
+    - rule: Only wearables, emotes, and scenes trigger events (profiles excluded)
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Poll Catalyst pointer-changes endpoints
+    - Detect new entity deployments
+    - Filter by entity type
+    - Publish deployment events to SNS
+
+  out_of_scope:
+    - Entity processing (handled by asset-bundle-converter)
+    - Entity storage (handled by Catalyst)
+
+  owned_entities: []
+
+api:
+  openapi_url: https://github.com/decentraland/deployments-to-sqs/blob/main/docs/openapi.yaml
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      purpose: Polls for new deployments
+      critical: true
+
+  external:
+    - name: AWS SNS
+      purpose: Publishes deployment events
+      type: messaging
+
+events:
+  publishes:
+    - name: entity_deployed
+      description: New entity deployed to Catalyst
+      channel: deployments-sns-${env}
+      key_payload_fields:
+        - entityId
+        - entityType
+        - pointers
+        - deployer
+        - timestamp
+
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: SNS_TOPIC_ARN
+      description: AWS SNS topic ARN for deployment events
+      affects: Event routing

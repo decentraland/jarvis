@@ -1,0 +1,74 @@
+schema_version: "1.0"
+
+service:
+  name: police-server
+  display_name: Police Server
+  description: Moderation and monitoring service for Decentraland's voice communications. Monitors LiveKit rooms, enforces rate limits to prevent spam, and automatically revokes permissions from abusive participants.
+  team: foundation
+  repository: https://github.com/decentraland/police-server
+  language: typescript
+  layer: real-time
+  ai-agent-context: https://github.com/decentraland/police-server/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Secret Listener
+      definition: Hidden LiveKit participant that monitors room messages without being visible to other participants. Attached when rooms exceed threshold.
+
+    - term: Rate Limiting
+      definition: Sliding window algorithm (10-second) tracking messages per second per participant. Automatic permission revocation when exceeded.
+
+  invariants:
+    - rule: Secret listeners are hidden from participants and cannot publish
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Rate limit violations trigger automatic permission revocation
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Monitor voice chat rooms with secret listeners
+    - Track message rates per participant
+    - Revoke permissions from rate limit violators
+    - Send Slack alerts for violations
+    - Handle user join/leave room events
+
+  owned_entities: []
+
+api:
+  openapi_url: https://github.com/decentraland/police-server/blob/main/docs/openapi.yaml
+
+dependencies:
+  services: []
+  external:
+    - name: LiveKit
+      purpose: Voice chat monitoring and permission management
+      type: other
+    - name: AWS SQS
+      purpose: User join/leave room events
+      type: messaging
+    - name: Slack
+      purpose: Moderation alerts
+      type: api
+
+events:
+  publishes: []
+  consumes:
+    - name: USER_JOINED_ROOM
+      source_service: comms
+      description: User joined voice chat room
+      channel: AWS SQS
+    - name: USER_LEFT_ROOM
+      source_service: comms
+      description: User left voice chat room
+      channel: AWS SQS
+
+configuration:
+  key_env_vars:
+    - name: USERS_PER_ROOM_NEEDED_FOR_SECRET_LISTENER
+      description: Participant threshold for attaching secret listener
+      affects: Monitoring activation
+    - name: MAX_MESSAGES_PER_SECOND_PER_PARTICIPANT
+      description: Rate limit threshold for automatic moderation
+      affects: Spam prevention

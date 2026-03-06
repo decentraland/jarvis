@@ -1,0 +1,195 @@
+schema_version: "1.0"
+
+service:
+  name: badges
+  display_name: Badges
+  description: Manages user achievements (badges) within the Decentraland ecosystem. Tracks user actions both in-world and on-platform to grant badges, publishes badge-granted events, and provides APIs for querying badge definitions and user achievements.
+  team: foundation
+  repository: https://github.com/decentraland/badges
+  language: typescript
+  layer: feature-servers
+  ai-agent-context: https://github.com/decentraland/badges/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Badge
+      definition: A user achievement earned by completing specific criteria or actions within Decentraland. Badges can have multiple tiers (e.g., bronze, silver, gold).
+      examples:
+        - Traveler badge earned by visiting multiple scenes
+        - Marketplace badge earned by completing NFT transactions
+
+    - term: Badge Tier
+      definition: Progressive levels within a badge, each with its own criteria and visual assets. Users can earn multiple tiers of the same badge sequentially.
+      examples:
+        - Bronze, Silver, Gold tiers for the Traveler badge
+
+    - term: User Progress
+      definition: JSON object tracking a user's actions towards earning a badge, including completed steps, timestamps, and achieved tiers.
+
+    - term: Badge Category
+      definition: Grouping of related badges (e.g., social, exploration, marketplace) for organizational purposes.
+
+  concept_relationships:
+    internal:
+      - from: Badge
+        to: Badge Tier
+        relationship: has_many
+        description: A Badge can have multiple progressive tiers, each with distinct criteria
+
+      - from: Badge
+        to: Badge Category
+        relationship: belongs_to
+        description: Each Badge belongs to a category for organizational purposes
+
+      - from: User Progress
+        to: Badge
+        relationship: references
+        description: User Progress tracks achievements towards earning a Badge
+
+    cross_service:
+      - local_concept: Badge
+        remote_service: notifications-workers
+        remote_concept: Notification
+        mapping_type: projects_as
+        description: When badges are granted, notifications are sent to users via notifications-workers
+
+      - local_concept: User Progress
+        remote_service: catalyst
+        remote_concept: Profile
+        mapping_type: references
+        description: User progress is associated with Catalyst profiles for badge display
+
+  invariants:
+    - rule: A user can only earn each badge tier once
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Badge tiers must be earned sequentially (bronze before silver, etc.)
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: User progress must be stored as valid JSON
+      enforced_at: database
+      severity: hard
+
+  responsibilities:
+    - Track user achievements across various platform actions
+    - Evaluate badge conditions from incoming events
+    - Grant badges when criteria are met
+    - Publish badge-granted events to SNS
+    - Provide REST API for badge definitions and user achievements
+    - Manage badge tiers and categories
+    - Support badge backfilling for retroactive granting
+
+  out_of_scope:
+    - Delivering notifications to users (handled by notifications-workers)
+    - Storing user profiles (handled by Catalyst)
+    - Processing explorer events directly (handled by events-notifier)
+    - Blockchain event indexing (handled by events-notifier producers)
+
+  owned_entities:
+    - name: Badge Definition
+      description: Configuration for a badge including criteria, tiers, and assets
+      persistence: postgres
+      identity_field: badgeId
+
+    - name: User Progress
+      description: User's progress and achievements for badges
+      persistence: postgres
+      identity_field: composite (user_address, badge_id)
+
+    - name: Badge Category
+      description: Organizational grouping for badges
+      persistence: postgres
+      identity_field: categoryId
+
+api:
+  openapi_url: https://github.com/decentraland/badges/blob/main/docs/openapi.yaml
+
+db:
+  schema_url: https://github.com/decentraland/badges/blob/main/docs/database-schema.md
+
+dependencies:
+  services:
+    - name: events-notifier
+      relationship: async
+      purpose: Receives events from explorer and blockchain to trigger badge evaluation
+      critical: true
+
+    - name: notifications-workers
+      relationship: async
+      purpose: Delivers badge-granted notifications to users
+      critical: false
+
+    - name: catalyst
+      relationship: sync
+      purpose: Fetches user profiles and entity data for badge verification
+      critical: false
+
+    - name: deployments-to-sqs
+      relationship: async
+      purpose: Receives deployment events from Catalyst for deployment-related badges
+      critical: false
+
+  external:
+    - name: PostgreSQL
+      purpose: Badge definitions, user progress, categories
+      type: storage
+
+    - name: AWS SQS
+      purpose: Consumes events from definitions service SNS topic
+      type: messaging
+
+    - name: AWS SNS
+      purpose: Publishes badge-granted events for downstream services
+      type: messaging
+
+    - name: Assets CDN (S3)
+      purpose: Stores badge visual assets (textures, images)
+      type: cdn
+
+events:
+  publishes:
+    - name: badge-granted
+      description: Published when a user earns a badge or badge tier
+      channel: AWS SNS
+      key_payload_fields:
+        - badgeId
+        - badgeName
+        - badgeTierName
+        - badgeImageUrl
+        - address
+
+  consumes:
+    - name: explorer_events
+      source_service: events-notifier
+      description: In-world user actions (scene visits, emotes, etc.)
+      channel: AWS SQS (subscribed to SNS topic)
+
+    - name: blockchain_events
+      source_service: events-notifier
+      description: On-chain actions (marketplace purchases, land ownership)
+      channel: AWS SQS (subscribed to SNS topic)
+
+    - name: deployment_events
+      source_service: deployments-to-sqs
+      description: Content deployments to Catalyst
+      channel: AWS SQS
+
+configuration:
+  key_env_vars:
+    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
+      description: PostgreSQL connection string for badge data
+      affects: Data persistence and query performance
+
+    - name: SQS_QUEUE_URL
+      description: AWS SQS queue URL for event consumption
+      affects: Event-driven badge processing
+
+    - name: SNS_TOPIC_ARN
+      description: AWS SNS topic ARN for badge-granted events
+      affects: Event publishing for notifications
+
+    - name: API_ADMIN_TOKEN
+      description: Authorization token for admin endpoints like backfill
+      affects: Security for administrative operations

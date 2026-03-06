@@ -1,0 +1,110 @@
+schema_version: "1.0"
+
+service:
+  name: worlds-content-server
+  display_name: Worlds Content Server
+  description: Content server specifically for Decentraland Worlds (named scenes). Enables deployment and retrieval of world scenes identified by DCL names rather than parcel coordinates. Supports global portable experiences and single-scene loading.
+  team: foundation
+  repository: https://github.com/decentraland/worlds-content-server
+  language: typescript
+  layer: content
+  ai-agent-context: https://github.com/decentraland/worlds-content-server/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: World
+      definition: Scene identified by a DCL name rather than parcel coordinates, supporting portable and single-scene experiences.
+
+    - term: Addressable URN
+      definition: Entity URN format enabling global portable experiences and single-scene loading.
+
+    - term: World Permissions
+      definition: JSON configuration controlling deployment, access, and streaming permissions (allow-list, unrestricted, shared-secret, NFT ownership).
+
+  concept_relationships:
+    internal:
+      - from: World
+        to: World Permissions
+        relationship: has_one
+        description: Each world has permissions configuration controlling access
+
+    cross_service:
+      - local_concept: World
+        remote_service: catalyst
+        remote_concept: Scene Entity
+        mapping_type: equivalent
+        description: Worlds are scenes with DCL name identifiers instead of coordinates
+
+      - local_concept: World
+        remote_service: world-storage-service
+        remote_concept: World Storage
+        mapping_type: references
+        description: Worlds can have associated storage managed by world-storage-service
+
+  invariants:
+    - rule: Deployer must own the DCL name specified in scene.json
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: World name in scene.json must match owned DCL name
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Store and serve World entity deployments
+    - Validate deployment ownership against DCL names
+    - Provide content retrieval API for world scenes
+    - Support addressable URNs for portable experiences
+    - Manage world permissions configurations
+
+  out_of_scope:
+    - Genesis City parcels (handled by Catalyst)
+    - World storage and environment variables (handled by world-storage-service)
+    - Scene execution (handled by client/renderer)
+
+  owned_entities:
+    - name: World
+      description: Named scene with permissions and metadata
+      persistence: postgres
+      identity_field: name
+
+api:
+  openapi_url: https://github.com/decentraland/worlds-content-server/blob/main/docs/openapi.yaml
+
+db:
+  schema_url: https://github.com/decentraland/worlds-content-server/blob/main/docs/database-schemas.md
+
+dependencies:
+  services: []
+
+  external:
+    - name: PostgreSQL
+      purpose: World metadata, permissions, blocked wallets
+      type: storage
+    - name: AWS S3 / Local Disk
+      purpose: Entity content storage via @dcl/catalyst-storage
+      type: storage
+    - name: DCL Names
+      purpose: Ownership validation for world names
+      type: blockchain
+
+events:
+  publishes:
+    - name: world_deployed
+      description: New world entity deployed
+      channel: Internal (consumed by asset-bundle-registry)
+      key_payload_fields:
+        - worldName
+        - entityId
+
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: STORAGE_ROOT_FOLDER
+      description: Root directory for local content storage
+      affects: Content storage location
+
+    - name: DCL_NAMES_PROVIDER
+      description: Provider for DCL name ownership validation
+      affects: Deployment authorization

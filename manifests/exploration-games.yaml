@@ -1,0 +1,45 @@
+schema_version: "1.0"
+
+service:
+  name: exploration-games
+  display_name: Exploration Games
+  description: Manages exploration games and related functionality within Decentraland. Provides services for game discovery, participation tracking, and reward distribution for exploration-based gameplay experiences.
+  team: foundation
+  repository: https://github.com/decentraland/exploration-games
+  language: typescript
+  layer: feature-servers
+  ai-agent-context: https://github.com/decentraland/exploration-games/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Exploration Game
+      definition: Gameplay experience where players discover locations and complete objectives within Decentraland.
+
+  responsibilities:
+    - Provide game discovery and cataloging
+    - Track player participation
+    - Monitor exploration progress
+    - Integrate with reward systems
+
+  owned_entities:
+    - name: Game
+      description: Exploration game definition
+      persistence: postgres
+      identity_field: gameId
+
+api:
+  openapi_url: https://github.com/decentraland/exploration-games/blob/main/docs/openapi.yaml
+
+dependencies:
+  services: []
+  external:
+    - name: PostgreSQL
+      purpose: Game data, player progress
+      type: storage
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars: []

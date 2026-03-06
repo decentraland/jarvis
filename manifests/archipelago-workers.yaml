@@ -1,0 +1,172 @@
+schema_version: "1.0"
+
+service:
+  name: archipelago-workers
+  display_name: Archipelago Workers
+  description: Monorepo containing three services that implement the Archipelago protocol for clustering users into dynamic islands based on their positions in Decentraland's metaverse. Enables scalable crowd management and efficient real-time communication for standalone realms.
+  team: foundation
+  repository: https://github.com/decentraland/archipelago-workers
+  language: typescript
+  layer: entry-points
+  ai-agent-context: https://github.com/decentraland/archipelago-workers/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Island
+      definition: A dynamic group of users clustered by proximity in the metaverse, with configurable maximum occupancy. Islands are recalculated in real-time as users move.
+      examples:
+        - When 100 users are at the same location, they may be split into multiple overlapping islands
+      not_to_be_confused_with: Parcels (geographic coordinates) or Realms (connectable servers)
+
+    - term: Peer
+      definition: An individual user/avatar in the Archipelago system, identified by Ethereum address and tracked for position updates and island assignments.
+
+    - term: Parcel
+      definition: Geographic coordinates in Decentraland where users are located, used to calculate proximity for island clustering.
+
+    - term: Archipelago Protocol
+      definition: Communication protocol for clustering users into islands and managing real-time peer-to-peer interactions via NATS messaging.
+
+  concept_relationships:
+    internal:
+      - from: Island
+        to: Peer
+        relationship: has_many
+        description: An Island contains multiple Peers that are clustered together based on proximity
+
+      - from: Peer
+        to: Parcel
+        relationship: references
+        description: A Peer has a current position defined by Parcel coordinates
+
+      - from: Island
+        to: Parcel
+        relationship: references
+        description: An Island is associated with a geographic area defined by Parcel coordinates
+
+    cross_service:
+      - local_concept: Peer
+        remote_service: realm-provider
+        remote_concept: User
+        mapping_type: equivalent
+        description: A Peer in Archipelago represents the same user entity that connects through the Realm Provider
+
+      - local_concept: Island
+        remote_service: comms-gatekeeper
+        remote_concept: Communication Channel
+        mapping_type: projects_as
+        description: An Island defines which Peers can communicate with each other, enforced by comms-gatekeeper
+
+  invariants:
+    - rule: A Peer must have a valid Ethereum address and signature to connect
+      enforced_at: ws-connector authentication layer
+      severity: hard
+
+    - rule: Islands are recalculated in real-time as users move, with no more than max occupancy per island
+      enforced_at: core service clustering algorithm
+      severity: hard
+
+    - rule: Peer heartbeats must be received periodically or the peer is marked as disconnected
+      enforced_at: core service subscriber
+      severity: hard
+
+  responsibilities:
+    - Implement island clustering algorithms to dynamically group users by proximity
+    - Manage WebSocket connections for Decentraland clients with Ethereum-based authentication
+    - Process position updates and publish island change notifications via NATS
+    - Provide real-time bidirectional communication for positions, chat, and profiles
+    - Expose REST API for monitoring and analytics of island/peer statistics
+    - Maintain peer registry and handle authentication flow
+    - Aggregate system state for observability
+
+  out_of_scope:
+    - Content storage or scene management (handled by Catalyst)
+    - Voice/video communication (handled by LiveKit transport layer)
+    - Content moderation (handled by police-server)
+    - Access control rules (handled by comms-gatekeeper)
+
+  owned_entities:
+    - name: Peer
+      description: User connected to the Archipelago system with position and island assignment
+      persistence: in-memory
+      identity_field: ethereumAddress
+
+    - name: Island
+      description: Dynamic cluster of peers grouped by proximity
+      persistence: in-memory
+      identity_field: islandId
+
+api:
+  openapi_url: https://github.com/decentraland/archipelago-workers/blob/main/docs/openapi.yaml
+
+dependencies:
+  services:
+    - name: realm-provider
+      relationship: sync
+      purpose: Exposes WebSocket connections to Decentraland clients
+      critical: true
+
+    - name: catalyst
+      relationship: sync
+      purpose: Content server for fetching scene data (used by stats service)
+      critical: false
+
+  external:
+    - name: NATS
+      purpose: Message broker for peer heartbeats, disconnect events, island changes, and service discovery
+      type: messaging
+
+events:
+  publishes:
+    - name: island_changed
+      description: Notifies when a peer is assigned to a different island
+      channel: engine.peer.${peerId}.island_changed
+      key_payload_fields:
+        - peerId
+        - islandId
+        - peers
+
+    - name: service_discovery
+      description: Broadcasts service availability and status for discovery
+      channel: engine.discovery
+      key_payload_fields:
+        - serviceId
+        - status
+
+    - name: island_status
+      description: Reports current state of all islands
+      channel: engine.islands
+      key_payload_fields:
+        - islands
+        - peers
+
+  consumes:
+    - name: peer_heartbeat
+      source_service: ws-connector
+      description: Periodic heartbeat from connected peers with position updates
+      channel: peer.${address}.heartbeat
+
+    - name: peer_disconnect
+      source_service: ws-connector
+      description: Notification when a peer disconnects from WebSocket
+      channel: peer.${address}.disconnect
+
+configuration:
+  key_env_vars:
+    - name: MAX_PEERS_PER_ISLAND
+      description: Maximum number of peers allowed per island before splitting
+      affects: Island clustering algorithm behavior
+
+    - name: NATS_URL
+      description: Connection URL for NATS message broker
+      affects: Event-driven communication
+
+    - name: WS_PORT
+      description: Port for WebSocket connector service
+      affects: Client connectivity
+
+adrs:
+  - id: ADR-204
+    title: Archipelago Protocol Architecture
+    url: https://adr.decentraland.org/adr/ADR-204
+    relevance: Defines the core architecture and message formats for the Archipelago system

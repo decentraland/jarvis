@@ -1,0 +1,173 @@
+schema_version: "1.0"
+
+service:
+  name: asset-bundle-converter
+  display_name: Asset Bundle Converter
+  description: Converts Decentraland scene assets (GLTF models, textures) into optimized Unity Asset Bundles for improved WebGL performance. Monitors deployment events and processes entities by re-importing GLTF files in Unity and packaging them into versioned, compressed Asset Bundles stored on CDN.
+  team: foundation
+  repository: https://github.com/decentraland/asset-bundle-converter
+  language: typescript
+  layer: content
+  ai-agent-context: https://github.com/decentraland/asset-bundle-converter/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Asset Bundle
+      definition: Unity-generated package containing optimized 3D models, textures, and materials for efficient loading in WebGL. Assets are converted from GLTF format and compressed for network delivery.
+      examples:
+        - A scene's GLTF model converted to Unity asset bundle with LODs
+        - Wearable items packaged as asset bundles
+      not_to_be_confused_with: Raw GLTF files or original Catalyst entity content
+
+    - term: Conversion Manifest
+      definition: JSON file listing all converted files for an entity, including version metadata. Enables clients to resolve asset bundles without 404 roundtrips.
+      examples:
+        - manifest/bafkreie7b36aggssaerg7nvj5s56op5zqyxcqjtkq4q4kjrfhnkljhshgy.json
+
+    - term: AB_VERSION
+      definition: Version identifier for asset bundles that enables multiple converter versions to coexist. Changes with Unity upgrades or shader/material modifications.
+      examples:
+        - v4 (legacy)
+        - v5 (current)
+
+  concept_relationships:
+    internal:
+      - from: Asset Bundle
+        to: Conversion Manifest
+        relationship: belongs_to
+        description: Each converted asset bundle is listed in the entity's conversion manifest
+
+      - from: Asset Bundle
+        to: AB_VERSION
+        relationship: belongs_to
+        description: Asset bundles are stored in version-scoped paths
+
+    cross_service:
+      - local_concept: Asset Bundle
+        remote_service: catalyst
+        remote_concept: Entity
+        mapping_type: derived_from
+        description: Asset Bundles are converted versions of GLTF models stored as Catalyst entities
+
+      - local_concept: Conversion Manifest
+        remote_service: asset-bundle-registry
+        remote_concept: Registry Entry
+        mapping_type: projects_as
+        description: The registry uses conversion manifests to serve processed content to clients
+
+  invariants:
+    - rule: Asset bundles must be stored in version-scoped paths to enable coexistence of multiple converter versions
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Conversion manifests must include complete file lists to enable fallback to original assets
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: All asset bundles must have three compression variants (raw, .gz, .br)
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Convert GLTF models to optimized Unity Asset Bundles using Unity 2021.3.20f1
+    - Process deployment events from SQS queue
+    - Generate versioned asset bundles with multiple compression formats
+    - Create conversion manifests listing converted files
+    - Upload converted assets to S3 CDN with version-scoped paths
+    - Archive conversion logs for debugging and audit
+    - Publish conversion completion events to SNS
+
+  out_of_scope:
+    - Serving asset bundles to clients (handled by Asset Bundle Registry)
+    - Content validation or moderation (handled by content-validator)
+    - Original content storage (handled by Catalyst)
+    - Real-time content delivery (handled by CDN)
+
+  owned_entities:
+    - name: Asset Bundle
+      description: Converted Unity asset bundle with compression variants
+      persistence: s3
+      identity_field: cid
+
+    - name: Conversion Manifest
+      description: JSON listing converted files for an entity
+      persistence: s3
+      identity_field: entityId
+
+api:
+  openapi_url: https://github.com/decentraland/asset-bundle-converter/blob/main/consumer-server/docs/openapi.yaml
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      purpose: Fetches original entity content for conversion
+      critical: true
+
+    - name: deployments-to-sqs
+      relationship: async
+      purpose: Receives deployment events to trigger conversions
+      critical: true
+
+    - name: asset-bundle-registry
+      relationship: async
+      purpose: Notifies when conversions complete via SNS events
+      critical: false
+
+  external:
+    - name: AWS SQS
+      purpose: ab-conversion-queue for consuming deployment events
+      type: messaging
+
+    - name: AWS S3
+      purpose: CDN bucket for assets/manifests, logs bucket for conversion logs
+      type: storage
+
+    - name: AWS SNS
+      purpose: Publishes AssetBundleConversionFinished events
+      type: messaging
+
+    - name: Unity 2021.3.20f1
+      purpose: GLTF re-import and Asset Bundle generation engine
+      type: other
+
+events:
+  publishes:
+    - name: AssetBundleConversionFinished
+      description: Notifies when entity conversion completes successfully
+      channel: AWS SNS
+      key_payload_fields:
+        - entityId
+        - version
+        - files
+
+    - name: AssetBundleConversionManuallyQueued
+      description: Notifies when manual conversion is queued via API
+      channel: AWS SNS
+      key_payload_fields:
+        - entityId
+        - contentServerUrl
+
+  consumes:
+    - name: deployment_event
+      source_service: deployments-to-sqs
+      description: Triggered when new content is deployed to Catalyst
+      channel: ab-conversion-queue (AWS SQS)
+
+configuration:
+  key_env_vars:
+    - name: AB_VERSION
+      description: Asset bundle version identifier for output paths
+      affects: CDN path structure and client resolution
+
+    - name: CDN_BUCKET
+      description: S3 bucket for storing converted assets and manifests
+      affects: Asset storage location
+
+    - name: LOGS_BUCKET
+      description: S3 bucket for archiving conversion logs
+      affects: Logging and debugging
+
+    - name: SQS_QUEUE_URL
+      description: AWS SQS queue URL for deployment events
+      affects: Event consumption

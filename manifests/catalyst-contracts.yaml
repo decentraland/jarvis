@@ -1,0 +1,174 @@
+schema_version: "1.0"
+
+service:
+  name: catalyst-contracts
+  display_name: Catalyst Contracts Library
+  description: TypeScript library providing smart contract addresses and ABIs for Decentraland blockchain contracts across multiple networks (Ethereum mainnet, Sepolia, Polygon, Mumbai, Amoy). Centralizes contract deployment information including LAND, Collections, Third Party Registry, POI, MANA token, Catalyst contracts, and name denylist across L1 and L2 networks.
+  team: foundation
+  repository: https://github.com/decentraland/catalyst-contracts
+  language: typescript
+  layer: Shared Libraries
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Contract Address
+      definition: Ethereum/Polygon blockchain address where a smart contract is deployed, different for each network (mainnet, testnet, L2).
+    
+    - term: ABI (Application Binary Interface)
+      definition: JSON specification defining contract function signatures, events, and data structures for interacting with smart contracts.
+    
+    - term: L1 Network
+      definition: Ethereum Layer 1 networks including mainnet, Sepolia testnet, and legacy Goerli testnet where core Decentraland contracts are deployed.
+    
+    - term: L2 Network
+      definition: Ethereum Layer 2 networks (Polygon, Mumbai, Amoy) where Decentraland collection and third-party contracts are deployed for lower gas costs.
+    
+    - term: LAND Contract
+      definition: ERC-721 NFT contract managing ownership of virtual land parcels in Decentraland Genesis City.
+    
+    - term: Collections Factory
+      definition: Smart contract factory that creates new wearable/emote collection contracts on L2 networks. Multiple factories exist for different standards/versions.
+    
+    - term: Third Party Registry
+      definition: Smart contract managing registration and authentication of third-party collections from external creators.
+    
+    - term: Catalyst Contract
+      definition: Smart contract storing and managing Catalyst server registrations and ownership.
+    
+    - term: POI (Proof of Identity)
+      definition: Smart contract handling identity verification and authentication on L2 networks.
+    
+    - term: MANA Token
+      definition: ERC-20 token contract for Decentraland's currency on both L1 and L2 networks.
+    
+    - term: Name Denylist
+      definition: Smart contract managing blocked or restricted World names to prevent abuse.
+    
+    - term: Commitee Contract
+      definition: Smart contract managing committee-based governance for collection approval and curation.
+    
+    - term: Checker Bytecode
+      definition: Compiled bytecode for ownership checker contracts deployed for access validation.
+
+  concept_relationships:
+    internal:
+      - from: L1Network
+        to: ContractAddress
+        relationship: defines
+        description: L1 networks define deployment addresses for LAND, Catalyst, registrar, and other core contracts
+      
+      - from: L2Network
+        to: ContractAddress
+        relationship: defines
+        description: L2 networks define deployment addresses for collections, third-party registry, and POI contracts
+      
+      - from: ContractAddress
+        to: ABI
+        relationship: paired_with
+        description: Each contract address is paired with its ABI for interaction
+    
+    cross_service:
+      - local_concept: ContractAddress
+        remote_service: content-validator
+        remote_concept: AccessValidation
+        mapping_type: used_by
+        description: Content validator uses contract addresses to query ownership on-chain
+      
+      - local_concept: CollectionsFactory
+        remote_service: referral
+        remote_concept: CampaignWallet
+        mapping_type: used_by
+        description: Referral service uses factory addresses for minting wearables
+      
+      - local_concept: ThirdPartyRegistry
+        remote_service: catalyst
+        remote_concept: ItemValidation
+        mapping_type: used_by
+        description: Catalyst uses third-party registry for validating external collections
+      
+      - local_concept: CatalystContract
+        remote_service: realm-provider
+        remote_concept: CatalystServer
+        mapping_type: used_by
+        description: Realm provider queries Catalyst contract for server registration info
+
+  invariants:
+    - rule: Contract addresses must be unique per network
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: ABIs must match deployed contract bytecode
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Factory contracts include sinceBlock for historical queries
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Each network must have complete contract deployment information
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Provide contract addresses for LAND, registrar, state contracts on L1 networks
+    - Provide contract addresses for collections, third-party registry, POI on L2 networks
+    - Provide ABIs for all Decentraland smart contracts
+    - Maintain contract addresses across multiple networks (mainnet, Sepolia, Polygon, Mumbai, Amoy)
+    - Track collection factory contract addresses with deployment block numbers
+    - Track committee contract addresses for governance
+    - Provide MANA token addresses for each network
+    - Provide Catalyst contract addresses
+    - Provide name denylist contract addresses
+    - Provide checker contract bytecode for ownership validation
+    - Support both production and testnet environments
+
+  out_of_scope:
+    - Smart contract development or deployment (only provides addresses/ABIs)
+    - Blockchain RPC provider connections (services connect separately)
+    - Contract interaction logic (services implement their own)
+    - Transaction signing or wallet management
+    - Contract event monitoring (handled by services)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: Ethereum Mainnet
+      purpose: Provides contract addresses for L1 production contracts
+      type: blockchain
+    
+    - name: Ethereum Sepolia
+      purpose: Provides contract addresses for L1 testnet contracts
+      type: blockchain
+    
+    - name: Polygon Network
+      purpose: Provides contract addresses for L2 production contracts
+      type: blockchain
+    
+    - name: Polygon Mumbai
+      purpose: Provides contract addresses for L2 testnet contracts (legacy)
+      type: blockchain
+    
+    - name: Polygon Amoy
+      purpose: Provides contract addresses for L2 testnet contracts
+      type: blockchain
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  
+  key_env_vars: []
+
+adrs: []

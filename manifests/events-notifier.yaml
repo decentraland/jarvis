@@ -1,0 +1,105 @@
+schema_version: "1.0"
+
+service:
+  name: events-notifier
+  display_name: Events Notifier
+  description: Monitors blockchain events and publishes notifications to internal event-driven systems. Runs scheduled cron jobs that query The Graph subgraphs to detect marketplace transactions, rentals, and royalties, then publishes structured events for downstream consumers.
+  team: foundation
+  repository: https://github.com/decentraland/events-notifier
+  language: typescript
+  layer: feature-servers
+  ai-agent-context: https://github.com/decentraland/events-notifier/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Blockchain Event
+      definition: On-chain activity detected from The Graph subgraphs (marketplace transactions, rentals, royalties).
+
+    - term: Cursor
+      definition: Event processing checkpoint stored in database to track last successful run and prevent duplicate processing.
+
+  concept_relationships:
+    internal:
+      - from: Blockchain Event
+        to: Cursor
+        relationship: references
+        description: Cursors track processing state for each event type
+
+  invariants:
+    - rule: Events must be deduplicated using cursors to prevent duplicate notifications
+      enforced_at: database
+      severity: hard
+
+  responsibilities:
+    - Monitor marketplace events via The Graph
+    - Track land rental lifecycle events
+    - Publish structured events to SNS
+    - Run scheduled cron jobs for event detection
+    - Manage event processing cursors for deduplication
+
+  out_of_scope:
+    - Event consumption (handled by subscribers)
+    - On-chain transactions (handled by smart contracts)
+
+  owned_entities:
+    - name: Cursor
+      description: Event processing checkpoint
+      persistence: postgres
+      identity_field: id
+
+api:
+  openapi_url: https://github.com/decentraland/events-notifier/blob/main/docs/openapi.yaml
+
+db:
+  schema_url: https://github.com/decentraland/events-notifier/blob/main/docs/database-schema.md
+
+dependencies:
+  services: []
+  external:
+    - name: PostgreSQL
+      purpose: Event cursors, deduplication
+      type: storage
+    - name: The Graph
+      purpose: Blockchain event queries
+      type: api
+    - name: AWS SNS
+      purpose: Event publishing
+      type: messaging
+
+events:
+  publishes:
+    - name: bid_accepted
+      description: Marketplace bid accepted
+      channel: AWS SNS
+      key_payload_fields:
+        - bidId
+        - seller
+        - buyer
+    - name: item_sold
+      description: Marketplace item sold
+      channel: AWS SNS
+      key_payload_fields:
+        - itemId
+        - seller
+        - buyer
+    - name: rental_started
+      description: Land rental started
+      channel: AWS SNS
+      key_payload_fields:
+        - rentalId
+        - lessor
+        - tenant
+    - name: royalties_earned
+      description: Creator royalties earned
+      channel: AWS SNS
+      key_payload_fields:
+        - creatorAddress
+        - amount
+
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: THEGRAPH_URL
+      description: The Graph API endpoint
+      affects: Blockchain data source

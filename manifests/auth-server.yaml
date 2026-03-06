@@ -1,0 +1,112 @@
+schema_version: "1.0"
+
+service:
+  name: auth-server
+  display_name: Auth Server
+  description: Facilitates secure communication between the Decentraland desktop client and browser-based authentication dApp. Enables the desktop client to execute wallet operations (transactions, signatures) using the user's browser wallet through a request-response relay pattern.
+  team: foundation
+  repository: https://github.com/decentraland/auth-server
+  language: typescript
+  layer: feature-servers
+  ai-agent-context: https://github.com/decentraland/auth-server/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Authentication Request
+      definition: Encapsulates a wallet method call (eth_sendTransaction, personal_sign, dcl_personal_sign) that needs to be executed in the user's browser wallet. Includes unique ID, expiration timestamp, and verification code.
+      examples:
+        - Request to sign a message using personal_sign
+        - Request to send an Ethereum transaction
+
+    - term: Verification Code
+      definition: Random number (0-99) generated for each request to provide visual confirmation that desktop client and browser dApp are processing the same request.
+
+    - term: Request Lifecycle
+      definition: State flow from creation → pending → (consumed/expired) → cleanup. Requests expire after 5 minutes by default.
+
+  concept_relationships:
+    internal:
+      - from: Authentication Request
+        to: Verification Code
+        relationship: has_one
+        description: Each authentication request includes a unique verification code for user confirmation
+
+    cross_service:
+      - local_concept: Authentication Request
+        remote_service: auth-dapp
+        remote_concept: Wallet Method Execution
+        mapping_type: projects_as
+        description: Authentication requests are executed by the browser-based auth dApp using the user's wallet
+
+  invariants:
+    - rule: Requests must expire after 5 minutes if not consumed
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Each request must have a unique verification code for the session
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Consumed requests cannot be reused
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Create and manage authentication request objects
+    - Generate unique request IDs with expiration timestamps
+    - Generate visual verification codes for request confirmation
+    - Relay wallet method execution results from browser to desktop client
+    - Manage request lifecycle (creation, expiration, consumption, cleanup)
+    - Support both WebSocket and HTTP polling communication patterns
+    - Handle authentication flow with ephemeral wallet generation
+
+  out_of_scope:
+    - Actual wallet operations execution (handled by browser wallet via auth dApp)
+    - User profile management (handled by Catalyst)
+    - Session management for in-world activities (handled by other services)
+
+  owned_entities:
+    - name: Authentication Request
+      description: Wallet method call pending execution with lifecycle metadata
+      persistence: postgres
+      identity_field: requestId
+
+api:
+  openapi_url: https://github.com/decentraland/auth-server/blob/main/docs/openapi.yaml
+
+db:
+  schema_url: https://github.com/decentraland/auth-server/blob/main/docs/database-schemas.md
+
+dependencies:
+  services: []
+
+  external:
+    - name: PostgreSQL
+      purpose: Request storage and lifecycle management
+      type: storage
+
+    - name: Redis
+      purpose: Caching with memory fallback
+      type: storage
+
+    - name: Browser Wallet
+      purpose: Executes Ethereum transactions and signatures via auth dApp
+      type: other
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
+      description: PostgreSQL connection string for request storage
+      affects: Request persistence and retrieval
+
+    - name: REQUEST_TTL
+      description: Time-to-live for authentication requests in seconds (default 300)
+      affects: Request expiration and cleanup timing
+
+    - name: CORS_ORIGIN
+      description: Allowed origins for CORS (auth dApp URLs)
+      affects: Cross-origin communication security

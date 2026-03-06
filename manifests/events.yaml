@@ -1,0 +1,378 @@
+schema_version: "1.0"
+
+service:
+  name: events
+  display_name: Community Events
+  description: Full-stack web application that manages community events within the Decentraland virtual world. Allows users to create, discover, and attend events in both land-based locations (Genesis City) and virtual worlds, providing a dApp interface with recurrent events, schedules, notifications, and social sharing capabilities.
+  team: foundation
+  repository: https://github.com/decentraland/events
+  language: typescript
+  layer: Feature Servers Layer
+  ai-agent-context: https://github.com/decentraland/events/blob/master/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Event
+      definition: A scheduled activity or gathering in Decentraland that has a specific time, location (Genesis City coordinates or World), and metadata such as name, description, and poster images. Events can be one-time or recurring based on RRule specifications.
+      examples:
+        - "A music festival at coordinates (20, 30) every Friday at 6pm"
+        - "An art gallery opening in Dragon City Estate on December 25th"
+    
+    - term: Recurrent Event
+      definition: An event that repeats according to RFC 5545 (iCalendar) RRule specifications with configurable frequency (yearly, monthly, weekly, daily, hourly), weekday masks, intervals, and end conditions (count or until date).
+      examples:
+        - "Weekly meetup every Monday and Wednesday"
+        - "Monthly town hall on the first Friday of each month"
+    
+    - term: Event Approval
+      definition: The moderation workflow where events created by users remain in pending status until approved or rejected by administrators or moderators. Only approved events are visible to regular users.
+      not_to_be_confused_with: Event attendance, which is when users mark themselves as going to an event
+    
+    - term: Schedule
+      definition: A curated collection of events with custom theming, branding, and time-based activation periods used for special occasions like festivals, fashion weeks, or themed event series. Schedules have custom backgrounds, images, and active date ranges.
+      examples:
+        - "Metaverse Music Festival 2022 (MVMF)"
+        - "Decentraland Fashion Week 2023"
+    
+    - term: Event Attendee
+      definition: A user who has marked themselves as attending a specific event. The system tracks the latest attendees for display and maintains total attendee counts for each event.
+    
+    - term: Category
+      definition: A classification tag for events that enables filtering and discovery by type such as music, art, gaming, sports, education. Currently limited to 1 category per event.
+      examples:
+        - music
+        - art
+        - gaming
+        - sports
+    
+    - term: Genesis City Location
+      definition: Events positioned at specific (x, y) coordinates in Decentraland's main Genesis City world, typically ranging from -150 to 150 on each axis with (0,0) representing Genesis Plaza.
+    
+    - term: World Event
+      definition: Events located in Decentraland Worlds (custom deployments with .dcl.eth names) rather than Genesis City parcels. World events are marked with world=true and may have associated place_id or community_id references.
+    
+    - term: Profile Settings
+      definition: User-specific preferences including email address, notification settings (email and browser push), timezone display preference, and administrative permissions for event moderation.
+    
+    - term: Event Duration
+      definition: The length of time an event runs, stored in milliseconds, with a maximum of 24 hours (86400000ms) per occurrence. For recurrent events, each occurrence has the same duration.
+    
+    - term: Next Start At
+      definition: For recurrent events, the pre-calculated timestamp of the next occurrence, used for efficient date-range filtering and queries. Updated when events are created or modified.
+
+  concept_relationships:
+    internal:
+      - from: Event
+        to: EventAttendee
+        relationship: has_many
+        description: An Event can have multiple EventAttendees who marked themselves as attending
+      
+      - from: Event
+        to: Category
+        relationship: belongs_to
+        description: Each Event belongs to one Category for classification and filtering
+      
+      - from: Event
+        to: Schedule
+        relationship: belongs_to
+        description: Events can belong to multiple Schedules for themed collections
+      
+      - from: ProfileSettings
+        to: EventAttendee
+        relationship: has_many
+        description: A user's ProfileSettings governs their notification preferences for events they attend
+      
+      - from: RecurrentEvent
+        to: Event
+        relationship: is_a
+        description: A RecurrentEvent is a specialized Event with RRule-based repetition logic
+    
+    cross_service:
+      - local_concept: World Event
+        remote_service: worlds-content-server
+        remote_concept: World
+        mapping_type: references
+        description: World Events reference Worlds hosted in worlds-content-server by world name (*.dcl.eth format)
+      
+      - local_concept: Event Location
+        remote_service: catalyst
+        remote_concept: Scene
+        mapping_type: references
+        description: Genesis City events occur at coordinates that correspond to Scenes in the Catalyst content server
+      
+      - local_concept: Profile Settings
+        remote_service: catalyst
+        remote_concept: Profile
+        mapping_type: equivalent
+        description: Profile Settings in events service is keyed by user wallet address which maps to Profile entities in Catalyst
+      
+      - local_concept: Event
+        remote_service: notifications-workers
+        remote_concept: Notification
+        mapping_type: projects_as
+        description: Events generate Notifications via notifications-workers when events are starting, ending, or upcoming
+      
+      - local_concept: Event
+        remote_service: events-notifier
+        remote_concept: EventNotification
+        mapping_type: projects_as
+        description: Events are published to events-notifier service which processes and schedules notifications
+      
+      - local_concept: Community Event
+        remote_service: social-service-ea
+        remote_concept: Community
+        mapping_type: references
+        description: Events can be associated with Communities via community_id which references the social-service-ea Communities API
+
+  invariants:
+    - rule: An event cannot be both approved and rejected simultaneously
+      enforced_at: database
+      severity: hard
+    
+    - rule: Event finish_at must be greater than start_at
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: For recurrent events, recurrent_frequency must not be null
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Events can have a maximum of 1 category
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Event duration cannot exceed 24 hours (86400000ms)
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Genesis City coordinates must be within range -170 to 170 for both x and y
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Event poster images must not exceed 500KB
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Only users with special permissions can self-approve events
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Users can only update their own events unless they have admin permissions
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: Total attendees count must match the number of records in event_attendees table
+      enforced_at: domain_layer
+      severity: soft
+
+  responsibilities:
+    - Manage lifecycle of community events including creation, updates, approval workflows, and deletion
+    - Support recurrent events using RFC 5545 RRule specifications with various frequencies and patterns
+    - Track event attendance and maintain attendee lists per event
+    - Provide location-based event discovery by Genesis City coordinates, estates, worlds, and places
+    - Handle event poster image uploads to AWS S3 with size validation and optimization
+    - Send notifications for upcoming, started, and ended events via browser push and email
+    - Manage themed event schedules for special occasions with custom branding and activation periods
+    - Full-text search across event names and descriptions using PostgreSQL textsearch
+    - Generate Open Graph meta tags for social media sharing of events
+    - Maintain user profile settings for notification preferences and administrative permissions
+    - Provide filtering by categories, schedules, creators, communities, and date ranges
+    - Calculate and cache next occurrence timestamps for recurrent events
+
+  out_of_scope:
+    - Real-time voice or text chat during events (handled by comms-message-sfu and LiveKit)
+    - User-to-user positioning and island management (handled by archipelago-workers)
+    - Blockchain transaction processing for event-related NFTs (handled by marketplace-server)
+    - Content moderation of event locations (handled by police-server and comms-gatekeeper)
+    - Scene deployment and entity storage (handled by catalyst)
+    - Badge distribution for event attendance (handled by badges service)
+
+  owned_entities:
+    - name: Event
+      description: Core event information including location, dates, recurrence rules, approval status, categories, and attendance tracking
+      persistence: postgres
+      identity_field: id (UUID)
+    
+    - name: EventAttendee
+      description: Junction entity tracking which users are attending which events with composite primary key (event_id, user)
+      persistence: postgres
+      identity_field: (event_id, user)
+    
+    - name: EventCategory
+      description: Available event category tags with active status for UI display
+      persistence: postgres
+      identity_field: name
+    
+    - name: Schedule
+      description: Themed event collections with custom branding, activation periods, and event associations
+      persistence: postgres
+      identity_field: id (UUID)
+    
+    - name: ProfileSettings
+      description: User preferences for notifications, timezone display, email verification, and administrative permissions
+      persistence: postgres
+      identity_field: user (wallet address)
+    
+    - name: ProfileSubscription
+      description: Web Push subscription data for browser notifications (deprecated - no longer actively used)
+      persistence: postgres
+      identity_field: endpoint
+
+api:
+  openapi_url: https://github.com/decentraland/events/blob/master/docs/openapi.yaml
+
+db:
+  schema_url: https://github.com/decentraland/events/blob/master/docs/database-schemas.md
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      purpose: Fetch world information, place resolution, and validate Genesis City coordinates
+      critical: true
+    
+    - name: social-service-ea
+      relationship: sync
+      purpose: Validate community membership for community-associated events
+      critical: false
+    
+    - name: notifications-workers
+      relationship: async
+      purpose: Process and send event notification messages via SNS/SQS
+      critical: false
+    
+    - name: events-notifier
+      relationship: async
+      purpose: Schedule and trigger notifications for upcoming, started, and ended events
+      critical: false
+    
+    - name: worlds-content-server
+      relationship: sync
+      purpose: Retrieve world information for world-based events
+      critical: false
+    
+    - name: badges
+      relationship: async
+      purpose: Trigger badge-related events via SNS/SQS for event attendance achievements
+      critical: false
+
+  external:
+    - name: AWS S3
+      purpose: Storage for event poster images (horizontal and vertical formats)
+      type: storage
+    
+    - name: AWS SNS
+      purpose: Push notification delivery to notifications-workers and events-notifier
+      type: messaging
+    
+    - name: PostgreSQL
+      purpose: Primary database for events, attendees, schedules, categories, and user profiles
+      type: database
+    
+    - name: Decentraland Catalyst
+      purpose: Query world information, places, and scene data via dcl-catalyst-client library
+      type: api
+    
+    - name: Communities API
+      purpose: Validate community associations for events
+      type: api
+
+events:
+  publishes:
+    - name: event.created
+      description: Published when a new event is created and approved
+      channel: AWS SNS
+      key_payload_fields:
+        - event_id
+        - creator_address
+        - event_name
+        - start_at
+    
+    - name: event.updated
+      description: Published when an event is updated by creator or admin
+      channel: AWS SNS
+      key_payload_fields:
+        - event_id
+        - updated_fields
+    
+    - name: event.approved
+      description: Published when a moderator approves a pending event
+      channel: AWS SNS
+      key_payload_fields:
+        - event_id
+        - approved_by
+    
+    - name: event.rejected
+      description: Published when a moderator rejects a pending event
+      channel: AWS SNS
+      key_payload_fields:
+        - event_id
+        - rejected_by
+    
+    - name: event.attendance.added
+      description: Published when a user marks themselves as attending an event
+      channel: AWS SNS
+      key_payload_fields:
+        - event_id
+        - user_address
+    
+    - name: notification.event.upcoming
+      description: Published to notification service for upcoming event reminders
+      channel: AWS SNS
+      key_payload_fields:
+        - event_id
+        - user_addresses
+        - time_until_start
+    
+    - name: notification.event.started
+      description: Published when an event starts for real-time notifications
+      channel: AWS SNS
+      key_payload_fields:
+        - event_id
+        - event_name
+    
+    - name: notification.event.ended
+      description: Published when an event ends
+      channel: AWS SNS
+      key_payload_fields:
+        - event_id
+
+  consumes: []
+
+configuration:
+  feature_flags: []
+  
+  key_env_vars:
+    - name: CONNECTION_STRING
+      description: PostgreSQL database connection string
+      affects: Database connectivity and all data operations
+    
+    - name: AWS_BUCKET_NAME
+      description: S3 bucket name for storing event poster images
+      affects: Image upload functionality
+    
+    - name: AWS_REGION
+      description: AWS region for S3 and SNS services
+      affects: Cloud service connectivity
+    
+    - name: ADMIN_ADDRESSES
+      description: Comma-separated list of admin wallet addresses with full permissions
+      affects: Event approval/rejection and admin operations
+    
+    - name: WEB_PUSH_SECRET
+      description: VAPID private key for web push notifications
+      affects: Browser push notification delivery
+    
+    - name: NOTIFICATION_SERVICE_URL
+      description: URL of the notification service for event notifications
+      affects: Event notification delivery
+    
+    - name: GATSBY_COMMUNITIES_API_URL
+      description: URL of the Communities API for community validation
+      affects: Community-associated event features
+    
+    - name: GATSBY_DECENTRALAND_URL
+      description: Base URL for Decentraland play links
+      affects: Jump-in URL generation for events
+
+adrs: []

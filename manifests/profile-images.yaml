@@ -1,0 +1,68 @@
+schema_version: "1.0"
+
+service:
+  name: profile-images
+  display_name: Profile Images
+  description: Generates 2D profile images (body and face) from 3D avatar models. Uses producer-consumer pattern to monitor profile changes and render avatar images for display in applications and user interfaces.
+  team: foundation
+  repository: https://github.com/decentraland/profile-images
+  language: typescript
+  layer: feature-servers
+  ai-agent-context: https://github.com/decentraland/profile-images/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Profile Image
+      definition: 2D rendered image (body or face) generated from 3D avatar model for display in applications.
+
+    - term: Rendering Job
+      definition: SQS message triggering 3D-to-2D avatar image generation.
+
+  concept_relationships:
+    cross_service:
+      - local_concept: Profile Image
+        remote_service: catalyst
+        remote_concept: Profile Entity
+        mapping_type: derived_from
+        description: Profile images are rendered from Catalyst profile entities
+
+  responsibilities:
+    - Monitor Catalyst for profile changes
+    - Queue rendering jobs to SQS
+    - Render 3D avatars to 2D images
+    - Upload generated images to S3
+    - Retry failed rendering jobs
+
+  owned_entities:
+    - name: Profile Image
+      description: Generated 2D avatar image
+      persistence: s3
+      identity_field: address
+
+api:
+  openapi_url: https://github.com/decentraland/profile-images/blob/main/docs/openapi.yaml
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      purpose: Polls for profile deployments
+      critical: true
+
+  external:
+    - name: AWS SQS
+      purpose: Rendering job queue
+      type: messaging
+    - name: AWS S3
+      purpose: Generated image storage
+      type: storage
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: S3_BUCKET
+      description: S3 bucket for profile images
+      affects: Image storage location

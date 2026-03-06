@@ -1,0 +1,129 @@
+schema_version: "1.0"
+
+service:
+  name: camera-reel-service
+  display_name: Camera Reel Service
+  description: Manages camera images captured from Decentraland Explorer. Provides upload, storage, retrieval, and metadata management for user-generated screenshots with visibility controls and place associations.
+  team: foundation
+  repository: https://github.com/decentraland/camera-reel-service
+  language: rust
+  layer: feature-servers
+  ai-agent-context: https://github.com/decentraland/camera-reel-service/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Camera Image
+      definition: User-generated screenshot captured from Decentraland Explorer with metadata including coordinates, scene information, timestamp, and visibility settings.
+      examples:
+        - Screenshot taken at coordinates (10, 20, 5) in a specific scene
+
+    - term: Image Visibility
+      definition: Privacy setting controlling who can view an image. Private images are only visible to the owner, while public images can be discovered through place associations.
+
+    - term: Place Association
+      definition: Link between an image and a place (parcel/scene) based on metadata, enabling place-based discovery and galleries.
+
+  concept_relationships:
+    internal:
+      - from: Camera Image
+        to: Place Association
+        relationship: has_one
+        description: An image can be associated with a place for discovery purposes
+
+      - from: Camera Image
+        to: Image Visibility
+        relationship: has_one
+        description: Each image has a visibility setting controlling access
+
+    cross_service:
+      - local_concept: Place Association
+        remote_service: catalyst
+        remote_concept: Scene
+        mapping_type: references
+        description: Place associations reference scenes deployed to Catalyst
+
+  invariants:
+    - rule: Private images can only be viewed by their owner
+      enforced_at: api_validation
+      severity: hard
+
+    - rule: Image metadata must include valid coordinates and timestamp
+      enforced_at: api_validation
+      severity: hard
+
+  responsibilities:
+    - Upload and store images captured from Decentraland Explorer
+    - Manage image visibility settings per user
+    - Associate images with places for discovery
+    - Provide user galleries and place-based image collections
+    - Support image deletion and metadata updates
+    - Generate OpenAPI documentation
+
+  out_of_scope:
+    - Image processing or filtering (stored as uploaded)
+    - Scene content management (handled by Catalyst)
+    - User authentication management (uses Signed Fetch middleware)
+    - Social sharing features beyond visibility controls
+
+  owned_entities:
+    - name: Camera Image
+      description: Screenshot with metadata and visibility settings
+      persistence: postgres
+      identity_field: imageId (UUID)
+
+    - name: Image File
+      description: Actual image file stored in S3
+      persistence: s3
+      identity_field: imageId
+
+api:
+  openapi_url: https://github.com/decentraland/camera-reel-service/blob/main/docs/openapi.yaml
+
+db:
+  schema_url: https://github.com/decentraland/camera-reel-service/blob/main/docs/database-schemas.md
+
+dependencies:
+  services: []
+
+  external:
+    - name: PostgreSQL
+      purpose: Image metadata, user associations, place mappings
+      type: storage
+
+    - name: AWS S3 / MinIO
+      purpose: Actual image file storage
+      type: storage
+
+    - name: AWS SNS
+      purpose: Optional event notifications for image uploads
+      type: messaging
+
+events:
+  publishes:
+    - name: image_uploaded
+      description: Optional SNS event when image is uploaded
+      channel: AWS SNS
+      key_payload_fields:
+        - imageId
+        - userAddress
+        - placeId
+
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: DATABASE_URL
+      description: PostgreSQL connection string for image metadata
+      affects: Data persistence and query performance
+
+    - name: S3_BUCKET
+      description: S3 bucket name for image file storage
+      affects: Image storage location
+
+    - name: S3_ENDPOINT
+      description: S3 endpoint URL (for MinIO or custom S3)
+      affects: Storage service connectivity
+
+    - name: RUST_LOG
+      description: Logging level configuration
+      affects: Observability and debugging

@@ -1,0 +1,14 @@
+schema_version: "1.0"
+
+# Compact service index
+# One entry per service, optimized for minimal token consumption
+
+services:
+  - name: example-service              # matches service.name in manifest
+    display_name: Example Service
+    description: Short one-line description of what this service does
+    layer: platform                     # infrastructure | platform | application | client
+    repository: https://github.com/decentraland/example-service
+    dependencies:
+      - name: other-service
+        relationship: sync             # sync | async | both

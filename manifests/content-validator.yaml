@@ -1,0 +1,243 @@
+schema_version: "1.0"
+
+service:
+  name: content-validator
+  display_name: Content Validator Library
+  description: Decentraland entity deployment validation library for Catalyst servers that provides comprehensive validation functions for entity structure, metadata, access permissions, content integrity, and size constraints. Ensures only valid and authorized content is deployed to the Decentraland content network.
+  team: foundation
+  repository: https://github.com/decentraland/content-validator
+  language: typescript
+  layer: Shared Libraries
+  ai-agent-context: https://github.com/decentraland/content-validator/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Entity Deployment
+      definition: A package containing entity metadata (JSON) and associated content files (3D models, textures, images) submitted to a Catalyst server for storage and distribution in the Decentraland content network.
+      examples:
+        - "Scene deployment with metadata and asset files"
+        - "Wearable deployment with 3D model and thumbnail"
+    
+    - term: Access Validation
+      definition: Verification that the deployer owns the entity pointers (LAND parcels, NFT collections, ENS names) they are deploying to, ensuring only authorized users can update content.
+      not_to_be_confused_with: Signature validation which verifies the authentication chain
+    
+    - term: On-Chain Validation
+      definition: Access validation strategy that queries blockchain directly via RPC providers to verify ownership of LAND, NFTs, and collections.
+    
+    - term: Subgraph Validation
+      definition: Access validation strategy that queries The Graph subgraphs for ownership information, more efficient for bulk queries but with slightly delayed data.
+    
+    - term: Entity Pointer
+      definition: A coordinate, NFT URN, or ENS name that identifies where an entity is deployed. Pointers must be owned by the deployer.
+      examples:
+        - "20,30 for Genesis City parcel coordinates"
+        - "urn:decentraland:ethereum:collections-v2:0x123.../0" for collection item URN"
+        - "myname.dcl.eth for World name"
+    
+    - term: ADR-51 Size Limits
+      definition: Architecture decision record defining maximum entity sizes per type to prevent abuse and ensure reasonable content sizes (scenes 15MB, wearables 3MB, profiles 2MB, etc.).
+    
+    - term: AuthChain
+      definition: A chain of cryptographic signatures proving ownership of the deploying wallet address and authorization for the deployment.
+    
+    - term: IPFS CID
+      definition: Content Identifier used to reference content files stored in IPFS, validated to ensure proper format and existence.
+    
+    - term: URN Resolver
+      definition: Component that parses and validates Uniform Resource Names for Decentraland items (wearables, emotes) against blockchain registries.
+    
+    - term: Content Integrity
+      definition: Validation that all referenced content files exist, are accessible, and their hashes match the declared IPFS CIDs.
+    
+    - term: Legacy Content Migration
+      definition: Special handling for content deployed before certain validation rules were established, maintaining backwards compatibility.
+    
+    - term: Third Party Registry
+      definition: Blockchain registry for externally created collections that can be deployed to Decentraland with proper authentication.
+
+  concept_relationships:
+    internal:
+      - from: EntityDeployment
+        to: AccessValidation
+        relationship: requires
+        description: Every entity deployment must pass access validation to verify ownership
+      
+      - from: EntityDeployment
+        to: ContentIntegrity
+        relationship: requires
+        description: Every entity deployment must have valid content file references
+      
+      - from: AccessValidation
+        to: OnChainValidation
+        relationship: implements
+        description: Access validation can be implemented via direct blockchain queries
+      
+      - from: AccessValidation
+        to: SubgraphValidation
+        relationship: implements
+        description: Access validation can be implemented via The Graph queries
+      
+      - from: EntityDeployment
+        to: ADR51SizeLimits
+        relationship: must_comply_with
+        description: Entity sizes must not exceed ADR-51 defined limits
+      
+      - from: EntityPointer
+        to: URNResolver
+        relationship: validated_by
+        description: Item pointers are parsed and validated by URN resolver
+    
+    cross_service:
+      - local_concept: EntityDeployment
+        remote_service: catalyst
+        remote_concept: EntityDeployment
+        mapping_type: validates
+        description: Content validator validates entity deployments before Catalyst stores them
+      
+      - local_concept: AccessValidation
+        remote_service: ethereum
+        remote_concept: Ownership
+        mapping_type: verifies
+        description: Access validation checks blockchain ownership of LAND, NFTs, and collections
+      
+      - local_concept: URNResolver
+        remote_service: catalyst-contracts
+        remote_concept: CollectionContract
+        mapping_type: references
+        description: URN resolver validates against collection contracts defined in catalyst-contracts
+      
+      - local_concept: EntityMetadata
+        remote_service: schemas
+        remote_concept: Schema
+        mapping_type: validated_against
+        description: Entity metadata is validated against schemas defined in @dcl/schemas
+
+  invariants:
+    - rule: All entity deployments must have valid AuthChain signatures
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Deployer must own all entity pointers
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Entity size must not exceed ADR-51 limits per type
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: All referenced content files must exist and hashes must match
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Entity metadata must conform to @dcl/schemas definitions
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Wearable and emote URNs must resolve to valid blockchain collections
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Scene deployments must include scene.json content file
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Legacy content maintains backwards compatibility
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Validate entity JSON structure, required fields, and content references
+    - Verify deployer owns entity pointers via on-chain or subgraph queries
+    - Validate item URNs (wearables, emotes) against blockchain collections and third-party registries
+    - Check content file integrity including IPFS CID format and hash matching
+    - Enforce ADR-51 size limits per entity type with special handling for skins
+    - Validate metadata schemas against @dcl/schemas definitions
+    - Verify AuthChain signature authenticity for deployments
+    - Validate scene-specific requirements (scene.json, spawn points, parcels)
+    - Validate profile data structure and content
+    - Validate wearable representations and emote animations
+    - Provide clear, actionable error messages for validation failures
+    - Support both on-chain and subgraph access verification strategies
+    - Maintain backwards compatibility with legacy content migrations
+
+  out_of_scope:
+    - Content storage and hosting (handled by Catalyst servers)
+    - Content hashing computation (uses @dcl/hashing library)
+    - URN parsing implementation (uses @dcl/urn-resolver)
+    - Blockchain contract interactions (uses external RPC providers and @dcl/block-indexer)
+    - Schema definition (uses @dcl/schemas)
+    - Content file downloading (provided by Catalyst)
+    - Entity deployment API (provided by Catalyst)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: Ethereum Mainnet
+      purpose: Verify LAND, collection, and third-party registry ownership via blockchain queries
+      type: blockchain
+    
+    - name: Polygon Network
+      purpose: Verify L2 collection and third-party registry ownership
+      type: blockchain
+    
+    - name: The Graph - LAND Subgraph
+      purpose: Query LAND ownership for subgraph-based access validation
+      type: api
+    
+    - name: The Graph - Collections Subgraph
+      purpose: Query collection ownership for subgraph-based access validation
+      type: api
+    
+    - name: The Graph - Third Party Registry Subgraph
+      purpose: Query third-party collection registrations
+      type: api
+    
+    - name: The Graph - ENS Subgraph
+      purpose: Query ENS name ownership for world deployments
+      type: api
+    
+    - name: "@dcl/schemas"
+      purpose: Entity type definitions and validation schemas
+      type: api
+    
+    - name: "@dcl/urn-resolver"
+      purpose: URN parsing and validation for items
+      type: api
+    
+    - name: "@dcl/block-indexer"
+      purpose: Blockchain block search for timestamp-based queries
+      type: api
+    
+    - name: "@dcl/hashing"
+      purpose: IPFS content hashing utilities
+      type: api
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  
+  key_env_vars: []
+
+adrs:
+  - id: ADR-51
+    title: Entity Size Limits
+    url: https://adr.decentraland.org/adr/ADR-51
+    relevance: Defines maximum entity sizes per type that validator enforces
+
+  - id: ADR-45
+    title: Entity Deployment Validation
+    url: https://adr.decentraland.org/adr/ADR-45
+    relevance: Defines validation requirements for entity deployments

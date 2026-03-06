@@ -1,0 +1,215 @@
+schema_version: "1.0"
+
+service:
+  name: catalyst
+  display_name: Catalyst
+  description: Monorepo containing the core Catalyst server implementation. Catalyst servers are the decentralized content infrastructure for Decentraland, bundling multiple services (Content Server, Lambdas, BFF, Archipelago) to provide entity storage, content delivery, peer communication, and client APIs.
+  team: foundation
+  repository: https://github.com/decentraland/catalyst
+  language: typescript
+  layer: content
+  ai-agent-context: https://github.com/decentraland/catalyst/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Entity
+      definition: Versioned content object representing scenes, wearables, profiles, or other Decentraland assets. Each entity has a unique ID, pointers, content files, and metadata.
+      examples:
+        - Scene entity with pointer "10,10"
+        - Wearable entity with URN pointer
+        - Profile entity with Ethereum address pointer
+
+    - term: Deployment
+      definition: Act of publishing an entity to a Catalyst server. Includes entity content files, metadata, and cryptographic signature proving ownership of pointers.
+
+    - term: Pointer
+      definition: Human-readable identifier that maps to an entity (e.g., parcel coordinates "10,10", ENS name, URN). Pointers can be reassigned to new entity versions.
+
+    - term: Content File
+      definition: Individual file within an entity (GLTF models, textures, scripts) identified by content hash (CID). Stored in IPFS or local storage.
+
+    - term: Snapshot
+      definition: Immutable record of all entities at a point in time, used for Catalyst-to-Catalyst synchronization.
+
+    - term: Active Pointer
+      definition: Current mapping from a pointer to the latest entity deployment, used for fast entity resolution.
+
+  concept_relationships:
+    internal:
+      - from: Entity
+        to: Pointer
+        relationship: has_many
+        description: An Entity can be referenced by multiple Pointers simultaneously
+
+      - from: Entity
+        to: Content File
+        relationship: has_many
+        description: An Entity contains multiple Content Files identified by content hashes
+
+      - from: Deployment
+        to: Entity
+        relationship: creates
+        description: A Deployment publishes a new version of an Entity
+
+      - from: Active Pointer
+        to: Deployment
+        relationship: references
+        description: Active Pointers map to the current Deployment for fast lookups
+
+      - from: Snapshot
+        to: Entity
+        relationship: contains
+        description: Snapshots capture the state of all Entities at a point in time
+
+    cross_service:
+      - local_concept: Entity
+        remote_service: asset-bundle-converter
+        remote_concept: Asset Bundle
+        mapping_type: projects_as
+        description: Entities are converted to Asset Bundles for optimized delivery
+
+      - local_concept: Entity
+        remote_service: worlds-content-server
+        remote_concept: World Entity
+        mapping_type: equivalent
+        description: Worlds Content Server uses the same entity model for world-specific content
+
+      - local_concept: Deployment
+        remote_service: deployments-to-sqs
+        remote_concept: Deployment Event
+        mapping_type: projects_as
+        description: Deployments trigger events published to SQS for downstream processing
+
+  invariants:
+    - rule: Entity IDs must be unique across all entity types
+      enforced_at: database
+      severity: hard
+
+    - rule: Pointer assignments must be cryptographically signed by the pointer owner
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Content files must be immutable and content-addressed (CID-based)
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: DAO-approved Catalysts automatically sync entities between each other
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Active deployments have deleter_deployment IS NULL
+      enforced_at: database
+      severity: hard
+
+  responsibilities:
+    - Store and sync entities across DAO-approved Catalysts
+    - Validate entity deployments before storage
+    - Provide utility APIs for entity queries and ownership validation
+    - Manage P2P signaling for peer communication
+    - Integrate with Archipelago for island clustering
+    - Integrate with LiveKit for SFU-based WebRTC communication
+    - Maintain pointer-to-entity mappings for fast resolution
+    - Generate snapshots for Catalyst synchronization
+
+  out_of_scope:
+    - Asset bundle conversion (handled by asset-bundle-converter)
+    - Island clustering logic (handled by archipelago-workers)
+    - User authentication for clients (handled by auth-server)
+    - Marketplace transactions (handled by marketplace-server)
+
+  owned_entities:
+    - name: Entity
+      description: Versioned content object with pointers, content files, and metadata
+      persistence: postgres
+      identity_field: entityId
+
+    - name: Deployment
+      description: Record of entity publication with signature and timestamp
+      persistence: postgres
+      identity_field: deploymentId
+
+    - name: Content File
+      description: Individual file within an entity stored by content hash
+      persistence: ipfs
+      identity_field: cid
+
+    - name: Active Pointer
+      description: Current pointer-to-entity mapping for fast lookups
+      persistence: postgres
+      identity_field: pointer
+
+    - name: Snapshot
+      description: Immutable record of all entities at a point in time
+      persistence: postgres
+      identity_field: snapshotHash
+
+api:
+  openapi_url: https://github.com/decentraland/catalyst-api-specs
+
+db:
+  schema_url: https://github.com/decentraland/catalyst/blob/main/content/docs/database-schema.md
+
+dependencies:
+  services:
+    - name: archipelago-workers
+      relationship: both
+      purpose: Peer clustering and island management for communications
+      critical: true
+
+  external:
+    - name: PostgreSQL
+      purpose: Deployment metadata, content file references, snapshots, sync state
+      type: storage
+
+    - name: IPFS / Local Storage
+      purpose: Entity content file storage
+      type: storage
+
+    - name: NATS
+      purpose: Inter-service communication between BFF, Archipelago, LiveKit
+      type: messaging
+
+    - name: LiveKit
+      purpose: WebRTC SFU for high-performance crowd communication
+      type: other
+
+    - name: The Graph
+      purpose: Blockchain indexer for ownership validation
+      type: api
+
+events:
+  publishes:
+    - name: entity_deployed
+      description: Entity successfully deployed to Catalyst
+      channel: internal (consumed by deployments-to-sqs)
+      key_payload_fields:
+        - entityId
+        - entityType
+        - pointers
+        - timestamp
+
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
+      description: PostgreSQL connection string for entity metadata
+      affects: Data persistence and query performance
+
+    - name: STORAGE_ROOT_FOLDER
+      description: Root directory for local content file storage
+      affects: Content storage location
+
+    - name: CONTENT_SERVER_ADDRESS
+      description: Public URL of this Catalyst server
+      affects: Synchronization and client connectivity
+
+    - name: ETH_NETWORK
+      description: Ethereum network for ownership validation (mainnet/ropsten/etc)
+      affects: Blockchain data source
+
+adrs:
+  - id: ADR-204
+    title: Archipelago Protocol Architecture
+    url: https://adr.decentraland.org/adr/ADR-204
+    relevance: Defines communication architecture integrated with Catalyst

@@ -1,0 +1,153 @@
+schema_version: "1.0"
+
+service:
+  name: social-service-ea
+  display_name: Social Service EA
+  description: Microservice handling social interactions for Decentraland. Enables users to create and manage communities, connect with friends, participate in voice chats, and engage in social activities within the metaverse.
+  team: foundation
+  repository: https://github.com/decentraland/social-service-ea
+  language: typescript
+  layer: feature-servers
+  ai-agent-context: https://github.com/decentraland/social-service-ea/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Community
+      definition: Social group with customizable privacy (public/private) and visibility (listed/unlisted) settings, role-based permissions, and place associations.
+
+    - term: Community Role
+      definition: Permission level within a community (owner, moderator, member, none) determining user capabilities.
+
+    - term: Community Request
+      definition: Invitation or join request for community membership with approval workflow.
+
+    - term: Private Voice Chat
+      definition: One-on-one voice chat session between users with expiration time.
+
+  concept_relationships:
+    internal:
+      - from: Community
+        to: Community Member
+        relationship: has_many
+        description: Communities contain members with roles
+
+      - from: Community
+        to: Community Post
+        relationship: has_many
+        description: Communities have posts for announcements
+
+      - from: Community
+        to: Community Place
+        relationship: has_many
+        description: Communities can be associated with multiple Decentraland locations
+
+    cross_service:
+      - local_concept: Community
+        remote_service: comms-gatekeeper
+        remote_concept: Voice Chat
+        mapping_type: projects_as
+        description: Communities can have voice chat sessions managed by comms-gatekeeper
+
+      - local_concept: Community Member
+        remote_service: catalyst
+        remote_concept: Profile
+        mapping_type: references
+        description: Community members reference Catalyst user profiles
+
+  invariants:
+    - rule: Community owners have full control over their communities
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Private communities require invitation or approval to join
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Manage communities with privacy and visibility settings
+    - Handle member management with role-based permissions
+    - Process community posts with likes
+    - Link communities with Decentraland places
+    - Facilitate voice chat sessions
+    - Manage friendships and social connections
+    - Track user referrals and progress
+    - Handle privacy controls and blocking
+
+  owned_entities:
+    - name: Community
+      description: Social group with members and settings
+      persistence: postgres
+      identity_field: id
+
+    - name: Friendship
+      description: Social connection between users
+      persistence: postgres
+      identity_field: composite (user1, user2)
+
+    - name: Community Post
+      description: Announcement or update in community
+      persistence: postgres
+      identity_field: id
+
+api:
+  openapi_url: https://github.com/decentraland/social-service-ea/blob/main/docs/openapi.yaml
+
+db:
+  schema_url: https://github.com/decentraland/social-service-ea/blob/main/docs/database-schemas.md
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      purpose: User profiles and avatar data
+      critical: false
+
+    - name: comms-gatekeeper
+      relationship: sync
+      purpose: Voice chat token generation
+      critical: false
+
+    - name: archipelago-workers
+      relationship: sync
+      purpose: User presence and online status
+      critical: false
+
+  external:
+    - name: PostgreSQL
+      purpose: Communities, members, posts, friendships, social settings
+      type: storage
+    - name: Redis
+      purpose: Caching for performance
+      type: storage
+    - name: NATS
+      purpose: Real-time updates and events
+      type: messaging
+    - name: AWS S3
+      purpose: Media storage for community images
+      type: storage
+    - name: AWS SNS
+      purpose: Event notifications for social events
+      type: messaging
+
+events:
+  publishes:
+    - name: friendship_created
+      description: New friendship established
+      channel: NATS
+      key_payload_fields:
+        - user1
+        - user2
+
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
+      description: PostgreSQL connection string
+      affects: Data persistence
+
+adrs:
+  - id: ADR-44
+    title: Signed Fetch Authentication
+    url: https://adr.decentraland.org/adr/ADR-44
+    relevance: Authentication for REST endpoints

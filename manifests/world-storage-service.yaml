@@ -1,0 +1,112 @@
+schema_version: "1.0"
+
+service:
+  name: world-storage-service
+  display_name: World Storage Service
+  description: Provides secure, isolated storage and environment variable access for Decentraland worlds. Acts as an API gateway for persistent storage and secrets management for Authoritative Servers running server-side scene code.
+  team: foundation
+  repository: https://github.com/decentraland/world-storage-service
+  language: typescript
+  layer: feature-servers
+  ai-agent-context: https://github.com/decentraland/world-storage-service/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: World Storage
+      definition: Global key-value storage scoped to a world for persistent data accessible by authoritative servers.
+
+    - term: Player Storage
+      definition: Per-player key-value storage scoped to both world and player address for player-specific data.
+
+    - term: Environment Variables
+      definition: Encrypted secrets and configuration values set at deploy time, readable only by authorized addresses.
+
+    - term: World Isolation
+      definition: Cryptographic enforcement ensuring worlds can only access their own data through signed fetch validation.
+
+  concept_relationships:
+    cross_service:
+      - local_concept: World Storage
+        remote_service: worlds-content-server
+        remote_concept: World
+        mapping_type: references
+        description: Storage is scoped to worlds deployed on worlds-content-server
+
+  invariants:
+    - rule: World name must be extracted from signed fetch metadata, never from user input
+      enforced_at: api_validation
+      severity: hard
+
+    - rule: Environment variables are readable only by authorized addresses
+      enforced_at: api_validation
+      severity: hard
+
+    - rule: Only world owners/deployers can write/delete environment variables
+      enforced_at: api_validation
+      severity: hard
+
+  responsibilities:
+    - Provide persistent key-value storage for worlds
+    - Manage per-player storage scoped to world and player
+    - Serve encrypted environment variables
+    - Enforce world isolation through signed fetch validation
+    - Support bulk delete operations with confirmation
+
+  out_of_scope:
+    - Scene execution (handled by Authoritative Servers)
+    - World deployment (handled by worlds-content-server)
+    - Authentication token generation (handled by clients)
+
+  owned_entities:
+    - name: World Storage Entry
+      description: World-scoped key-value pair
+      persistence: postgres
+      identity_field: composite (world_name, key)
+
+    - name: Player Storage Entry
+      description: Player-scoped key-value pair
+      persistence: postgres
+      identity_field: composite (world_name, player_addr, key)
+
+    - name: Environment Variable
+      description: Encrypted secret or config value
+      persistence: postgres
+      identity_field: composite (world_name, key)
+
+api:
+  openapi_url: https://github.com/decentraland/world-storage-service/blob/main/docs/openapi.yaml
+
+db:
+  schema_url: https://github.com/decentraland/world-storage-service/blob/main/docs/database-schemas.md
+
+dependencies:
+  services:
+    - name: worlds-content-server
+      relationship: sync
+      purpose: Validates world ownership and deployer permissions
+      critical: true
+
+  external:
+    - name: PostgreSQL
+      purpose: World storage, player storage, environment variables
+      type: storage
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: AUTHORITATIVE_SERVER_ADDRESS
+      description: Ethereum address authorized to access environment variables
+      affects: Environment variable access control
+
+    - name: AUTHORIZED_ADDRESSES
+      description: Comma-separated Ethereum addresses with read access
+      affects: General authorization
+
+adrs:
+  - id: ADR-44
+    title: Signed Fetch Authentication
+    url: https://adr.decentraland.org/adr/ADR-44
+    relevance: All requests require signed fetch validation
