@@ -1,13 +1,19 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: social-service-ea
   display_name: Social Service EA
   description: Microservice handling social interactions for Decentraland. Enables users to create and manage communities, connect with friends, participate in voice chats, and engage in social activities within the metaverse.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/social-service-ea
   language: typescript
   layer: feature-servers
+  role:
+    - other
+  data_domain:
+    - communities
+    - friendships
+    - social-settings
   ai-agent-context: https://github.com/decentraland/social-service-ea/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -99,17 +105,38 @@ dependencies:
   services:
     - name: catalyst
       relationship: sync
-      purpose: User profiles and avatar data
+      protocol: HTTP
+      purpose: User profiles and avatar data via Lambdas
       critical: false
 
     - name: comms-gatekeeper
       relationship: sync
-      purpose: Voice chat token generation
+      protocol: HTTP
+      purpose: Voice chat token generation and room management
       critical: false
 
     - name: archipelago-workers
       relationship: sync
-      purpose: User presence and online status
+      protocol: HTTP
+      purpose: User presence and online status from stats service
+      critical: false
+
+    - name: places-api
+      relationship: sync
+      protocol: HTTP
+      purpose: Scene and world place information
+      critical: false
+
+    - name: notifications-workers
+      relationship: sync
+      protocol: HTTP
+      purpose: Email notifications for social events
+      critical: false
+
+    - name: rewards-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Send rewards for referral campaigns
       critical: false
 
   external:
@@ -142,9 +169,89 @@ events:
 
 configuration:
   key_env_vars:
-    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
-      description: PostgreSQL connection string
-      affects: Data persistence
+    - name: PG_COMPONENT_PSQL_HOST
+      description: PostgreSQL host for social service database
+      affects: Database connectivity
+
+    - name: PG_COMPONENT_PSQL_DATABASE
+      description: PostgreSQL database name
+      affects: Database selection
+
+    - name: NATS_URL
+      description: NATS server URL for pub/sub messaging
+      affects: Real-time event distribution
+
+    - name: CATALYST_LAMBDAS_URL_LOADBALANCER
+      description: Catalyst Lambdas load balancer URL
+      affects: User profile and avatar data retrieval
+
+    - name: CATALYST_URL
+      description: Catalyst content server URL
+      affects: Content and profile retrieval
+
+    - name: ARCHIPELAGO_STATS_URL
+      description: Archipelago stats service URL
+      affects: User presence and online status
+
+    - name: COMMS_GATEKEEPER_URL
+      description: Comms gatekeeper service URL
+      affects: Voice chat token generation
+
+    - name: COMMS_GATEKEEPER_AUTH_TOKEN
+      description: Authentication token for comms-gatekeeper
+      affects: Service-to-service authentication
+
+    - name: PLACES_API_URL
+      description: Places API URL for place information
+      affects: Scene and world place data
+
+    - name: NOTIFICATION_SERVICE_URL
+      description: Notifications service URL
+      affects: Email notification delivery
+
+    - name: NOTIFICATION_SERVICE_TOKEN
+      description: Authentication token for notification service
+      affects: Email sending authorization
+
+    - name: REWARD_SERVER_URL
+      description: Rewards server URL for referral campaigns
+      affects: Reward distribution
+
+    - name: EVENTS_API_URL
+      description: Events API URL
+      affects: Event-related features
+
+    - name: PROFILE_URL
+      description: Profile service URL
+      affects: Profile data retrieval
+
+    - name: AWS_S3_BUCKET
+      description: S3 bucket for media storage
+      affects: Community image storage
+
+    - name: AWS_SNS_ARN
+      description: SNS topic ARN for event publishing
+      affects: Social event notifications
+
+    - name: PRIVATE_VOICE_CHAT_EXPIRATION_TIME
+      description: Private voice chat expiration time in milliseconds
+      affects: Voice chat session lifecycle
+
+    - name: API_ADMIN_TOKEN
+      description: Admin API authentication token
+      affects: Administrative endpoint access
+
+    - name: OPEN_AI_API_KEY
+      description: OpenAI API key for AI compliance features
+      affects: Content moderation and AI features
+
+    - name: HTTP_SERVER_PORT
+      description: Main HTTP server port
+      affects: REST API endpoint
+
+    - name: RPC_SERVER_PORT
+      description: RPC/gRPC server port
+      affects: gRPC endpoint for friendships
 
 adrs:
   - id: ADR-44

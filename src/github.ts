@@ -22,8 +22,16 @@ export function cloneRepo(url: string, dest: string): void {
   const token = process.env.GITHUB_TOKEN
   const authedUrl = url.replace('https://', `https://x-token:${token}@`)
   try {
-    execSync(`git clone --depth 1 ${authedUrl} ${dest}`, { stdio: 'pipe' })
+    execSync(`git clone --depth 1 --progress ${authedUrl} ${dest}`, { stdio: 'inherit' })
   } catch {
     throw new Error(`git clone failed for ${url}`)
+  }
+}
+
+export function pullRepo(dest: string): void {
+  try {
+    execSync(`git fetch --depth 1 origin && git reset --hard origin/HEAD`, { cwd: dest, stdio: 'inherit' })
+  } catch {
+    throw new Error(`git pull failed for ${dest}`)
   }
 }

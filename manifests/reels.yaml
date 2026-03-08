@@ -1,13 +1,16 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: reels
   display_name: "Reels Frontend"
   description: Gatsby-based static site frontend for viewing and sharing Decentraland user snapshots (reels). Displays photo metadata including location, visible users, wearables, and realm information with Open Graph support for social media sharing. Deployed to Cloudflare Workers.
-  team: core
+  owner: core-engineering
   repository: https://github.com/decentraland/reels
   language: typescript
   layer: entry-points
+  role:
+    - gateway
+  data_domain: []
 
 domain:
   glossary:
@@ -93,11 +96,13 @@ dependencies:
   services:
     - name: camera-reel-service
       relationship: sync
+      protocol: HTTP
       purpose: Fetch snapshot metadata, image URLs, and user gallery listings
       critical: true
 
     - name: urn-resolver
       relationship: sync
+      protocol: HTTP
       purpose: Resolve wearable URNs to displayable metadata for visible people in snapshots
       critical: false
 
@@ -112,6 +117,42 @@ dependencies:
 
 configuration:
   key_env_vars:
-    - name: REEL_SERVICE_URL
-      description: URL of the camera-reel-service backend API
-      affects: All API calls to fetch snapshot data (default https://camera-reel-service.decentraland.org)
+    - name: GATSBY_REEL_SERVICE_URL
+      description: URL of the camera-reel-service backend API (also used as REEL_SERVICE_URL in worker)
+      affects: All API calls to fetch snapshot data
+
+    - name: GATSBY_THE_GRAPH_API_ETH_URL
+      description: The Graph subgraph URL for Ethereum mainnet collections
+      affects: Fetching wearable metadata for Ethereum-based collections
+
+    - name: GATSBY_THE_GRAPH_API_MATIC_URL
+      description: The Graph subgraph URL for Polygon mainnet collections
+      affects: Fetching wearable metadata for Polygon-based collections
+
+    - name: GATSBY_DECENTRALAND_HOMEPAGE_URL
+      description: Decentraland homepage URL for logo link
+      affects: Navigation link from logo component
+
+    - name: GATSBY_USER_PROFILE_URL
+      description: User profile service URL for user profile links
+      affects: Links to user profiles from snapshots
+
+    - name: GATSBY_MARKETPLACE_URL
+      description: Marketplace URL for wearable links
+      affects: Links to wearable details in marketplace
+
+    - name: GATSBY_BASE_URL
+      description: Base URL for the reels site
+      affects: URL generation and social sharing
+
+    - name: GATSBY_SHORT_URL
+      description: Short URL domain for compact links
+      affects: Shortened URL generation (dcl.gg)
+
+    - name: GATSBY_DECENTRALAND_URL
+      description: Main Decentraland play URL
+      affects: Links to Decentraland world from snapshots
+
+    - name: GATSBY_PLACES_URL
+      description: Places service URL for location links
+      affects: Links to place details from snapshots

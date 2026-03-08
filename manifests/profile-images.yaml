@@ -1,13 +1,17 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: profile-images
   display_name: Profile Images
   description: Generates 2D profile images (body and face) from 3D avatar models. Uses producer-consumer pattern to monitor profile changes and render avatar images for display in applications and user interfaces.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/profile-images
   language: typescript
   layer: feature-servers
+  role:
+    - worker
+  data_domain:
+    - profile-images
   ai-agent-context: https://github.com/decentraland/profile-images/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -40,12 +44,13 @@ domain:
       identity_field: address
 
 api:
-  openapi_url: https://github.com/decentraland/profile-images/blob/main/docs/openapi.yaml
+  openapi_url: ""
 
 dependencies:
   services:
     - name: catalyst
       relationship: sync
+      protocol: HTTP
       purpose: Polls for profile deployments
       critical: true
 
@@ -63,6 +68,38 @@ events:
 
 configuration:
   key_env_vars:
-    - name: S3_BUCKET
-      description: S3 bucket for profile images
+    - name: HTTP_SERVER_HOST
+      description: HTTP server host address
+      affects: Server binding configuration
+
+    - name: HTTP_SERVER_PORT
+      description: HTTP server port
+      affects: Server listening port
+
+    - name: PEER_URL
+      description: Catalyst peer URL for fetching profile entities
+      affects: Source for profile data and pointer-changes monitoring
+
+    - name: INTERVAL
+      description: Polling interval in milliseconds for checking profile changes
+      affects: Producer polling frequency
+
+    - name: AWS_REGION
+      description: AWS region for S3 and SQS resources
+      affects: AWS service region configuration
+
+    - name: BUCKET_NAME
+      description: S3 bucket name for storing generated profile images
       affects: Image storage location
+
+    - name: QUEUE_URL
+      description: SQS queue URL for rendering jobs
+      affects: Job queue location
+
+    - name: DLQ_URL
+      description: Dead letter queue URL for failed rendering jobs
+      affects: Failed job retry queue
+
+    - name: AUTH_SECRET
+      description: Secret for authenticating API requests
+      affects: API authentication and authorization

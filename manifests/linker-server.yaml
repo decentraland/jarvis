@@ -1,13 +1,16 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: linker-server
   display_name: Linker Server
   description: Acts as an intermediary for deploying content to Decentraland's Catalyst network. Validates authorization for specific parcels and proxies upload requests to Catalyst with server-signed authentication.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/linker-server
   language: typescript
   layer: feature-servers
+  role:
+    - gateway
+  data_domain: []
   ai-agent-context: https://github.com/decentraland/linker-server/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -38,6 +41,7 @@ dependencies:
   services:
     - name: catalyst
       relationship: sync
+      protocol: HTTP
       purpose: Proxies content deployments
       critical: true
 
@@ -55,6 +59,34 @@ events:
 
 configuration:
   key_env_vars:
-    - name: CATALYST_URL
-      description: Catalyst content server URL
-      affects: Deployment target
+    - name: HTTP_SERVER_PORT
+      description: HTTP server port for API endpoints
+      affects: Server listening port
+
+    - name: HTTP_SERVER_HOST
+      description: HTTP server host address
+      affects: Server binding configuration
+
+    - name: ENVIRONMENT
+      description: Environment identifier (stg or prd)
+      affects: Environment-specific configuration
+
+    - name: AWS_REGION
+      description: AWS region for Secrets Manager
+      affects: Secret retrieval configuration
+
+    - name: AWS_SECRET_ID
+      description: AWS Secrets Manager secret ID for server wallet private key
+      affects: Server signing key retrieval
+
+    - name: CATALYST_DOMAIN
+      description: Catalyst content server domain
+      affects: Deployment target for content entities
+
+    - name: AUTHORIZATIONS_URL
+      description: URL to fetch parcel authorization data from (GitHub Pages)
+      affects: Authorization data source
+
+    - name: AUTHORIZATIONS_UPDATE_INTERVAL_MS
+      description: Interval in milliseconds for refreshing authorization data
+      affects: Authorization cache refresh frequency

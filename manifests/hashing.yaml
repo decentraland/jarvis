@@ -1,13 +1,17 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: hashing
   display_name: "@dcl/hashing"
   description: Hashing utilities library that provides content identifier calculation functions for Decentraland. Generates IPFSv1 compatible hashes (ba-prefixed) for content addressing and ADR-32 compliant entity hashing for on-chain storage.
-  team: core
+  owner: core-engineering
   repository: https://github.com/decentraland/hashing
   language: typescript
-  layer: shared-library
+  layer: Shared Libraries
+  role:
+    - library
+  data_domain: []
+  ai-agent-context: ""
 
 domain:
   glossary:
@@ -81,3 +85,29 @@ dependencies:
     - name: multiformats
       purpose: Handles CID encoding and multiformat data structures
       type: other
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  
+  key_env_vars: []
+
+adrs:
+  - id: ADR-32
+    title: Entity Hashing Algorithm
+    url: https://adr.decentraland.org/adr/ADR-32
+    relevance: Defines how entity content hashes must be calculated for on-chain storage
+  
+  - id: ADR-62
+    title: Metadata Hash Verification
+    url: https://adr.decentraland.org/adr/ADR-62
+    relevance: Specifies keccak256 hashing for metadata verification

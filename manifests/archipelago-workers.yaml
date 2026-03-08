@@ -1,13 +1,19 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: archipelago-workers
   display_name: Archipelago Workers
   description: Monorepo containing three services that implement the Archipelago protocol for clustering users into dynamic islands based on their positions in Decentraland's metaverse. Enables scalable crowd management and efficient real-time communication for standalone realms.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/archipelago-workers
   language: typescript
   layer: entry-points
+  role:
+    - rt-gateway
+    - worker
+  data_domain:
+    - islands
+    - peers
   ai-agent-context: https://github.com/decentraland/archipelago-workers/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -101,14 +107,10 @@ api:
 
 dependencies:
   services:
-    - name: realm-provider
-      relationship: sync
-      purpose: Exposes WebSocket connections to Decentraland clients
-      critical: true
-
     - name: catalyst
       relationship: sync
-      purpose: Content server for fetching scene data (used by stats service)
+      protocol: HTTP
+      purpose: Content server for fetching scene entities and hot scenes data (used by stats service)
       critical: false
 
   external:
@@ -153,17 +155,41 @@ events:
 
 configuration:
   key_env_vars:
-    - name: MAX_PEERS_PER_ISLAND
-      description: Maximum number of peers allowed per island before splitting
-      affects: Island clustering algorithm behavior
-
     - name: NATS_URL
       description: Connection URL for NATS message broker
-      affects: Event-driven communication
+      affects: Event-driven communication and service discovery
 
-    - name: WS_PORT
-      description: Port for WebSocket connector service
-      affects: Client connectivity
+    - name: ARCHIPELAGO_FLUSH_FREQUENCY
+      description: Frequency (in seconds) to flush island state updates
+      affects: Island state update rate
+
+    - name: ARCHIPELAGO_JOIN_DISTANCE
+      description: Distance threshold for joining islands (in meters)
+      affects: Island clustering proximity algorithm
+
+    - name: ARCHIPELAGO_LEAVE_DISTANCE
+      description: Distance threshold for leaving islands (in meters)
+      affects: Island clustering separation algorithm
+
+    - name: ARCHIPELAGO_PARCEL_SIZE
+      description: Size of parcels in meters (default 16)
+      affects: Coordinate calculations
+
+    - name: CHECK_HEARTBEAT_INTERVAL
+      description: Interval to check for peer heartbeats (in milliseconds)
+      affects: Peer disconnect detection timing
+
+    - name: ARCHIPELAGO_STATUS_UPDATE_INTERVAL
+      description: Interval for status updates (in milliseconds)
+      affects: Status reporting frequency
+
+    - name: HTTP_SERVER_PORT
+      description: HTTP server port (different for each service - core:5000, ws-connector:5001, stats:5002)
+      affects: Service endpoint accessibility
+
+    - name: CONTENT_URL
+      description: Catalyst content server URL for fetching scene entities (stats service only)
+      affects: Hot scenes data retrieval
 
 adrs:
   - id: ADR-204

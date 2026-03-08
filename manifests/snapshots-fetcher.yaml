@@ -1,13 +1,16 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: snapshots-fetcher
   display_name: "@dcl/snapshots-fetcher"
   description: Component library for fetching and synchronizing entity snapshots from Catalyst content servers. Downloads entity deployments with their content files, supports incremental snapshot synchronization, and provides resilient fetching with retry logic and queue management.
-  team: core
+  owner: core-engineering
   repository: https://github.com/decentraland/snapshots-fetcher
   language: typescript
   layer: shared-library
+  role:
+    - library
+  data_domain: []
 
 domain:
   glossary:
@@ -128,6 +131,7 @@ dependencies:
   services:
     - name: catalyst
       relationship: sync
+      protocol: HTTP
       purpose: Fetch entity snapshots, pointer-changes stream, and download entity content files
       critical: true
 
@@ -149,31 +153,4 @@ dependencies:
       type: other
 
 configuration:
-  key_env_vars:
-    - name: fromTimestamp
-      description: Starting timestamp for snapshot and pointer-changes synchronization
-      affects: Determines which historical entities to fetch during bootstrap
-
-    - name: pointerChangesWaitTime
-      description: Polling interval for pointer-changes endpoint (0 disables polling)
-      affects: Real-time incremental update frequency after bootstrap
-
-    - name: concurrency
-      description: Maximum concurrent download jobs in the queue
-      affects: Download throughput and server load
-
-    - name: requestMaxRetries
-      description: Maximum number of retry attempts for failed HTTP requests
-      affects: Resilience to temporary network failures
-
-    - name: requestRetryWaitTime
-      description: Base wait time between retry attempts
-      affects: Retry backoff timing
-
-    - name: tmpDownloadFolder
-      description: Temporary folder for downloading snapshot files
-      affects: Location for intermediate snapshot storage
-
-    - name: deleteSnapshotAfterUsage
-      description: Whether to delete snapshot files after processing (default true)
-      affects: Disk space management
+  key_env_vars: []

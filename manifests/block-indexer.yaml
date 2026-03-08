@@ -1,13 +1,16 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: block-indexer
   display_name: Block Indexer Library
   description: TypeScript component library that finds the blockchain block that was at the tip of the blockchain at a given timestamp. Provides efficient timestamp-to-block-number lookup with caching for Ethereum and other EVM-compatible chains, essential for historical queries and timestamp-based content validation.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/block-indexer
   language: typescript
   layer: Shared Libraries
+  role:
+    - library
+  data_domain: []
   ai-agent-context: ""
 
 domain:

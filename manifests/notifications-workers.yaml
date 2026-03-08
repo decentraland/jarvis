@@ -1,13 +1,18 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: notifications-workers
   display_name: Notifications Workers
   description: Manages user notifications across the Decentraland platform. Split into Processor and Inbox workers for scalability. Handles notification production, storage, delivery via Server-Sent Events, and email notifications via SendGrid.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/notifications-workers
   language: typescript
   layer: feature-servers
+  role:
+    - worker
+  data_domain:
+    - notifications
+    - subscriptions
   ai-agent-context: https://github.com/decentraland/notifications-workers/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -62,6 +67,7 @@ dependencies:
   services:
     - name: events-notifier
       relationship: async
+      protocol: SNS/SQS
       purpose: Receives notification events
       critical: true
 
@@ -69,11 +75,17 @@ dependencies:
     - name: PostgreSQL
       purpose: Notification storage, subscriptions
       type: storage
-    - name: AWS SNS
-      purpose: Notification event source
+
+    - name: AWS SQS
+      purpose: Consumes notification events
       type: messaging
+
     - name: SendGrid
       purpose: Email delivery
+      type: api
+
+    - name: Cloudflare Turnstile
+      purpose: Challenge verification for anti-spam
       type: api
 
 events:
@@ -86,6 +98,142 @@ events:
 
 configuration:
   key_env_vars:
+    - name: HTTP_SERVER_PORT
+      description: Port on which the HTTP server listens
+      affects: Service availability and routing
+
+    - name: HTTP_SERVER_HOST
+      description: Host address for the HTTP server
+      affects: Service network binding
+
+    - name: ENV
+      description: Environment name (affects email rendering and behavior)
+      affects: Environment-specific configuration
+
+    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
+      description: PostgreSQL connection string (alternative to individual components)
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_USER
+      description: PostgreSQL user
+      affects: Database authentication
+
+    - name: PG_COMPONENT_PSQL_DATABASE
+      description: PostgreSQL database name
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_PORT
+      description: PostgreSQL port
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_HOST
+      description: PostgreSQL host
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_PASSWORD
+      description: PostgreSQL password
+      affects: Database authentication
+
+    - name: CDN_URL
+      description: CDN URL for notification assets
+      affects: Asset URLs in notifications
+
+    - name: MARKETPLACE_BASE_URL
+      description: Marketplace URL for notification links
+      affects: Marketplace notification links
+
+    - name: ACCOUNT_BASE_URL
+      description: Decentraland account URL for email links
+      affects: Email notification links
+
+    - name: SIGNING_KEY
+      description: Key for signing email unsubscribe tokens and notification links
+      affects: Email security and token validation
+
+    - name: SERVICE_BASE_URL
+      description: Base URL for this notification service
+      affects: Self-referencing URLs in notifications
+
+    - name: AWS_SQS_ENDPOINT
+      description: AWS SQS endpoint for queue consumption
+      affects: Event consumption
+
+    - name: AWS_SNS_ARN
+      description: AWS SNS topic ARN for event publishing (processor)
+      affects: Event publishing
+
+    - name: AWS_SNS_ENDPOINT
+      description: Optional AWS SNS endpoint for local development
+      affects: SNS client configuration
+
+    - name: SENDGRID_API_URL
+      description: SendGrid API URL for email delivery
+      affects: Email service connection
+
     - name: SENDGRID_API_KEY
-      description: SendGrid API key for email delivery
-      affects: Email notification capability
+      description: SendGrid API key for authentication
+      affects: Email delivery
+
+    - name: SENDGRID_EMAIL_FROM
+      description: Sender email address for notifications
+      affects: Email sender identity
+
+    - name: SENDGRID_EMAIL_TEMPLATE_ID
+      description: SendGrid template ID for notification emails
+      affects: Email template selection
+
+    - name: SENDGRID_SANDBOX_MODE
+      description: Enable SendGrid sandbox mode for testing (optional)
+      affects: Email delivery in testing
+
+    - name: CATALYST_LAMBDAS_URL
+      description: Catalyst lambdas URL for content data
+      affects: Content fetching for notifications
+
+    - name: DWH_API_URL
+      description: Data Warehouse API URL for analytics
+      affects: Analytics integration
+
+    - name: DWH_TOKEN
+      description: Data Warehouse API authentication token
+      affects: Analytics security
+
+    - name: NETWORK
+      description: Blockchain network (mainnet/testnet)
+      affects: Blockchain data source selection
+
+    - name: MARKETPLACE_SUBGRAPH_URL
+      description: Marketplace subgraph URL for marketplace events
+      affects: Marketplace data querying
+
+    - name: COLLECTIONS_L2_SUBGRAPH_URL
+      description: Collections L2 subgraph URL for collection data
+      affects: Collection data querying
+
+    - name: RENTALS_SUBGRAPH_URL
+      description: Rentals subgraph URL for rental events
+      affects: Rental data querying
+
+    - name: LAND_MANAGER_SUBGRAPH_URL
+      description: Land Manager subgraph URL for land management events
+      affects: Land management data querying
+
+    - name: NOTIFICATION_SERVICE_TOKEN
+      description: Token for internal service authentication
+      affects: Service-to-service security
+
+    - name: CLOUDFLARE_SECRET
+      description: Cloudflare secret for challenge validation
+      affects: Challenge verification security
+
+    - name: CLOUDFLARE_CHALLENGE_URL
+      description: Cloudflare Turnstile challenge URL for verification
+      affects: Anti-spam protection
+
+    - name: COMMIT_HASH
+      description: Current commit hash for version tracking
+      affects: Service status reporting
+
+    - name: CURRENT_VERSION
+      description: Current version for version tracking
+      affects: Service status reporting

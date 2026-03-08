@@ -1,13 +1,19 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: worlds-content-server
   display_name: Worlds Content Server
   description: Content server specifically for Decentraland Worlds (named scenes). Enables deployment and retrieval of world scenes identified by DCL names rather than parcel coordinates. Supports global portable experiences and single-scene loading.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/worlds-content-server
   language: typescript
   layer: content
+  role:
+    - content
+    - storage
+  data_domain:
+    - worlds
+    - world-permissions
   ai-agent-context: https://github.com/decentraland/worlds-content-server/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -75,7 +81,24 @@ db:
   schema_url: https://github.com/decentraland/worlds-content-server/blob/main/docs/database-schemas.md
 
 dependencies:
-  services: []
+  services:
+    - name: social-service-ea
+      relationship: sync
+      protocol: HTTP
+      purpose: Validates community membership for world access control
+      critical: false
+
+    - name: comms-gatekeeper
+      relationship: sync
+      protocol: HTTP
+      purpose: Checks if users are banned from specific scenes in worlds
+      critical: false
+
+    - name: notifications-workers
+      relationship: sync
+      protocol: HTTP
+      purpose: Sends notifications to users (optional)
+      critical: false
 
   external:
     - name: PostgreSQL
@@ -101,10 +124,82 @@ events:
 
 configuration:
   key_env_vars:
-    - name: STORAGE_ROOT_FOLDER
+    - name: STORAGE_FOLDER
       description: Root directory for local content storage
       affects: Content storage location
 
-    - name: DCL_NAMES_PROVIDER
-      description: Provider for DCL name ownership validation
-      affects: Deployment authorization
+    - name: BUCKET
+      description: AWS S3 bucket for content storage (alternative to local storage)
+      affects: Content storage backend
+
+    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
+      description: PostgreSQL connection string for world metadata database
+      affects: Database connectivity
+
+    - name: RPC_URL
+      description: Ethereum RPC endpoint for blockchain queries
+      affects: DCL name ownership validation
+
+    - name: MARKETPLACE_SUBGRAPH_URL
+      description: The Graph subgraph URL for marketplace data
+      affects: NFT and collection queries
+
+    - name: SOCIAL_SERVICE_URL
+      description: URL for social-service-ea API
+      affects: Community membership validation
+
+    - name: SOCIAL_SERVICE_API_KEY
+      description: API key for authenticating with social-service-ea
+      affects: Community membership validation
+
+    - name: COMMS_GATEKEEPER_URL
+      description: URL for comms-gatekeeper service
+      affects: User ban status checks
+
+    - name: COMMS_GATEKEEPER_AUTH_TOKEN
+      description: Authentication token for comms-gatekeeper
+      affects: User ban status checks
+
+    - name: LIVEKIT_HOST
+      description: LiveKit server hostname for comms
+      affects: Real-time communication
+
+    - name: LIVEKIT_API_KEY
+      description: LiveKit API key
+      affects: LiveKit room creation
+
+    - name: LIVEKIT_API_SECRET
+      description: LiveKit API secret
+      affects: LiveKit authentication
+
+    - name: NATS_URL
+      description: NATS server URL for pub/sub messaging
+      affects: Event publishing to WebSocket connector
+
+    - name: REDIS_HOST
+      description: Redis connection string for rate limiting
+      affects: Shared secret rate limiting
+
+    - name: NAME_VALIDATOR
+      description: Name validation strategy (DCL_NAME_CHECKER or ON_CHAIN_DCL_NAME_CHECKER)
+      affects: DCL name ownership validation method
+
+    - name: WHITELIST_URL
+      description: URL for worlds whitelist configuration
+      affects: Deployment restrictions
+
+    - name: DENYLIST_JSON_URL
+      description: URL for name denylist configuration
+      affects: Name validation
+
+    - name: AWS_SNS_ARN
+      description: SNS topic ARN for publishing world events
+      affects: Event publishing
+
+    - name: AWS_SQS_QUEUE_URL
+      description: SQS queue URL for consuming events
+      affects: Event consumption
+
+    - name: SCENE_EVICTION_TTL_MS
+      description: Time to keep undeployed scenes before deletion (ms)
+      affects: Scene lifecycle management

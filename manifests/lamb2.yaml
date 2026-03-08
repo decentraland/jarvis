@@ -1,13 +1,16 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: lamb2
   display_name: Lambdas v2
   description: Provides utility APIs for Decentraland clients to interact with Catalyst Content Servers. Replaces the legacy lambdas service with improved architecture, offering entity resolution, ownership validation, asset queries, and client helper functions.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/lamb2
   language: typescript
   layer: content
+  role:
+    - gateway
+  data_domain: []
   ai-agent-context: https://github.com/decentraland/lamb2/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -34,8 +37,15 @@ dependencies:
   services:
     - name: catalyst
       relationship: sync
-      purpose: Fetches entity data
+      protocol: HTTP
+      purpose: Fetches entity data from content server
       critical: true
+
+    - name: archipelago-workers
+      relationship: sync
+      protocol: HTTP
+      purpose: Status and realm information
+      critical: false
 
   external:
     - name: The Graph
@@ -48,6 +58,54 @@ events:
 
 configuration:
   key_env_vars:
-    - name: CATALYST_URL
+    - name: CONTENT_URL
       description: Catalyst content server URL
       affects: Entity data source
+
+    - name: LAMBDAS_URL
+      description: Legacy lambdas URL for fallback
+      affects: Service routing
+
+    - name: ARCHIPELAGO_URL
+      description: Archipelago service URL for realm info
+      affects: Realm status and user counts
+
+    - name: MARKETPLACE_API_URL
+      description: Marketplace API URL for NFT data
+      affects: NFT queries and marketplace integration
+
+    - name: ETH_NETWORK
+      description: Ethereum network (mainnet or sepolia)
+      affects: Blockchain data source
+
+    - name: NFT_WORKER_BASE_URL
+      description: NFT worker service URL
+      affects: NFT metadata resolution
+
+    - name: COLLECTIONS_L1_SUBGRAPH_URL
+      description: Layer 1 collections subgraph URL
+      affects: On-chain collection queries
+
+    - name: COLLECTIONS_L2_SUBGRAPH_URL
+      description: Layer 2 collections subgraph URL
+      affects: Polygon collection queries
+
+    - name: ENS_OWNER_PROVIDER_URL
+      description: ENS ownership subgraph URL
+      affects: Name ownership validation
+
+    - name: THIRD_PARTY_REGISTRY_SUBGRAPH_URL
+      description: Third-party wearables registry subgraph URL
+      affects: Third-party item validation
+
+    - name: LAND_SUBGRAPH_URL
+      description: LAND ownership subgraph URL
+      affects: LAND ownership queries
+
+    - name: REALM_NAME
+      description: Name of the realm for /about endpoint
+      affects: Realm identification
+
+    - name: MAX_USERS
+      description: Maximum users for the realm
+      affects: Realm capacity reporting

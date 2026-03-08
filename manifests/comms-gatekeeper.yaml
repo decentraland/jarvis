@@ -1,13 +1,21 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: comms-gatekeeper
   display_name: Comms Gatekeeper
   description: Acts as the guardian of LiveKit tokens within Decentraland's communication architecture. Processes signed fetch requests from clients and generates tokens that grant access to LiveKit rooms dedicated to specific scenes or worlds. Manages scene administration, streaming access, voice chat, and user moderation.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/comms-gatekeeper
   language: typescript
   layer: real-time
+  role:
+    - auth
+    - gateway
+  data_domain:
+    - scene-administration
+    - streaming-access
+    - scene-bans
+    - voice-chat
   ai-agent-context: https://github.com/decentraland/comms-gatekeeper/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -132,23 +140,33 @@ dependencies:
   services:
     - name: catalyst
       relationship: sync
-      purpose: Fetches scene metadata and validates scene entities
+      protocol: HTTP
+      purpose: Fetches scene metadata from content server and validates DCL name ownership via Lambdas
+      critical: true
+
+    - name: worlds-content-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetches world permissions, scene data, and validates world access controls
       critical: true
 
     - name: places-api
       relationship: sync
-      purpose: Enriches scene information with place metadata
+      protocol: HTTP
+      purpose: Enriches scene and world information with place metadata and status
       critical: false
 
     - name: social-service-ea
       relationship: sync
-      purpose: Retrieves user relationships and social data
+      protocol: HTTP
+      purpose: Retrieves user privacy settings for voice chat and communication
       critical: false
 
-    - name: comms-message-sfu
+    - name: notifications-workers
       relationship: sync
-      purpose: LiveKit room management and message routing
-      critical: true
+      protocol: HTTP
+      purpose: Sends notifications to scene admins for streaming and moderation events
+      critical: false
 
   external:
     - name: PostgreSQL
@@ -177,21 +195,89 @@ events:
 
 configuration:
   key_env_vars:
-    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
-      description: PostgreSQL connection string for gatekeeper data
-      affects: Data persistence and query performance
+    - name: PG_COMPONENT_PSQL_HOST
+      description: PostgreSQL host for gatekeeper database
+      affects: Database connectivity
 
-    - name: LIVEKIT_HOST
-      description: LiveKit server host URL
-      affects: Token generation and room connectivity
+    - name: PG_COMPONENT_PSQL_DATABASE
+      description: PostgreSQL database name
+      affects: Database selection
 
-    - name: LIVEKIT_API_KEY
-      description: LiveKit API key for token generation
-      affects: Security and authentication
+    - name: PROD_LIVEKIT_HOST
+      description: Production LiveKit server host URL
+      affects: Token generation for production environments
 
-    - name: TOKEN_TTL
-      description: Time-to-live for generated LiveKit tokens in seconds
-      affects: Security and session management
+    - name: PROD_LIVEKIT_API_KEY
+      description: Production LiveKit API key
+      affects: Production token generation
+
+    - name: PROD_LIVEKIT_API_SECRET
+      description: Production LiveKit API secret
+      affects: Production token signing
+
+    - name: PREVIEW_LIVEKIT_HOST
+      description: Preview/staging LiveKit server host URL
+      affects: Token generation for preview environments
+
+    - name: WORLD_CONTENT_URL
+      description: URL for worlds-content-server API
+      affects: World permissions and scene data retrieval
+
+    - name: CATALYST_CONTENT_URL
+      description: URL for Catalyst content server
+      affects: Scene entity metadata retrieval
+
+    - name: PLACES_API_URL
+      description: URL for Places API
+      affects: Place metadata and status retrieval
+
+    - name: SOCIAL_SERVICE_URL
+      description: URL for social-service-ea API
+      affects: User privacy settings retrieval
+
+    - name: NOTIFICATION_SERVICE_URL
+      description: URL for notifications service
+      affects: Sending notifications to scene admins
+
+    - name: NOTIFICATION_SERVICE_TOKEN
+      description: Authentication token for notifications service
+      affects: Notification delivery authorization
+
+    - name: LAMBDAS_URL
+      description: Catalyst Lambdas URL for DCL name ownership validation
+      affects: World ownership verification
+
+    - name: DENYLIST_JSON_URL
+      description: URL for denylist configuration
+      affects: User and address filtering
+
+    - name: COMMS_GATEKEEPER_AUTH_TOKEN
+      description: Service-to-service authentication token
+      affects: Inbound service authentication
+
+    - name: AWS_SNS_ARN
+      description: SNS topic ARN for event publishing
+      affects: Event notification delivery
+
+    - name: VOICE_CHAT_CONNECTION_INTERRUPTED_TTL
+      description: Voice chat connection interrupted TTL in milliseconds
+      affects: Session expiration for interrupted connections
+
+    - name: VOICE_CHAT_INITIAL_CONNECTION_TTL
+      description: Voice chat initial connection TTL in milliseconds
+      affects: Session expiration for new connections
+
+    - name: COMMUNITY_VOICE_CHAT_NO_MODERATOR_TTL
+      description: Community voice chat timeout when no moderator present (ms)
+      affects: Moderation enforcement
+
+    - name: COMMS_ROOM_PREFIX
+      description: Prefix for LiveKit room names
+      affects: Room naming convention
+
+    - name: AUTHORITATIVE_SERVER_ADDRESS
+      description: Public address for signed-fetch validation
+      affects: ADR-44 authentication validation
 
 adrs:
   - id: ADR-44

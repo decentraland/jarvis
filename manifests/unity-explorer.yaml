@@ -1,0 +1,266 @@
+schema_version: "1.1"
+
+service:
+  name: unity-explorer
+  display_name: Unity Explorer
+  description: Official desktop client implementation for Decentraland 2.0, allowing users to explore and interact with the Decentraland metaverse using Unity. Delivers enhanced performance, immersive graphics, and improved user experience compared to web-based clients.
+  owner: game-technology
+  repository: https://github.com/decentraland/unity-explorer
+  language: csharp
+  layer: client
+  role:
+    - client
+  data_domain: []
+  ai-agent-context: https://github.com/decentraland/unity-explorer/blob/main/docs/README.md
+
+domain:
+  glossary:
+    - term: Scene Runtime
+      definition: JavaScript execution environment using ClearScript (V8 wrapper) that runs SDK7 scenes in separate threads for optimal performance
+      examples:
+        - "Each JavaScript scene is reflected onto an individual ECS World with its own thread-pool execution"
+
+    - term: ECS World
+      definition: Isolated collection of systems and entities in Unity's Entity Component System architecture. Global world handles realm/player/camera, while scene worlds handle individual JavaScript scenes
+      not_to_be_confused_with: "JavaScript scene - the user-created content that runs inside a scene world"
+
+    - term: Plugin System
+      definition: Modular architecture component that encapsulates unique dependencies and ECS systems, organized in global (single instance) and world (per-scene) scopes
+      examples:
+        - "Global plugins handle camera, characters, comms"
+        - "World plugins handle scene-specific systems"
+
+    - term: CRDT
+      definition: Conflict-free Replicated Data Type messages exchanged between Explorer and Scene Runtime to synchronize entities and components between Unity and JavaScript
+      examples:
+        - "Scene modifies entity in JS, CRDT message syncs to Unity ECS"
+
+    - term: Realm
+      definition: Connected server environment that provides content, lambdas, and communication infrastructure for a Decentraland instance
+      examples:
+        - "Genesis City realm at peer.decentraland.org"
+        - "Custom realm for local scene development"
+
+    - term: Asset Bundle
+      definition: Optimized Unity asset packages loaded from asset-bundle-registry containing processed 3D models, textures, and other content
+      not_to_be_confused_with: "Raw content from Catalyst - asset bundles are processed versions"
+
+    - term: Addressables
+      definition: Unity's asset management system used for lazy-loading and memory-efficient asset delivery throughout the application
+      examples:
+        - "Plugin settings reference assets via AssetReferenceT"
+        - "Contextual assets load only when needed"
+
+  concept_relationships:
+    internal:
+      - from: Scene Runtime
+        to: ECS World
+        relationship: belongs_to
+        description: Each Scene Runtime instance operates within its own ECS World for isolation
+
+      - from: Plugin
+        to: ECS World
+        relationship: injects_into
+        description: Plugins inject systems into ECS Worlds based on their scope (global or per-scene)
+
+      - from: Asset Bundle
+        to: Addressables
+        relationship: loaded_via
+        description: Asset bundles are loaded and managed through Unity's Addressables system
+
+    cross_service:
+      - local_concept: Realm
+        remote_service: realm-provider
+        remote_concept: Realm
+        mapping_type: references
+        description: Unity Explorer connects to realms provided by realm-provider to access Decentraland infrastructure
+
+      - local_concept: Scene Runtime
+        remote_service: catalyst
+        remote_concept: Scene Entity
+        mapping_type: executes
+        description: Scene Runtime downloads and executes scene code deployed to Catalyst
+
+      - local_concept: Asset Bundle
+        remote_service: asset-bundle-registry
+        remote_concept: Processed Entity
+        mapping_type: consumes
+        description: Unity Explorer consumes pre-processed asset bundles from the registry for optimal performance
+
+  invariants:
+    - rule: Scene Runtime must execute in separate threads, never on Unity's main thread
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Each scene must have its own isolated ECS World - cross-world entity references are forbidden
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Systems must be allocation-free in their Update methods to maintain performance
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Structural changes in ECS queries must happen last - refs are invalidated by archetype moves
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Render and display Decentraland metaverse on desktop platforms (Windows, macOS)
+    - Execute SDK7 JavaScript scenes in isolated V8 runtime environments
+    - Manage user avatar, movement, and interactions within the metaverse
+    - Connect to LiveKit for real-time peer-to-peer communications (voice, chat, positions)
+    - Load and display 3D content from asset bundles with LOD optimization
+    - Authenticate users via MetaMask and Web3 wallet integration
+    - Provide UI for social features (friends, communities, chat, notifications)
+    - Implement gameplay features (badges, quests, daily rewards)
+    - Manage realm connections and scene lifecycle
+    - Render procedurally-generated landscapes for undeveloped parcels
+
+  out_of_scope:
+    - Content authoring and deployment (handled by Creator Hub and worlds-content-server)
+    - Asset bundle conversion (handled by asset-bundle-converter)
+    - Social graph storage (handled by social-service-ea)
+    - Content hosting and distribution (handled by Catalyst and worlds-content-server)
+    - Authentication token generation (handled by auth-server)
+    - World permissions management (handled by worlds-content-server)
+
+  owned_entities: []
+
+api:
+  openapi_url: null
+
+db:
+  schema_url: null
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch scene entities, content, profiles, and lambdas for Decentraland Genesis City
+      critical: true
+
+    - name: worlds-content-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch world entities, permissions, and content for Decentraland Worlds
+      critical: true
+
+    - name: asset-bundle-registry
+      relationship: sync
+      protocol: HTTP
+      purpose: Retrieve pre-processed asset bundles, profiles, and entity metadata for optimized content loading
+      critical: true
+
+    - name: realm-provider
+      relationship: sync
+      protocol: HTTP
+      purpose: Discover available realms and obtain Genesis City realm configuration
+      critical: true
+
+    - name: social-service-ea
+      relationship: both
+      protocol: WebSocket
+      purpose: Manage friends, communities, social interactions, and user profiles via WebSocket RPC
+      critical: true
+
+    - name: archipelago-workers
+      relationship: both
+      protocol: WebSocket
+      purpose: Connect to archipelago for peer clustering, island assignment, and peer status tracking
+      critical: false
+
+    - name: comms-gatekeeper
+      relationship: sync
+      protocol: HTTP
+      purpose: Obtain scene and room adapter configuration for LiveKit communications
+      critical: true
+
+    - name: badges
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch user badges and achievements
+      critical: false
+
+    - name: camera-reel-service
+      relationship: sync
+      protocol: HTTP
+      purpose: Upload screenshots and fetch camera reel data for social sharing
+      critical: false
+
+    - name: auth-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Authenticate users and obtain session tokens via Dapp Web3 authentication
+      critical: true
+
+    - name: marketplace-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Access NFT marketplace data and user inventory
+      critical: false
+
+    - name: notifications-workers
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch user notifications and alerts
+      critical: false
+
+    - name: credits-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch marketplace credits and transaction data
+      critical: false
+
+    - name: events-notifier
+      relationship: sync
+      protocol: HTTP
+      purpose: Retrieve Decentraland events data for events calendar
+      critical: false
+
+  external:
+    - name: LiveKit
+      purpose: Real-time WebRTC-based communication for voice chat, positions, chat messages, and emotes
+      type: other
+
+    - name: MetaMask/Web3 Wallet
+      purpose: User authentication and blockchain interactions
+      type: other
+
+    - name: Unity Engine
+      purpose: Game engine runtime (Unity 6000.2.6f2)
+      type: other
+
+    - name: ClearScript V8
+      purpose: JavaScript execution engine for SDK7 scene runtime
+      type: other
+
+    - name: Builder API
+      purpose: Fetch builder collections and content
+      type: api
+
+    - name: Places API
+      purpose: Query places, worlds, and destinations for navigation
+      type: api
+
+    - name: Transactions API
+      purpose: Submit meta-transactions for blockchain operations
+      type: api
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags:
+    - name: ASSET_BUNDLE_FALLBACK
+      description: When enabled, uses asset-bundle-registry for entity resolution instead of direct Catalyst access
+      default: enabled
+
+  key_env_vars: []
+
+adrs:
+  - id: ADR-117
+    title: CRDT Protocol
+    url: https://adr.decentraland.org/adr/ADR-117
+    relevance: Defines CRDT message format for Unity-JavaScript scene synchronization

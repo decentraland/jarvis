@@ -1,13 +1,19 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: referral
   display_name: Reward Services
   description: Comprehensive reward and campaign management system for the Decentraland ecosystem that enables creation of reward campaigns, distribution of NFTs and tokens, management of referral codes, blockchain transaction handling, and tracking of user referrals with support for multiple blockchain networks (Ethereum, Polygon).
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/referral
   language: typescript
   layer: Feature Servers Layer
+  role:
+    - gateway
+  data_domain:
+    - campaigns
+    - rewards
+    - referrals
   ai-agent-context: ""
 
 domain:
@@ -145,7 +151,7 @@ domain:
       enforced_at: domain_layer
       severity: hard
     
-    - rule: Rewards must transition through states: assigned -> sending -> success/rejected
+    - rule: Rewards must transition through states (assigned, sending, success, or rejected)
       enforced_at: domain_layer
       severity: hard
 
@@ -227,11 +233,13 @@ dependencies:
   services:
     - name: catalyst
       relationship: sync
+      protocol: HTTP
       purpose: Fetch wearable metadata and NFT collection information
       critical: false
     
     - name: archipelago-workers
       relationship: sync
+      protocol: HTTP
       purpose: Validate user realm connectivity and position requirements
       critical: false
 
@@ -305,9 +313,13 @@ configuration:
       description: PostgreSQL database connection string
       affects: Database connectivity and all data operations
     
-    - name: AWS_WALLET_SECRET_ID
-      description: AWS Secrets Manager secret ID containing half of wallet private keys
-      affects: Campaign wallet security and transaction signing
+    - name: GATSBY_SITE_URL
+      description: Frontend API endpoint URL for connecting to the backend API
+      affects: Frontend-backend communication
+    
+    - name: GATSBY_CHAIN_ID
+      description: Comma-separated list of blockchain network IDs (e.g., 1,137 for Ethereum and Polygon)
+      affects: Blockchain network selection and validation
     
     - name: AWS_PROFILE
       description: AWS profile for S3, Secrets Manager, and SNS access
@@ -317,12 +329,56 @@ configuration:
       description: Custom endpoint for AWS services (used with LocalStack for development)
       affects: AWS service routing for local development
     
+    - name: AWS_WALLET_SECRET_ID
+      description: AWS Secrets Manager secret ID containing half of wallet private keys
+      affects: Campaign wallet security and transaction signing
+    
+    - name: CAMPAIGN_WALLET_SECRET
+      description: Secret for creating local wallets when AWS Secrets Manager is not available
+      affects: Local wallet creation
+    
     - name: ASSETS_BUCKET_NAME
-      description: S3 bucket name for captcha images
-      affects: Anti-bot captcha functionality
+      description: S3 bucket name for captcha images and assets
+      affects: Anti-bot captcha functionality and asset storage
     
     - name: AWS_SNS_ARN
       description: SNS topic ARN for publishing notification events
       affects: Event notification delivery
+    
+    - name: CAMPAIGN_KEY_SECRET
+      description: Secret key for signing campaign keys
+      affects: Campaign key security
+    
+    - name: BANK_PRIVATE_KEY
+      description: Deprecated - Signer private key for L1 wearables
+      affects: Legacy wearable signing
+    
+    - name: INITIAL_BLOCK_NUMBER
+      description: Starting block number for blockchain indexing (default 'latest')
+      affects: Blockchain event scanning
+    
+    - name: BICONOMY_API_URL
+      description: Deprecated - Biconomy API endpoint for gasless transactions
+      affects: Legacy gasless transaction support
+    
+    - name: BICONOMY_API_CHAIN_ID
+      description: Deprecated - Biconomy chain ID
+      affects: Legacy gasless transaction network
+    
+    - name: BICONOMY_API_KEY
+      description: Deprecated - Biconomy API authentication key
+      affects: Legacy gasless transaction authentication
+    
+    - name: BICONOMY_API_ID
+      description: Deprecated - Biconomy API ID
+      affects: Legacy gasless transaction identification
+    
+    - name: NOTIFICATION_SERVICE_URL
+      description: Notification service URL for sending reward notifications
+      affects: Notification delivery
+    
+    - name: NOTIFICATION_SERVICE_TOKEN
+      description: Authentication token for notification service
+      affects: Notification service security
 
 adrs: []

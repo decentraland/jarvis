@@ -1,13 +1,18 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: marketplace-server
   display_name: Marketplace Server
   description: Provides comprehensive marketplace APIs for the Decentraland Marketplace. Enables browsing, searching, and interacting with NFTs (wearables, emotes, LAND, estates, ENS names), managing trades and orders, and accessing marketplace analytics.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/marketplace-server
   language: typescript
   layer: feature-servers
+  role:
+    - gateway
+  data_domain:
+    - trades
+    - favorites
   ai-agent-context: https://github.com/decentraland/marketplace-server/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -75,23 +80,45 @@ db:
   schema_url: https://github.com/decentraland/marketplace-server/blob/main/docs/database-schema.md
 
 dependencies:
-  services: []
+  services:
+    - name: signatures-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Third-party signature validation service
+      critical: false
+
   external:
     - name: PostgreSQL
-      purpose: Trades, favorites, Squid indexer data
+      purpose: Trades, favorites, marketplace data (with FDW to builder and dapps DBs)
       type: storage
+
     - name: Redis
       purpose: Caching with memory fallback
       type: storage
+
     - name: Squid Indexer
       purpose: On-chain marketplace data
       type: api
+
     - name: The Graph
-      purpose: Rentals subgraph for LAND
+      purpose: Rentals subgraph for LAND rentals data
       type: api
+
     - name: AWS SNS
       purpose: Trade and marketplace event publishing
       type: messaging
+
+    - name: Wert
+      purpose: Fiat-to-crypto payment gateway
+      type: api
+
+    - name: Transak
+      purpose: Fiat-to-crypto payment gateway
+      type: api
+
+    - name: Segment
+      purpose: Analytics tracking
+      type: other
 
 events:
   publishes:
@@ -107,9 +134,213 @@ events:
 
 configuration:
   key_env_vars:
-    - name: SQUID_URL
-      description: Squid indexer endpoint
-      affects: Marketplace data source
+    - name: HTTP_SERVER_PORT
+      description: Port on which the HTTP server listens
+      affects: Service availability and routing
+
+    - name: HTTP_SERVER_HOST
+      description: Host address for the HTTP server
+      affects: Service network binding
+
+    - name: CORS_ORIGIN
+      description: Allowed CORS origins
+      affects: Cross-origin request security
+
+    - name: CORS_METHODS
+      description: Allowed CORS methods
+      affects: Cross-origin request handling
+
+    - name: WKC_METRICS_RESET_AT_NIGHT
+      description: Whether to reset metrics at 00:00 UTC (default false)
+      affects: Metrics collection behavior
+
+    - name: DCL_LISTS_SERVER
+      description: DCL Lists server URL for list management
+      affects: List service integration
+
+    - name: FAVORITES_PG_COMPONENT_PSQL_USER
+      description: PostgreSQL user for favorites database
+      affects: Favorites database authentication
+
+    - name: FAVORITES_PG_COMPONENT_PSQL_PASSWORD
+      description: PostgreSQL password for favorites database
+      affects: Favorites database authentication
+
+    - name: FAVORITES_PG_COMPONENT_PSQL_SCHEMA
+      description: PostgreSQL schema for favorites database
+      affects: Favorites database schema selection
+
+    - name: FAVORITES_PG_COMPONENT_PSQL_HOST
+      description: PostgreSQL host for favorites database
+      affects: Favorites database connection
+
+    - name: FAVORITES_PG_COMPONENT_PSQL_PORT
+      description: PostgreSQL port for favorites database
+      affects: Favorites database connection
+
+    - name: FAVORITES_PG_COMPONENT_PSQL_DATABASE
+      description: PostgreSQL database name for favorites
+      affects: Favorites database connection
+
+    - name: PG_COMPONENT_PSQL_USER
+      description: PostgreSQL user for marketplace database
+      affects: Database authentication
+
+    - name: PG_COMPONENT_PSQL_PORT
+      description: PostgreSQL port
+      affects: Database connection
+
+    - name: DAPPS_PG_COMPONENT_PSQL_USER
+      description: PostgreSQL user for dApps database FDW
+      affects: Cross-database queries
+
+    - name: DAPPS_PG_COMPONENT_PSQL_PASSWORD
+      description: PostgreSQL password for dApps database
+      affects: Cross-database authentication
+
+    - name: DAPPS_PG_COMPONENT_PSQL_SCHEMA
+      description: PostgreSQL schema for dApps database
+      affects: Cross-database schema selection
+
+    - name: DAPPS_PG_COMPONENT_PSQL_HOST
+      description: PostgreSQL host for dApps database
+      affects: Cross-database connection
+
+    - name: DAPPS_PG_COMPONENT_PSQL_PORT
+      description: PostgreSQL port for dApps database
+      affects: Cross-database connection
+
+    - name: DAPPS_PG_COMPONENT_PSQL_DATABASE
+      description: PostgreSQL database name for dApps
+      affects: Cross-database connection
+
+    - name: DAPPS_READ_PG_COMPONENT_PSQL_USER
+      description: PostgreSQL user for read-only dApps database access
+      affects: Read-only cross-database queries
+
+    - name: DAPPS_READ_PG_COMPONENT_PSQL_PASSWORD
+      description: PostgreSQL password for read-only dApps database
+      affects: Read-only cross-database authentication
+
+    - name: DAPPS_READ_PG_COMPONENT_PSQL_SCHEMA
+      description: PostgreSQL schema for read-only dApps database
+      affects: Read-only cross-database schema selection
+
+    - name: DAPPS_READ_PG_COMPONENT_PSQL_HOST
+      description: PostgreSQL host for read-only dApps database
+      affects: Read-only cross-database connection
+
+    - name: DAPPS_READ_PG_COMPONENT_PSQL_PORT
+      description: PostgreSQL port for read-only dApps database
+      affects: Read-only cross-database connection
+
+    - name: DAPPS_READ_PG_COMPONENT_PSQL_DATABASE
+      description: PostgreSQL database name for read-only dApps
+      affects: Read-only cross-database connection
+
+    - name: BUILDER_SERVER_DB_HOST
+      description: Builder server database host for FDW
+      affects: Cross-database queries to builder data
+
+    - name: BUILDER_SERVER_DB_PORT
+      description: Builder server database port for FDW
+      affects: Cross-database connection
+
+    - name: BUILDER_SERVER_DB_USER
+      description: Builder server database user for FDW
+      affects: Cross-database authentication
+
+    - name: BUILDER_SERVER_DB_PASSWORD
+      description: Builder server database password for FDW
+      affects: Cross-database authentication
+
+    - name: ETHEREUM_CHAIN_ID
+      description: Ethereum chain ID for contract identification
+      affects: Blockchain network selection
+
+    - name: POLYGON_CHAIN_ID
+      description: Polygon chain ID for contract identification
+      affects: Blockchain network selection
+
+    - name: SNAPSHOT_URL
+      description: Snapshot voting API URL
+      affects: DAO voting integration
+
+    - name: SNAPSHOT_NETWORK
+      description: Snapshot network ID for voting
+      affects: Voting network selection
+
+    - name: SNAPSHOT_SPACE
+      description: Snapshot space identifier (e.g., snapshot.dcl.eth)
+      affects: DAO space selection
+
+    - name: AWS_SNS_ARN
+      description: AWS SNS topic ARN for event publishing
+      affects: Event publishing
+
+    - name: SEGMENT_WRITE_KEY
+      description: Segment analytics write key
+      affects: Analytics tracking
+
+    - name: WERT_PRIVATE_KEY
+      description: Wert payment gateway private key
+      affects: Payment signature generation
+
+    - name: WERT_PUBLICATION_FEES_PRIVATE_KEY
+      description: Wert private key for publication fees
+      affects: Publication fee payment signatures
+
+    - name: WERT_API_URL
+      description: Wert API endpoint
+      affects: Payment gateway integration
+
+    - name: WERT_API_KEY
+      description: Wert API key
+      affects: Payment gateway authentication
+
+    - name: TRANSAK_REFRESH_ACCESS_TOKEN_AUTH
+      description: Transak refresh token authentication
+      affects: Token refresh security
+
+    - name: RENTALS_SUBGRAPH_URL
+      description: The Graph subgraph URL for LAND rentals
+      affects: Rentals data queries
+
+    - name: SIGNATURES_SERVER_URL
+      description: Third-party signatures validation server URL
+      affects: Signature verification
+
+    - name: TRANSAK_API_URL
+      description: Transak API endpoint
+      affects: Payment gateway integration
+
+    - name: TRANSAK_API_GATEWAY_URL
+      description: Transak API gateway endpoint
+      affects: Payment gateway routing
+
+    - name: TRANSAK_API_KEY
+      description: Transak API key
+      affects: Payment gateway authentication
+
+    - name: TRANSAK_API_SECRET
+      description: Transak API secret
+      affects: Payment gateway authentication
+
+    - name: TRANSAK_REFRESH_ACCESS_TOKEN_AUTH
+      description: Transak refresh token authentication
+      affects: Token refresh security
+
+    - name: MARKETPLACE_BASE_URL
+      description: Base URL for marketplace frontend
+      affects: URL generation and redirects
+
+    - name: MARKETPLACE_SERVER_TRADES_API_TOKEN
+      description: API token for trades endpoints
+      affects: Trades API authentication
+
+    - name: REDIS_URL
+      description: Redis connection URL (optional, falls back to in-memory)
+      affects: Caching performance
 
 adrs:
   - id: ADR-44

@@ -1,13 +1,16 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: catalyst-storage
   display_name: "@dcl/catalyst-storage"
   description: Storage abstraction library providing unified API for file storage across multiple backends (S3, filesystem, in-memory). Handles content streaming, compression, and metadata for Catalyst content servers.
-  team: core
+  owner: core-engineering
   repository: https://github.com/decentraland/catalyst-storage
   language: typescript
   layer: shared-library
+  role:
+    - library
+  data_domain: []
 
 domain:
   glossary:
@@ -102,10 +105,6 @@ dependencies:
 
 configuration:
   key_env_vars:
-    - name: AWS S3 bucket configuration
-      description: S3 bucket name, region, and credentials for S3-based storage
-      affects: S3 storage backend operations
-
-    - name: Filesystem path
-      description: Root directory path for folder-based storage
-      affects: Local filesystem storage location
+    - name: AWS_REGION
+      description: AWS region for S3 bucket operations
+      affects: S3 storage backend initialization and operations

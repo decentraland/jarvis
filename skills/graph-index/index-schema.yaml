@@ -7,8 +7,13 @@ services:
   - name: example-service              # matches service.name in manifest
     display_name: Example Service
     description: Short one-line description of what this service does
-    layer: platform                     # infrastructure | platform | application | client
+    layer: string                       # infrastructure | platform | application | client
     repository: https://github.com/decentraland/example-service
+    role:                              # Primary function(s) — array
+      - string                         # gateway | rt-gateway | auth | discovery | storage | worker | content | library | client | other
+    data_domain:                       # Domain data this service owns
+      - string
     dependencies:
-      - name: other-service
-        relationship: sync             # sync | async | both
+      - name: string
+        relationship: string           # sync | async | both
+        protocol: string               # HTTP | WebSocket | gRPC | SNS/SQS | GraphQL | NATS

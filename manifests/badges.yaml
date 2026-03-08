@@ -1,13 +1,17 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: badges
   display_name: Badges
   description: Manages user achievements (badges) within the Decentraland ecosystem. Tracks user actions both in-world and on-platform to grant badges, publishes badge-granted events, and provides APIs for querying badge definitions and user achievements.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/badges
   language: typescript
   layer: feature-servers
+  role:
+    - worker
+  data_domain:
+    - badges
   ai-agent-context: https://github.com/decentraland/badges/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -148,6 +152,10 @@ dependencies:
       purpose: Stores badge visual assets (textures, images)
       type: cdn
 
+    - name: Redis
+      purpose: Optional caching layer for badge processing performance
+      type: storage
+
 events:
   publishes:
     - name: badge-granted
@@ -178,18 +186,74 @@ events:
 
 configuration:
   key_env_vars:
+    - name: HTTP_SERVER_PORT
+      description: Port on which the HTTP server listens
+      affects: Service availability and routing
+
+    - name: HTTP_SERVER_HOST
+      description: Host address for the HTTP server
+      affects: Service network binding
+
     - name: PG_COMPONENT_PSQL_CONNECTION_STRING
-      description: PostgreSQL connection string for badge data
+      description: PostgreSQL connection string for badge data (alternative to individual components)
       affects: Data persistence and query performance
 
-    - name: SQS_QUEUE_URL
-      description: AWS SQS queue URL for event consumption
-      affects: Event-driven badge processing
+    - name: PG_COMPONENT_PSQL_USER
+      description: PostgreSQL user for badge database
+      affects: Database authentication
 
-    - name: SNS_TOPIC_ARN
+    - name: PG_COMPONENT_PSQL_DATABASE
+      description: PostgreSQL database name for badges
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_PORT
+      description: PostgreSQL port
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_HOST
+      description: PostgreSQL host
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_PASSWORD
+      description: PostgreSQL password
+      affects: Database authentication
+
+    - name: AWS_SNS_ARN
       description: AWS SNS topic ARN for badge-granted events
       affects: Event publishing for notifications
+
+    - name: AWS_SNS_ENDPOINT
+      description: Optional AWS SNS endpoint (for local development)
+      affects: SNS client configuration
+
+    - name: AWS_SQS_ENDPOINT
+      description: Optional AWS SQS endpoint (for local development with memory queue)
+      affects: SQS client configuration
+
+    - name: CATALYST_CONTENT_URL_LOADBALANCER
+      description: Catalyst content server URL for fetching wearables and entity data
+      affects: Badge verification and user data fetching
+
+    - name: CDN_HOST
+      description: CDN host URL for badge visual assets (textures, images)
+      affects: Badge asset URL generation
+
+    - name: REDIS_HOST
+      description: Redis host URL for caching (optional, falls back to in-memory)
+      affects: Caching performance
+
+    - name: ENV
+      description: Environment name (dev/prod) affects contract network and badge processing
+      affects: Contract network selection and processing behavior
 
     - name: API_ADMIN_TOKEN
       description: Authorization token for admin endpoints like backfill
       affects: Security for administrative operations
+
+    - name: COMMIT_HASH
+      description: Current commit hash for version tracking
+      affects: Service status reporting
+
+    - name: CURRENT_VERSION
+      description: Current version for version tracking
+      affects: Service status reporting

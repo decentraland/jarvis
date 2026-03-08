@@ -1,13 +1,16 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: decentraland-crypto-middleware
   display_name: "Decentraland Crypto Middleware"
   description: Multi-framework authentication middleware for verifying requests signed with @decentraland/SignedFetch. Provides integrations for Express, Koa, PassportJS, and Well-Known Components to authenticate Decentraland users via cryptographic signature verification.
-  team: core
+  owner: core-engineering
   repository: https://github.com/decentraland/decentraland-crypto-middleware
   language: typescript
   layer: shared-library
+  role:
+    - library
+  data_domain: []
 
 domain:
   glossary:

@@ -1,13 +1,18 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: exploration-games
   display_name: Exploration Games
   description: Manages exploration games and related functionality within Decentraland. Provides services for game discovery, participation tracking, and reward distribution for exploration-based gameplay experiences.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/exploration-games
   language: typescript
   layer: feature-servers
+  role:
+    - gateway
+  data_domain:
+    - exploration-games
+    - player-progress
   ai-agent-context: https://github.com/decentraland/exploration-games/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -31,7 +36,13 @@ api:
   openapi_url: https://github.com/decentraland/exploration-games/blob/main/docs/openapi.yaml
 
 dependencies:
-  services: []
+  services:
+    - name: reward-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Distribute rewards for game completion and achievements
+      critical: false
+
   external:
     - name: PostgreSQL
       purpose: Game data, player progress
@@ -42,4 +53,63 @@ events:
   consumes: []
 
 configuration:
-  key_env_vars: []
+  key_env_vars:
+    - name: HTTP_SERVER_PORT
+      description: Port on which the HTTP server listens (default 3000)
+      affects: Service availability and routing
+
+    - name: HTTP_SERVER_HOST
+      description: Host address for the HTTP server (default 0.0.0.0)
+      affects: Service network binding
+
+    - name: WKC_METRICS_RESET_AT_NIGHT
+      description: Whether to reset metrics at 00:00 UTC (default false)
+      affects: Metrics collection behavior
+
+    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
+      description: PostgreSQL connection string (alternative to individual components)
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_USER
+      description: PostgreSQL user
+      affects: Database authentication
+
+    - name: PG_COMPONENT_PSQL_DATABASE
+      description: PostgreSQL database name
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_PORT
+      description: PostgreSQL port
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_HOST
+      description: PostgreSQL host
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_PASSWORD
+      description: PostgreSQL password
+      affects: Database authentication
+
+    - name: REWARD_SERVER_URL
+      description: URL of the reward server for distributing game completion rewards
+      affects: Reward distribution functionality
+
+    - name: MISSION_TIME_WINDOW_HS
+      description: Time window in hours for mission completion (default 24)
+      affects: Mission availability and expiration logic
+
+    - name: MULTIPLAYER_KEY
+      description: Token for multiplayer functionality authentication
+      affects: Multiplayer features security
+
+    - name: ADMINS
+      description: Comma-separated list of admin wallet addresses for administrative operations
+      affects: Admin permissions and access control
+
+    - name: COMMIT_HASH
+      description: Current commit hash for version tracking
+      affects: Service status reporting
+
+    - name: CURRENT_VERSION
+      description: Current version for version tracking
+      affects: Service status reporting

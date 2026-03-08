@@ -1,13 +1,20 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: catalyst
   display_name: Catalyst
   description: Monorepo containing the core Catalyst server implementation. Catalyst servers are the decentralized content infrastructure for Decentraland, bundling multiple services (Content Server, Lambdas, BFF, Archipelago) to provide entity storage, content delivery, peer communication, and client APIs.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/catalyst
   language: typescript
   layer: content
+  role:
+    - content
+    - storage
+  data_domain:
+    - entities
+    - deployments
+    - content-files
   ai-agent-context: https://github.com/decentraland/catalyst/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -147,12 +154,13 @@ api:
   openapi_url: https://github.com/decentraland/catalyst-api-specs
 
 db:
-  schema_url: https://github.com/decentraland/catalyst/blob/main/content/docs/database-schema.md
+  schema_url: ""
 
 dependencies:
   services:
     - name: archipelago-workers
       relationship: both
+      protocol: WebSocket
       purpose: Peer clustering and island management for communications
       critical: true
 

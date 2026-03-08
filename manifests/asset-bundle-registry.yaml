@@ -1,13 +1,18 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: asset-bundle-registry
   display_name: Asset Bundle Registry
   description: Orchestrates and tracks the availability of optimized Decentraland entities (scenes, worlds, wearables, emotes, profiles). Acts as a state management service coordinating between entity deployments, optimization services, and client requests to ensure optimized content is always available.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/asset-bundle-registry
   language: typescript
   layer: content
+  role:
+    - worker
+  data_domain:
+    - entity-registry
+    - optimization-status
   ai-agent-context: https://github.com/decentraland/asset-bundle-registry/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -112,21 +117,25 @@ dependencies:
   services:
     - name: deployments-to-sqs
       relationship: async
+      protocol: SNS/SQS
       purpose: Receives deployment events to track new entity deployments
       critical: true
 
     - name: asset-bundle-converter
       relationship: async
+      protocol: SNS/SQS
       purpose: Receives AssetBundleConversionFinished events to update optimization status
       critical: true
 
     - name: worlds-content-server
       relationship: both
-      purpose: Receives world deployment events and fetches world metadata
+      protocol: HTTP
+      purpose: Receives world deployment events via SNS/SQS and fetches world metadata
       critical: true
 
     - name: catalyst
       relationship: sync
+      protocol: HTTP
       purpose: Fetches entity metadata and validates deployments, periodically syncs profiles
       critical: true
 
@@ -172,22 +181,50 @@ events:
 
 configuration:
   key_env_vars:
-    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
-      description: PostgreSQL connection string for entity registry database
-      affects: Data persistence and query performance
+    - name: PG_COMPONENT_PSQL_HOST
+      description: PostgreSQL host for entity registry database
+      affects: Database connectivity
 
-    - name: REDIS_URL
-      description: Redis connection URL for profile cache
-      affects: Profile caching performance
+    - name: PG_COMPONENT_PSQL_DATABASE
+      description: PostgreSQL database name
+      affects: Database selection
 
-    - name: SQS_QUEUE_URL
-      description: AWS SQS queue URL for deployment events
-      affects: Event consumption
-
-    - name: CATALYST_URL
+    - name: CATALYST_LOADBALANCER_HOST
       description: Catalyst Load Balancer URL for entity metadata fetching
       affects: Entity validation and profile sync
 
-    - name: AB_CDN_URL
+    - name: CATALYST_WITH_HISTORICAL_DATA
+      description: Catalyst URL with historical deployment data
+      affects: Historical entity queries
+
+    - name: WORLDS_CONTENT_SERVER_URL
+      description: Worlds content server URL for world metadata
+      affects: World entity validation
+
+    - name: ASSET_BUNDLE_CDN_URL
       description: Asset Bundle CDN URL for bundle availability queries
       affects: Optimization status validation
+
+    - name: PROFILE_IMAGES_URL
+      description: Profile images service URL
+      affects: Profile image generation
+
+    - name: REGISTRY_URL
+      description: Asset bundle registry public URL
+      affects: Service self-reference
+
+    - name: ASSET_BUNDLE_ADMIN_URL
+      description: Asset bundle admin service URL
+      affects: Administrative operations
+
+    - name: API_ADMIN_TOKEN
+      description: Admin API authentication token
+      affects: Administrative endpoint access
+
+    - name: DISABLE_PROFILE_SYNC
+      description: Flag to disable periodic profile synchronization
+      affects: Profile cache updates
+
+    - name: SERVICE_URL
+      description: Public service URL for external access
+      affects: Service discovery

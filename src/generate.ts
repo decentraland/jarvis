@@ -10,9 +10,9 @@ import {
   ModelRegistry,
   createCodingTools,
 } from '@mariozechner/pi-coding-agent'
-import { workspaces, type Repo } from './repos.js'
-import { repoName, fetchLatestCommit, cloneRepo } from './github.js'
-import { rewriteWorkspaces } from './utils.js'
+import { workspaces, standalone, type Repo } from './repos.js'
+import { repoName, fetchLatestCommit, cloneRepo, pullRepo } from './github.js'
+import { rewriteRepos } from './utils.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const projectDir = join(__dirname, '..')
@@ -133,11 +133,11 @@ async function main(): Promise<void> {
   authStorage = AuthStorage.create(authPath)
 
   mkdirSync(manifestsDir, { recursive: true })
-  rmSync(tmpDir, { recursive: true, force: true })
   mkdirSync(tmpDir, { recursive: true })
 
-  const toProcess: Array<{ wsUrl: string; repo: Repo; currentCommit: string }> = []
+  const toProcess: Array<{ wsUrl: string | null; repo: Repo; currentCommit: string }> = []
 
+  // Process workspace repos
   for (const [wsUrl, repos] of Object.entries(workspaces)) {
     const wsName = repoName(wsUrl)
     const wsDest = join(tmpDir, wsName)
@@ -165,39 +165,82 @@ async function main(): Promise<void> {
 
       const dest = join(tmpDir, name)
       try {
-        console.log(`[generate] cloning ${name}...`)
-        cloneRepo(repo.url, dest)
+        if (existsSync(dest)) {
+          console.log(`[generate] updating ${name}...`)
+          pullRepo(dest)
+        } else {
+          console.log(`[generate] cloning ${name}...`)
+          cloneRepo(repo.url, dest)
+        }
         toProcess.push({ wsUrl, repo, currentCommit })
       } catch (err) {
-        console.error(`[generate] failed to clone ${name}:`, err)
+        console.error(`[generate] failed to clone/update ${name}:`, err)
         rmSync(dest, { recursive: true, force: true })
       }
     }
   }
 
+  // Process standalone repos
+  for (const repo of standalone) {
+    const name = repoName(repo.url)
+
+    let currentCommit: string
+    try {
+      currentCommit = await fetchLatestCommit(repo.url)
+    } catch (err) {
+      console.error(`[generate] failed to fetch commit for ${name}:`, err)
+      continue
+    }
+
+    if (repo.lastCommit === currentCommit) {
+      console.log(`[generate] skipping ${name} (up to date at ${currentCommit.slice(0, 8)})`)
+      continue
+    }
+
+    const dest = join(tmpDir, name)
+    try {
+      if (existsSync(dest)) {
+        console.log(`[generate] updating ${name}...`)
+        pullRepo(dest)
+      } else {
+        console.log(`[generate] cloning ${name}...`)
+        cloneRepo(repo.url, dest)
+      }
+      toProcess.push({ wsUrl: null, repo, currentCommit })
+    } catch (err) {
+      console.error(`[generate] failed to clone/update ${name}:`, err)
+      rmSync(dest, { recursive: true, force: true })
+    }
+  }
+
   if (toProcess.length === 0) {
     console.log('[generate] all repos up to date, nothing to do')
-    rmSync(tmpDir, { recursive: true, force: true })
     return
   }
 
   await generateManifests(toProcess.map(t => repoName(t.repo.url)))
 
   // Update lastCommit for all processed repos
-  const updated = structuredClone(workspaces)
+  const updatedWorkspaces = structuredClone(workspaces)
+  const updatedStandalone = structuredClone(standalone)
   for (const { wsUrl, repo, currentCommit } of toProcess) {
-    const wsRepos = updated[wsUrl]
-    const idx = wsRepos.findIndex(r => r.url === repo.url)
-    if (idx !== -1) {
-      wsRepos[idx] = { ...wsRepos[idx], lastCommit: currentCommit }
+    if (wsUrl) {
+      const wsRepos = updatedWorkspaces[wsUrl]
+      const idx = wsRepos.findIndex(r => r.url === repo.url)
+      if (idx !== -1) {
+        wsRepos[idx] = { ...wsRepos[idx], lastCommit: currentCommit }
+      }
+    } else {
+      const idx = updatedStandalone.findIndex(r => r.url === repo.url)
+      if (idx !== -1) {
+        updatedStandalone[idx] = { ...updatedStandalone[idx], lastCommit: currentCommit }
+      }
     }
   }
-  rewriteWorkspaces(updated)
+  rewriteRepos(updatedWorkspaces, updatedStandalone)
   console.log(`[generate] updated lastCommit for ${toProcess.length} repos`)
 
   await generateGraphAndIndex()
-
-  rmSync(tmpDir, { recursive: true, force: true })
 }
 
 main().catch(err => {

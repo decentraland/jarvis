@@ -1,13 +1,16 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: core-components
   display_name: Core Components Library
   description: Monorepo of reusable TypeScript components and utilities for the Decentraland backend ecosystem. Provides standardized implementations for infrastructure concerns including HTTP servers, databases, caching, messaging, observability, and distributed tracing that are shared across multiple Decentraland services.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/core-components
   language: typescript
   layer: Shared Libraries
+  role:
+    - library
+  data_domain: []
   ai-agent-context: ""
 
 domain:

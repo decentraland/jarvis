@@ -1,13 +1,19 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: world-storage-service
   display_name: World Storage Service
   description: Provides secure, isolated storage and environment variable access for Decentraland worlds. Acts as an API gateway for persistent storage and secrets management for Authoritative Servers running server-side scene code.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/world-storage-service
   language: typescript
   layer: feature-servers
+  role:
+    - storage
+  data_domain:
+    - world-storage
+    - player-storage
+    - environment-variables
   ai-agent-context: https://github.com/decentraland/world-storage-service/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -23,6 +29,12 @@ domain:
 
     - term: World Isolation
       definition: Cryptographic enforcement ensuring worlds can only access their own data through signed fetch validation.
+
+    - term: Signed Fetch
+      definition: Authentication mechanism where all requests from authoritative servers must be cryptographically signed using their private key tied to their world deployment.
+
+    - term: Authoritative Server
+      definition: Server-side runtime that executes SDK7 scene code and signs requests using its private key to access world storage and environment variables.
 
   concept_relationships:
     cross_service:
@@ -45,17 +57,24 @@ domain:
       enforced_at: api_validation
       severity: hard
 
+    - rule: All database queries MUST use world_name extracted from signed fetch signature
+      enforced_at: domain_layer
+      severity: hard
+
   responsibilities:
     - Provide persistent key-value storage for worlds
     - Manage per-player storage scoped to world and player
     - Serve encrypted environment variables
     - Enforce world isolation through signed fetch validation
     - Support bulk delete operations with confirmation
+    - Validate authoritative server signatures using ADR-44 specification
+    - Prevent world name spoofing through cryptographic validation
 
   out_of_scope:
     - Scene execution (handled by Authoritative Servers)
     - World deployment (handled by worlds-content-server)
     - Authentication token generation (handled by clients)
+    - Client-side scene requests (explicitly rejected)
 
   owned_entities:
     - name: World Storage Entry
@@ -83,6 +102,7 @@ dependencies:
   services:
     - name: worlds-content-server
       relationship: sync
+      protocol: HTTP
       purpose: Validates world ownership and deployer permissions
       critical: true
 
@@ -97,16 +117,84 @@ events:
 
 configuration:
   key_env_vars:
-    - name: AUTHORITATIVE_SERVER_ADDRESS
-      description: Ethereum address authorized to access environment variables
-      affects: Environment variable access control
+    - name: HTTP_SERVER_PORT
+      description: Port for HTTP server
+      affects: Server binding
+
+    - name: HTTP_SERVER_HOST
+      description: Host for HTTP server
+      affects: Server binding
+
+    - name: PG_COMPONENT_PSQL_HOST
+      description: PostgreSQL database host
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_PORT
+      description: PostgreSQL database port
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_DATABASE
+      description: PostgreSQL database name
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_USER
+      description: PostgreSQL database user
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_PASSWORD
+      description: PostgreSQL database password
+      affects: Database connection
 
     - name: AUTHORIZED_ADDRESSES
       description: Comma-separated Ethereum addresses with read access
       affects: General authorization
 
+    - name: AUTHORITATIVE_SERVER_ADDRESS
+      description: Ethereum address authorized to access environment variables
+      affects: Environment variable access control
+
+    - name: WORLDS_CONTENT_SERVER_URL
+      description: URL of the worlds content server for permission validation
+      affects: World permission validation
+
+    - name: ENCRYPTION_KEY
+      description: Encryption key for environment variables stored in database
+      affects: Environment variable encryption/decryption
+
+    - name: CORS_ORIGINS
+      description: Semicolon-separated regex patterns for allowed CORS origins
+      affects: CORS policy
+
+    - name: ENV_STORAGE_MAX_VALUE_SIZE_BYTES
+      description: Maximum size per environment variable value (default 10 KB)
+      affects: Environment storage limits
+
+    - name: ENV_STORAGE_MAX_TOTAL_SIZE_BYTES
+      description: Maximum total size for environment variables per world (default 256 KB)
+      affects: Environment storage limits
+
+    - name: WORLD_STORAGE_MAX_VALUE_SIZE_BYTES
+      description: Maximum size per world storage value (default 512 KB)
+      affects: World storage limits
+
+    - name: WORLD_STORAGE_MAX_TOTAL_SIZE_BYTES
+      description: Maximum total size for world storage per world (default 10 MB)
+      affects: World storage limits
+
+    - name: PLAYER_STORAGE_MAX_VALUE_SIZE_BYTES
+      description: Maximum size per player storage value (default 100 KB)
+      affects: Player storage limits
+
+    - name: PLAYER_STORAGE_MAX_TOTAL_SIZE_BYTES
+      description: Maximum total size for player storage per player per world (default 1 MB)
+      affects: Player storage limits
+
+    - name: WKC_METRICS_RESET_AT_NIGHT
+      description: Whether to reset metrics at 00:00 UTC
+      affects: Metrics behavior
+
 adrs:
   - id: ADR-44
     title: Signed Fetch Authentication
     url: https://adr.decentraland.org/adr/ADR-44
-    relevance: All requests require signed fetch validation
+    relevance: All requests require signed fetch validation for cryptographic world isolation

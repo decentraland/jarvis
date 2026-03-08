@@ -1,43 +1,80 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: police-server
   display_name: Police Server
   description: Moderation and monitoring service for Decentraland's voice communications. Monitors LiveKit rooms, enforces rate limits to prevent spam, and automatically revokes permissions from abusive participants.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/police-server
   language: typescript
   layer: real-time
+  role:
+    - worker
+  data_domain: []
   ai-agent-context: https://github.com/decentraland/police-server/blob/main/docs/ai-agent-context.md
 
 domain:
   glossary:
     - term: Secret Listener
-      definition: Hidden LiveKit participant that monitors room messages without being visible to other participants. Attached when rooms exceed threshold.
+      definition: Hidden LiveKit participant that monitors room messages without being visible to other participants. Attached when rooms exceed threshold configured by USERS_PER_ROOM_NEEDED_FOR_SECRET_LISTENER.
+      examples:
+        - "When a room reaches 2 participants (default threshold), a secret listener is attached to monitor message traffic"
 
     - term: Rate Limiting
-      definition: Sliding window algorithm (10-second) tracking messages per second per participant. Automatic permission revocation when exceeded.
+      definition: Sliding window algorithm (configurable via RATE_LIMIT_WINDOW_SIZE_MS, default 10-second) tracking messages per second per participant. Different message types have different thresholds. Automatic permission revocation when exceeded.
+      examples:
+        - "MAX_CHAT_MESSAGES_PER_SECOND limits text chat spam"
+        - "MAX_POSITION_MESSAGES_PER_SECOND limits position update spam"
+
+    - term: Room Types
+      definition: Three types of LiveKit rooms identified by prefixes - World rooms (WORLD_ROOM_PREFIX), Scene rooms (SCENE_ROOM_PREFIX), and Island rooms (ISLAND_ROOM_PREFIX, currently skipped).
+      examples:
+        - "world-dev-scene-room-MyWorld (World room)"
+        - "genesis-city-dev-scene-room-realm-scene123 (Scene room)"
+
+  concept_relationships:
+    internal:
+      - from: Secret Listener
+        to: Room Types
+        relationship: monitors
+        description: Secret listeners are attached to rooms when they exceed the participant threshold
+      
+      - from: Rate Limiting
+        to: Secret Listener
+        relationship: depends_on
+        description: Rate limiting is enforced through message monitoring by secret listeners
 
   invariants:
     - rule: Secret listeners are hidden from participants and cannot publish
       enforced_at: domain_layer
       severity: hard
 
-    - rule: Rate limit violations trigger automatic permission revocation
+    - rule: Rate limit violations trigger automatic permission revocation with debounce (RATE_LIMIT_ACTION_DEBOUNCE_MS)
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Different message types have independent rate limits
       enforced_at: domain_layer
       severity: hard
 
   responsibilities:
-    - Monitor voice chat rooms with secret listeners
-    - Track message rates per participant
+    - Monitor voice chat rooms with secret listeners when threshold is exceeded
+    - Track message rates per participant using sliding window algorithm
     - Revoke permissions from rate limit violators
-    - Send Slack alerts for violations
-    - Handle user join/leave room events
+    - Send Slack alerts for rate limit violations
+    - Handle user join/leave room events via SQS
+    - Pre-fill room data on startup by querying LiveKit for active rooms
+    - Disconnect secret listeners when rooms drop below threshold
+
+  out_of_scope:
+    - Content moderation beyond rate limiting
+    - User authentication (relies on LiveKit identity)
+    - Room creation or management (only monitors existing rooms)
 
   owned_entities: []
 
 api:
-  openapi_url: https://github.com/decentraland/police-server/blob/main/docs/openapi.yaml
+  openapi_url: ""
 
 dependencies:
   services: []
@@ -52,6 +89,9 @@ dependencies:
       purpose: Moderation alerts
       type: api
 
+db:
+  schema_url: ""
+
 events:
   publishes: []
   consumes:
@@ -65,10 +105,106 @@ events:
       channel: AWS SQS
 
 configuration:
+  feature_flags: []
   key_env_vars:
+    - name: HTTP_SERVER_PORT
+      description: HTTP server port (default 3000)
+      affects: HTTP server
+    - name: HTTP_SERVER_HOST
+      description: HTTP server host (default 0.0.0.0)
+      affects: HTTP server
+    - name: WKC_METRICS_RESET_AT_NIGHT
+      description: Reset metrics at 00:00 UTC (default false)
+      affects: Metrics
+    - name: LIVEKIT_API_KEY
+      description: LiveKit server API key for authentication
+      affects: LiveKit integration
+    - name: LIVEKIT_API_SECRET
+      description: LiveKit server API secret for authentication
+      affects: LiveKit integration
+    - name: LIVEKIT_HOST
+      description: LiveKit server host URL
+      affects: LiveKit connection
     - name: USERS_PER_ROOM_NEEDED_FOR_SECRET_LISTENER
-      description: Participant threshold for attaching secret listener
+      description: Participant threshold for attaching secret listener (default 2)
       affects: Monitoring activation
-    - name: MAX_MESSAGES_PER_SECOND_PER_PARTICIPANT
-      description: Rate limit threshold for automatic moderation
-      affects: Spam prevention
+    - name: RATE_LIMIT_WINDOW_SIZE_MS
+      description: Sliding window size for rate limiting in milliseconds (default 10000)
+      affects: Rate limit calculation
+    - name: RATE_LIMIT_ACTION_DEBOUNCE_MS
+      description: Debounce time before taking rate limit action in milliseconds (default 5000)
+      affects: Rate limit enforcement
+    - name: MAX_POSITION_MESSAGES_PER_SECOND
+      description: Rate limit for position messages (default 30)
+      affects: Position update spam prevention
+    - name: MAX_MOVEMENT_MESSAGES_PER_SECOND
+      description: Rate limit for movement messages (default 20)
+      affects: Movement spam prevention
+    - name: MAX_MOVEMENT_COMPRESSED_MESSAGES_PER_SECOND
+      description: Rate limit for compressed movement messages (default 20)
+      affects: Compressed movement spam prevention
+    - name: MAX_PROFILE_VERSION_MESSAGES_PER_SECOND
+      description: Rate limit for profile version messages (default 10)
+      affects: Profile version spam prevention
+    - name: MAX_PROFILE_REQUEST_MESSAGES_PER_SECOND
+      description: Rate limit for profile request messages (default 10)
+      affects: Profile request spam prevention
+    - name: MAX_PROFILE_RESPONSE_MESSAGES_PER_SECOND
+      description: Rate limit for profile response messages (default 10)
+      affects: Profile response spam prevention
+    - name: MAX_CHAT_MESSAGES_PER_SECOND
+      description: Rate limit for chat messages (default 10)
+      affects: Chat spam prevention
+    - name: MAX_SCENE_MESSAGES_PER_SECOND
+      description: Rate limit for scene messages (default 70)
+      affects: Scene interaction spam prevention
+    - name: MAX_PLAYER_EMOTE_MESSAGES_PER_SECOND
+      description: Rate limit for player emote messages (default 10)
+      affects: Player emote spam prevention
+    - name: MAX_SCENE_EMOTE_MESSAGES_PER_SECOND
+      description: Rate limit for scene emote messages (default 10)
+      affects: Scene emote spam prevention
+    - name: MAX_LOOK_AT_POSITION_MESSAGES_PER_SECOND
+      description: Rate limit for look at position messages (default 10)
+      affects: Look at position spam prevention
+    - name: MAX_VOICE_MESSAGES_PER_SECOND
+      description: Rate limit for voice messages (default 10)
+      affects: Voice spam prevention
+    - name: MAX_UNKNOWN_MESSAGES_PER_SECOND
+      description: Rate limit for unknown message types (default 10)
+      affects: Unknown message spam prevention
+    - name: WORLD_ROOM_PREFIX
+      description: Prefix for world room identifiers (default world-dev-scene-room-)
+      affects: Room type identification
+    - name: SCENE_ROOM_PREFIX
+      description: Prefix for scene room identifiers (default genesis-city-dev-scene-room-)
+      affects: Room type identification
+    - name: ISLAND_ROOM_PREFIX
+      description: Prefix for island room identifiers (default island-)
+      affects: Room type identification
+    - name: PRIVATE_MESSAGE_ROOM
+      description: Private message room identifier (default private-messages)
+      affects: Room type identification
+    - name: COMMUNITY_VOICE_ROOM_PREFIX
+      description: Prefix for community voice room identifiers (default voice-chat-community-)
+      affects: Room type identification
+    - name: VOICE_CHAT_ROOM_PREFIX
+      description: Prefix for private voice chat room identifiers (default voice-chat-private-)
+      affects: Room type identification
+    - name: SFU_IDENTITY_PREFIX
+      description: Prefix for SFU identity (default message-router-)
+      affects: SFU integration
+    - name: SLACK_BOT_TOKEN
+      description: Slack bot token for sending alerts
+      affects: Alert notifications
+    - name: SLACK_CHANNEL
+      description: Slack channel for moderation alerts
+      affects: Alert destination
+    - name: AWS_SQS_QUEUE_URL
+      description: Optional SQS queue URL for user join/leave events
+      affects: Event consumption
+    - name: IGNORED_ROOMS
+      description: Comma-separated list of room names to ignore
+      affects: Monitoring scope
+
+adrs: []

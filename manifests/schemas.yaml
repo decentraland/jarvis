@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 # ============================================================
 # IDENTITY
@@ -7,10 +7,13 @@ service:
   name: schemas
   display_name: Decentraland Schemas
   description: Shared TypeScript type definitions and JSON Schema validators for all Decentraland data structures. Provides compile-time type safety and runtime validation for entities, profiles, scenes, wearables, events, and marketplace data across the entire platform.
-  team: multiple (dapps, platform, core-developers)
+  owner: core-engineering
   repository: https://github.com/decentraland/schemas
   language: typescript
   layer: shared-library
+  role:
+    - library
+  data_domain: []
   ai-agent-context: ""
 
 # ============================================================

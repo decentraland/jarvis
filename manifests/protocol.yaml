@@ -1,13 +1,16 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: protocol
   display_name: Protocol Definitions
   description: Protobuf protocol definitions for Decentraland that define the communication contracts between client, kernel, Unity renderer, SDK toolchain, and comms services. Provides code generation for TypeScript and other languages to ensure type-safe cross-service and cross-platform communication.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/protocol
   language: protobuf
   layer: Shared Libraries
+  role:
+    - library
+  data_domain: []
   ai-agent-context: ""
 
 domain:
@@ -37,7 +40,7 @@ domain:
       definition: A protocol modification that requires coordinated updates across dependent repositories (unity-renderer, js-sdk-toolchain, kernel, scene-runtime) to maintain compatibility.
     
     - term: Merge Order
-      definition: The required sequence for merging protocol changes across repositories to avoid build failures, typically: protocol → unity-renderer → js-sdk-toolchain or protocol → kernel → scene-runtime → js-sdk-toolchain.
+      definition: The required sequence for merging protocol changes across repositories to avoid build failures, typically protocol->unity-renderer->js-sdk-toolchain or protocol->kernel->scene-runtime->js-sdk-toolchain.
     
     - term: Buf Configuration
       definition: Linting and compatibility checking configuration for protocol buffers defined in proto/buf.yml following Buf best practices style guide.

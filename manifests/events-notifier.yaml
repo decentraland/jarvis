@@ -1,13 +1,17 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: events-notifier
   display_name: Events Notifier
   description: Monitors blockchain events and publishes notifications to internal event-driven systems. Runs scheduled cron jobs that query The Graph subgraphs to detect marketplace transactions, rentals, and royalties, then publishes structured events for downstream consumers.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/events-notifier
   language: typescript
   layer: feature-servers
+  role:
+    - worker
+  data_domain:
+    - event-cursors
   ai-agent-context: https://github.com/decentraland/events-notifier/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -100,6 +104,42 @@ events:
 
 configuration:
   key_env_vars:
-    - name: THEGRAPH_URL
-      description: The Graph API endpoint
+    - name: PG_COMPONENT_PSQL_HOST
+      description: PostgreSQL host for event cursors database
+      affects: Database connectivity
+
+    - name: PG_COMPONENT_PSQL_DATABASE
+      description: PostgreSQL database name
+      affects: Database selection
+
+    - name: CONNECTION_STRING
+      description: PostgreSQL connection string for migrations
+      affects: Database migrations
+
+    - name: MARKETPLACE_SUBGRAPH_URL
+      description: The Graph marketplace subgraph URL
+      affects: Marketplace event queries
+
+    - name: COLLECTIONS_L2_SUBGRAPH_URL
+      description: The Graph collections L2 subgraph URL
+      affects: Polygon collections event queries
+
+    - name: RENTALS_SUBGRAPH_URL
+      description: The Graph rentals subgraph URL
+      affects: Land rental event queries
+
+    - name: LAND_MANAGER_SUBGRAPH_URL
+      description: The Graph land manager subgraph URL
+      affects: Land management event queries
+
+    - name: AWS_SNS_ARN
+      description: SNS topic ARN for event publishing
+      affects: Event notification delivery
+
+    - name: NETWORK
+      description: Ethereum network (mainnet or sepolia)
       affects: Blockchain data source
+
+    - name: MARKETPLACE_BASE_URL
+      description: Marketplace frontend base URL
+      affects: Event metadata enrichment

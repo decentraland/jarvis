@@ -1,14 +1,16 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: comms-message-sfu
   display_name: Comms Message SFU
   description: Real-time message routing and validation service for Decentraland's LiveKit communications infrastructure. Acts as a LiveKit participant that receives directed chat messages, validates community context, and re-publishes them to appropriate recipients.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/comms-message-sfu
   language: typescript
   layer: real-time
-  ai-agent-context: https://github.com/decentraland/comms-message-sfu/blob/main/docs/ai-agent-context.md
+  role:
+    - rt-gateway
+  data_domain: []
 
 domain:
   glossary:
@@ -73,11 +75,13 @@ dependencies:
   services:
     - name: social-service-ea
       relationship: sync
+      protocol: HTTP
       purpose: Validates community membership and resolves active members
       critical: true
 
     - name: comms-gatekeeper
       relationship: sync
+      protocol: HTTP
       purpose: Provides LiveKit tokens for SFU replica authentication
       critical: true
 
@@ -96,18 +100,54 @@ events:
 
 configuration:
   key_env_vars:
+    - name: HTTP_SERVER_PORT
+      description: HTTP server port for API endpoints
+      affects: Server listening port
+
+    - name: HTTP_SERVER_HOST
+      description: HTTP server host address
+      affects: Server binding configuration
+
+    - name: PG_COMPONENT_PSQL_PORT
+      description: PostgreSQL port for optional membership caching
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_HOST
+      description: PostgreSQL host for optional membership caching
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_DATABASE
+      description: PostgreSQL database name
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_USER
+      description: PostgreSQL user for authentication
+      affects: Database authentication
+
+    - name: PG_COMPONENT_PSQL_PASSWORD
+      description: PostgreSQL password for authentication
+      affects: Database authentication
+
     - name: LIVEKIT_HOST
       description: LiveKit server host URL
       affects: Message transport connectivity
 
     - name: LIVEKIT_API_KEY
       description: LiveKit API key for authentication
-      affects: Service authentication
+      affects: Service authentication to LiveKit
+
+    - name: LIVEKIT_API_SECRET
+      description: LiveKit API secret for token generation
+      affects: LiveKit authentication
 
     - name: LIVEKIT_ROOM_ID
       description: LiveKit room ID to join as participant
       affects: Message routing scope
 
+    - name: LIVEKIT_IDENTITY_PREFIX
+      description: Prefix for LiveKit identity of SFU participants
+      affects: Participant identification in LiveKit
+
     - name: REPLICA_ID
       description: Unique identifier for this SFU replica instance
-      affects: Load distribution and scaling
+      affects: Load distribution and horizontal scaling

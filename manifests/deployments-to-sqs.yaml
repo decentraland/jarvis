@@ -1,13 +1,16 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: deployments-to-sqs
   display_name: Deployments to SQS
   description: Monitors Catalyst content servers for new entity deployments and publishes deployment events to AWS SNS. Acts as the event source for downstream optimization services that process wearables, emotes, and scenes.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/deployments-to-sqs
   language: typescript
   layer: feature-servers
+  role:
+    - worker
+  data_domain: []
   ai-agent-context: https://github.com/decentraland/deployments-to-sqs/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -41,12 +44,13 @@ domain:
   owned_entities: []
 
 api:
-  openapi_url: https://github.com/decentraland/deployments-to-sqs/blob/main/docs/openapi.yaml
+  openapi_url: ""
 
 dependencies:
   services:
     - name: catalyst
       relationship: sync
+      protocol: HTTP
       purpose: Polls for new deployments
       critical: true
 
@@ -71,6 +75,34 @@ events:
 
 configuration:
   key_env_vars:
-    - name: SNS_TOPIC_ARN
-      description: AWS SNS topic ARN for deployment events
-      affects: Event routing
+    - name: AWS_REGION
+      description: AWS region for SNS and S3 resources
+      affects: AWS service region configuration
+
+    - name: SNS_ARN
+      description: ARN of the SNS topic for deployment notifications
+      affects: Deployment event routing
+
+    - name: EVENTS_SNS_ARN
+      description: ARN of the SNS topic for event notifications
+      affects: Event notification routing
+
+    - name: SNS_ENDPOINT
+      description: Custom SNS endpoint for local development
+      affects: Development and testing configuration
+
+    - name: BUCKET
+      description: S3 bucket name for storing processed snapshots
+      affects: Snapshot storage location (uses local folder if not set)
+
+    - name: HTTP_SERVER_PORT
+      description: HTTP server port for health checks and metrics
+      affects: Server listening port
+
+    - name: HTTP_SERVER_HOST
+      description: HTTP server host address
+      affects: Server binding configuration
+
+    - name: CONTENT_SERVER_URLS
+      description: Comma-separated list of Catalyst content server URLs to monitor
+      affects: Catalyst deployment monitoring sources

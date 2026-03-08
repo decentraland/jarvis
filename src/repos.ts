@@ -48,3 +48,7 @@ export const workspaces: Record<string, Repo[]> = {
     { url: 'https://github.com/decentraland/world-storage-service', lastCommit: '15d05b505f8e4f65d7419f4045aa4cf657cce882' },
   ],
 }
+
+export const standalone: Repo[] = [
+  { url: 'https://github.com/decentraland/unity-explorer', lastCommit: '596c84c0dd1f6a1b5802b1895d0a3cba67ff6bcf' },
+]

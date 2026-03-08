@@ -1,13 +1,19 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: events
   display_name: Community Events
   description: Full-stack web application that manages community events within the Decentraland virtual world. Allows users to create, discover, and attend events in both land-based locations (Genesis City) and virtual worlds, providing a dApp interface with recurrent events, schedules, notifications, and social sharing capabilities.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/events
   language: typescript
   layer: Feature Servers Layer
+  role:
+    - gateway
+  data_domain:
+    - events
+    - schedules
+    - event-attendance
   ai-agent-context: https://github.com/decentraland/events/blob/master/docs/ai-agent-context.md
 
 domain:
@@ -228,31 +234,37 @@ dependencies:
   services:
     - name: catalyst
       relationship: sync
+      protocol: HTTP
       purpose: Fetch world information, place resolution, and validate Genesis City coordinates
       critical: true
     
     - name: social-service-ea
       relationship: sync
+      protocol: HTTP
       purpose: Validate community membership for community-associated events
       critical: false
     
     - name: notifications-workers
       relationship: async
+      protocol: SNS/SQS
       purpose: Process and send event notification messages via SNS/SQS
       critical: false
     
     - name: events-notifier
       relationship: async
+      protocol: SNS/SQS
       purpose: Schedule and trigger notifications for upcoming, started, and ended events
       critical: false
     
     - name: worlds-content-server
       relationship: sync
+      protocol: HTTP
       purpose: Retrieve world information for world-based events
       critical: false
     
     - name: badges
       relationship: async
+      protocol: SNS/SQS
       purpose: Trigger badge-related events via SNS/SQS for event attendance achievements
       critical: false
 
@@ -347,32 +359,88 @@ configuration:
       description: PostgreSQL database connection string
       affects: Database connectivity and all data operations
     
-    - name: AWS_BUCKET_NAME
-      description: S3 bucket name for storing event poster images
-      affects: Image upload functionality
+    - name: ADMIN_ADDRESSES
+      description: Comma-separated list of admin wallet addresses with full permissions
+      affects: Event approval/rejection and admin operations
+    
+    - name: SLACK_WEBHOOK
+      description: Slack webhook URL for event update notifications
+      affects: Slack integration for reporting
+    
+    - name: AWS_ACCESS_KEY
+      description: AWS access key for S3 and SNS services
+      affects: AWS service authentication
+    
+    - name: AWS_ACCESS_SECRET
+      description: AWS secret key for AWS services
+      affects: AWS service authentication
     
     - name: AWS_REGION
       description: AWS region for S3 and SNS services
       affects: Cloud service connectivity
     
-    - name: ADMIN_ADDRESSES
-      description: Comma-separated list of admin wallet addresses with full permissions
-      affects: Event approval/rejection and admin operations
+    - name: AWS_BUCKET_NAME
+      description: S3 bucket name for storing event poster images
+      affects: Image upload functionality
+    
+    - name: AWS_BUCKET_URL
+      description: Public URL for accessing S3 bucket assets
+      affects: Image URL generation
+    
+    - name: GATSBY_CHAIN_ID
+      description: Comma-separated list of blockchain chain IDs (e.g., 1,137 for Ethereum and Polygon)
+      affects: Blockchain network selection
     
     - name: WEB_PUSH_SECRET
       description: VAPID private key for web push notifications
       affects: Browser push notification delivery
     
-    - name: NOTIFICATION_SERVICE_URL
-      description: URL of the notification service for event notifications
-      affects: Event notification delivery
+    - name: GATSBY_WEB_PUSH_KEY
+      description: VAPID public key for web push notifications
+      affects: Browser push notification subscription
+    
+    - name: GATSBY_SEGMENT_KEY
+      description: Segment analytics write key (optional)
+      affects: Analytics tracking
+    
+    - name: GATSBY_DECENTRALAND_URL
+      description: Base URL for Decentraland play links
+      affects: Jump-in URL generation for events
+    
+    - name: GATSBY_LAND_URL
+      description: Land API URL for location validation
+      affects: Genesis City coordinate validation
+    
+    - name: GATSBY_PROFILE_URL
+      description: Catalyst profile API URL for user profiles
+      affects: User profile fetching
+    
+    - name: GATSBY_EVENTS_URL
+      description: Events API URL (typically this service's own API)
+      affects: Frontend API connection
+    
+    - name: GATSBY_SSO_URL
+      description: Single Sign-On service URL for authentication
+      affects: User authentication
     
     - name: GATSBY_COMMUNITIES_API_URL
       description: URL of the Communities API for community validation
       affects: Community-associated event features
     
-    - name: GATSBY_DECENTRALAND_URL
-      description: Base URL for Decentraland play links
-      affects: Jump-in URL generation for events
+    - name: NOTIFICATION_SERVICE_URL
+      description: URL of the notification service for event notifications
+      affects: Event notification delivery
+    
+    - name: EXPLORER_URL
+      description: Decentraland Explorer URL for event location links
+      affects: Event location jump-in links
+    
+    - name: NOTIFICATION_SERVICE_TOKEN
+      description: Authentication token for notification service
+      affects: Notification service API authentication
+    
+    - name: COMMUNITIES_API_ADMIN_TOKEN
+      description: Admin token for Communities API
+      affects: Communities API administrative operations
 
 adrs: []

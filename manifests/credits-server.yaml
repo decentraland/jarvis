@@ -1,13 +1,19 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: credits-server
   display_name: Credits Server
   description: Manages user credits system for Decentraland, integrating on-chain credit consumption tracking with off-chain credit grants. Handles credit issuance, tracking, expiration, and status calculation by combining database-stored grants with Squid indexer on-chain consumption data.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/credits-server
   language: typescript
   layer: feature-servers
+  role:
+    - gateway
+  data_domain:
+    - credits
+    - seasons
+    - goals
   ai-agent-context: https://github.com/decentraland/credits-server/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -59,13 +65,50 @@ api:
   openapi_url: https://github.com/decentraland/credits-server/blob/main/docs/openapi.yaml
 
 dependencies:
-  services: []
+  services:
+    - name: events
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetches Decentraland events for event-attendance goals
+      critical: false
+
+    - name: archipelago-workers
+      relationship: sync
+      protocol: HTTP
+      purpose: Queries peer presence for scene visit verification
+      critical: false
+
   external:
     - name: PostgreSQL
-      purpose: Credits grants, seasons, goals, progress
+      purpose: Credits grants, seasons, goals, progress, and Squid indexer consumption data
       type: storage
-    - name: Squid Indexer
-      purpose: On-chain consumption tracking via GraphQL
+
+    - name: Redis
+      purpose: Optional caching layer for performance optimization
+      type: storage
+
+    - name: AWS SQS
+      purpose: Queue for asynchronous processing
+      type: messaging
+
+    - name: AWS SNS
+      purpose: Event publishing for notifications
+      type: messaging
+
+    - name: Slack
+      purpose: Notifications and alerts for credit operations
+      type: other
+
+    - name: Ethereum RPC
+      purpose: ENS resolution and blockchain interaction
+      type: blockchain
+
+    - name: Polygon RPC
+      purpose: Credit contract interaction for season data
+      type: blockchain
+
+    - name: 0xSquid SDK
+      purpose: Cross-chain credit routing functionality
       type: api
 
 events:
@@ -74,6 +117,198 @@ events:
 
 configuration:
   key_env_vars:
-    - name: SQUID_URL
-      description: Squid indexer GraphQL endpoint for consumption queries
-      affects: On-chain data accuracy
+    - name: HTTP_SERVER_PORT
+      description: Port on which the HTTP server listens
+      affects: Service availability and routing
+
+    - name: HTTP_SERVER_HOST
+      description: Host address for the HTTP server
+      affects: Service network binding
+
+    - name: ENV
+      description: Environment name (local/dev/prod) affects behavior
+      affects: Environment-specific configuration
+
+    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
+      description: PostgreSQL connection string (alternative to individual components)
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_USER
+      description: PostgreSQL user
+      affects: Database authentication
+
+    - name: PG_COMPONENT_PSQL_DATABASE
+      description: PostgreSQL database name
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_PORT
+      description: PostgreSQL port
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_HOST
+      description: PostgreSQL host
+      affects: Database connection
+
+    - name: PG_COMPONENT_PSQL_PASSWORD
+      description: PostgreSQL password
+      affects: Database authentication
+
+    - name: NOTIFICATIONS_PG_COMPONENT_PSQL_CONNECTION_STRING
+      description: Notifications PostgreSQL connection string (alternative to individual components)
+      affects: Notifications database connection
+
+    - name: NOTIFICATIONS_PG_COMPONENT_PSQL_USER
+      description: Notifications PostgreSQL user
+      affects: Notifications database authentication
+
+    - name: NOTIFICATIONS_PG_COMPONENT_PSQL_DATABASE
+      description: Notifications PostgreSQL database name
+      affects: Notifications database connection
+
+    - name: NOTIFICATIONS_PG_COMPONENT_PSQL_PORT
+      description: Notifications PostgreSQL port
+      affects: Notifications database connection
+
+    - name: NOTIFICATIONS_PG_COMPONENT_PSQL_HOST
+      description: Notifications PostgreSQL host
+      affects: Notifications database connection
+
+    - name: NOTIFICATIONS_PG_COMPONENT_PSQL_PASSWORD
+      description: Notifications PostgreSQL password
+      affects: Notifications database authentication
+
+    - name: PRIVATE_KEY
+      description: Private key for credit signature generation
+      affects: Credit cryptographic signing
+
+    - name: CHAIN_ID
+      description: Blockchain chain ID for credit operations (137 for Polygon)
+      affects: Blockchain network selection
+
+    - name: READ_ONLY_ADMIN_ADDRESSES
+      description: Comma-separated list of read-only admin addresses
+      affects: Authorization for read operations
+
+    - name: READ_WRITE_ADMIN_ADDRESSES
+      description: Comma-separated list of read-write admin addresses
+      affects: Authorization for write operations
+
+    - name: AWS_SQS_QUEUE_URL
+      description: AWS SQS queue URL for asynchronous processing
+      affects: Queue-based task processing
+
+    - name: AWS_SNS_ARN
+      description: AWS SNS topic ARN for event publishing
+      affects: Event publishing
+
+    - name: BUCKET
+      description: S3 bucket name for storage
+      affects: Asset and data storage
+
+    - name: BUCKET_ENDPOINT
+      description: S3 bucket endpoint URL
+      affects: S3 connection
+
+    - name: AWS_REGION
+      description: AWS region for S3 and other AWS services
+      affects: AWS service routing
+
+    - name: REDIS_HOST
+      description: Redis host URL for caching (optional)
+      affects: Caching performance
+
+    - name: CREDITS_SERVER_URL
+      description: Public URL of this service for SSE and external references
+      affects: Self-referencing URLs and SSE connections
+
+    - name: SLACK_BOT_TOKEN
+      description: Slack bot token for notifications
+      affects: Slack integration
+
+    - name: SLACK_SIGNING_SECRET
+      description: Slack signing secret for request verification
+      affects: Slack security
+
+    - name: SLACK_SIGNING_SECRET
+      description: Slack signing secret for request verification
+      affects: Slack security
+
+    - name: SLACK_CHANNEL
+      description: Default Slack channel for credit notifications
+      affects: Notification routing
+
+    - name: ADMIN_SLACK_CHANNEL
+      description: Slack channel for admin notifications
+      affects: Admin notification routing
+
+    - name: DAILY_GRANTER_LIMIT
+      description: Daily credit granting limit in ether (default 5000)
+      affects: Credit granting rate limiting
+
+    - name: CREDITS_GRACE_PERIOD_DAYS
+      description: Days after season end until credits expire (default 14)
+      affects: Credit expiration timing
+
+    - name: ETHEREUM_RPC_URL
+      description: Ethereum RPC endpoint for ENS and mainnet interactions
+      affects: ENS resolution and mainnet data
+
+    - name: RPC_ENDPOINT_POLYGON
+      description: Polygon RPC endpoint for credit contract interactions
+      affects: Credit contract queries
+
+    - name: PEER_API_URL
+      description: Archipelago workers API URL for peer presence checks
+      affects: Scene visit verification
+
+    - name: EVENTS_API_URL
+      description: Decentraland Events API URL for event data
+      affects: Event attendance goals
+
+    - name: EXTERNAL_CALL_SIGNER_PRIVATE_KEY
+      description: Private key for external call signing
+      affects: Cross-chain call authentication
+
+    - name: VALID_TARGETS_TO_SIGN
+      description: Comma-separated list of valid contract addresses for external call signing
+      affects: Security for external call signatures
+
+    - name: VALID_SELECTORS_TO_SIGN
+      description: Comma-separated list of valid function selectors for external call signing
+      affects: Security for external call signatures
+
+    - name: API_ADMIN_TOKEN
+      description: Admin API token for administrative endpoints
+      affects: Admin API security
+
+    - name: GRANTER_API_ADMIN_TOKEN
+      description: Granter API token for credit granting operations
+      affects: Credit granting authorization
+
+    - name: PROGRAMMATIC_API_ADMIN_TOKEN
+      description: Programmatic API token for automated operations
+      affects: Programmatic API security
+
+    - name: ANALYTICS_CONTEXT
+      description: Analytics context identifier for tracking
+      affects: Analytics event categorization
+
+    - name: ANALYTICS_API_URL
+      description: Analytics API URL for event reporting
+      affects: Analytics integration
+
+    - name: ANALYTICS_API_TOKEN
+      description: Analytics API authentication token
+      affects: Analytics security
+
+    - name: WKC_METRICS_RESET_AT_NIGHT
+      description: Whether to reset metrics at 00:00 UTC (default false)
+      affects: Metrics collection behavior
+
+    - name: CURRENT_VERSION
+      description: Current service version for tracking
+      affects: Version reporting
+
+    - name: COMMIT_HASH
+      description: Git commit hash for tracking deployments
+      affects: Version tracking

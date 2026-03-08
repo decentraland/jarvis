@@ -6,7 +6,7 @@
 # It complements OpenAPI specs with context that endpoint
 # definitions cannot express.
 
-schema_version: "1.0"
+schema_version: "1.1"
 
 # ============================================================
 # IDENTITY
@@ -15,11 +15,15 @@ service:
   name: string                    # Unique service identifier (e.g., "realm-provider")
   display_name: string            # Human-readable name
   description: string             # 1-3 sentence summary of what this service does and WHY it exists
-  team: string                    # Owning team identifier
+  owner: string                   # Owning team identifier
   repository: string              # Git repository URL
   language: string                # Primary language (e.g., "typescript", "go", "rust")
-  layer: string                   # Architectural layer 
-  ai-agent-context: string        # URL to the ai agent context file to search more information about the service capabilities 
+  layer: string                   # Architectural layer
+  role:                           # Primary function(s) of this service — array
+    - string                      # Values: gateway | rt-gateway | auth | discovery | storage | worker | content | library | client | other
+  data_domain:                    # Domain data this service owns (empty [] if no domain data)
+    - string                      # e.g., "friendships", "scenes", "nfts"
+  ai-agent-context: string        # URL to the ai agent context file to search more information about the service capabilities
   
 
 # ============================================================
@@ -138,6 +142,7 @@ dependencies:
   services:
     - name: string
       relationship: string        # "sync" | "async" | "both"
+      protocol: string            # "HTTP" | "WebSocket" | "gRPC" | "SNS/SQS" | "GraphQL" | "NATS"
       purpose: string
       critical: boolean
 

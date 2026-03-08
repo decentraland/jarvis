@@ -1,13 +1,17 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: asset-bundle-converter
   display_name: Asset Bundle Converter
   description: Converts Decentraland scene assets (GLTF models, textures) into optimized Unity Asset Bundles for improved WebGL performance. Monitors deployment events and processes entities by re-importing GLTF files in Unity and packaging them into versioned, compressed Asset Bundles stored on CDN.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/asset-bundle-converter
   language: typescript
   layer: content
+  role:
+    - worker
+  data_domain:
+    - asset-bundles
   ai-agent-context: https://github.com/decentraland/asset-bundle-converter/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -95,22 +99,25 @@ domain:
       identity_field: entityId
 
 api:
-  openapi_url: https://github.com/decentraland/asset-bundle-converter/blob/main/consumer-server/docs/openapi.yaml
+  openapi_url: ""
 
 dependencies:
   services:
     - name: catalyst
       relationship: sync
+      protocol: HTTP
       purpose: Fetches original entity content for conversion
       critical: true
 
     - name: deployments-to-sqs
       relationship: async
+      protocol: SNS/SQS
       purpose: Receives deployment events to trigger conversions
       critical: true
 
     - name: asset-bundle-registry
       relationship: async
+      protocol: SNS/SQS
       purpose: Notifies when conversions complete via SNS events
       critical: false
 
@@ -156,18 +163,70 @@ events:
 
 configuration:
   key_env_vars:
-    - name: AB_VERSION
-      description: Asset bundle version identifier for output paths
-      affects: CDN path structure and client resolution
+    - name: HTTP_SERVER_PORT
+      description: HTTP server port for API endpoints
+      affects: Server listening port
+
+    - name: HTTP_SERVER_HOST
+      description: HTTP server host address
+      affects: Server binding configuration
+
+    - name: ENV
+      description: Environment identifier (prd, stg, dev)
+      affects: Environment-specific configuration and Sentry
+
+    - name: SENTRY_DSN
+      description: Sentry DSN for error tracking
+      affects: Error monitoring and reporting
+
+    - name: AWS_REGION
+      description: AWS region for S3, SQS, and SNS resources
+      affects: AWS service region configuration
+
+    - name: AWS_SNS_ARN
+      description: SNS topic ARN for publishing conversion completion events
+      affects: Event notification routing
+
+    - name: AWS_SNS_ENDPOINT
+      description: Custom SNS endpoint for local development
+      affects: Development and testing configuration
+
+    - name: TASK_QUEUE
+      description: SQS queue URL for consuming deployment events
+      affects: Standard priority conversion job consumption
+
+    - name: PRIORITY_TASK_QUEUE
+      description: SQS queue URL for high-priority conversion jobs
+      affects: High-priority conversion job consumption
 
     - name: CDN_BUCKET
       description: S3 bucket for storing converted assets and manifests
-      affects: Asset storage location
+      affects: Asset storage location and CDN distribution
 
     - name: LOGS_BUCKET
       description: S3 bucket for archiving conversion logs
       affects: Logging and debugging
 
-    - name: SQS_QUEUE_URL
-      description: AWS SQS queue URL for deployment events
-      affects: Event consumption
+    - name: UNITY_PATH
+      description: Path to Unity executable for asset bundle generation
+      affects: Unity engine location for conversion process
+
+    - name: PROJECT_PATH
+      description: Path to Unity project for asset bundle generation
+      affects: Unity project location for conversion
+
+    - name: BUILD_TARGET
+      description: Unity build target platform (webgl, windows, mac)
+      affects: Asset bundle platform compilation
+
+    - name: PLATFORM
+      description: Target platform identifier
+      affects: Platform-specific conversion configuration
+
+    - name: AB_VERSION
+      description: Asset bundle version identifier for output paths
+      affects: CDN path structure and client resolution
+
+    - name: TMP_SECRET
+      description: Temporary secret for API authorization
+      affects: Manual conversion API authentication

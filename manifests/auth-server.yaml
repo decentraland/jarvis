@@ -1,13 +1,17 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: auth-server
   display_name: Auth Server
   description: Facilitates secure communication between the Decentraland desktop client and browser-based authentication dApp. Enables the desktop client to execute wallet operations (transactions, signatures) using the user's browser wallet through a request-response relay pattern.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/auth-server
   language: typescript
   layer: feature-servers
+  role:
+    - auth
+  data_domain:
+    - authentication-requests
   ai-agent-context: https://github.com/decentraland/auth-server/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -68,23 +72,16 @@ domain:
   owned_entities:
     - name: Authentication Request
       description: Wallet method call pending execution with lifecycle metadata
-      persistence: postgres
+      persistence: redis (or in-memory cache)
       identity_field: requestId
 
 api:
   openapi_url: https://github.com/decentraland/auth-server/blob/main/docs/openapi.yaml
 
-db:
-  schema_url: https://github.com/decentraland/auth-server/blob/main/docs/database-schemas.md
-
 dependencies:
   services: []
 
   external:
-    - name: PostgreSQL
-      purpose: Request storage and lifecycle management
-      type: storage
-
     - name: Redis
       purpose: Caching with memory fallback
       type: storage
@@ -99,14 +96,38 @@ events:
 
 configuration:
   key_env_vars:
-    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
-      description: PostgreSQL connection string for request storage
-      affects: Request persistence and retrieval
+    - name: HTTP_SERVER_PORT
+      description: Port on which the HTTP server listens
+      affects: Service availability and routing
 
-    - name: REQUEST_TTL
-      description: Time-to-live for authentication requests in seconds (default 300)
-      affects: Request expiration and cleanup timing
+    - name: HTTP_SERVER_HOST
+      description: Host address for the HTTP server
+      affects: Service network binding
+
+    - name: DCL_PERSONAL_SIGN_REQUEST_EXPIRATION_IN_SECONDS
+      description: Expiration time in seconds for personal sign requests (default 600)
+      affects: Sign-in request timeout
+
+    - name: REQUEST_EXPIRATION_IN_SECONDS
+      description: Expiration time in seconds for all other requests (default 300)
+      affects: Request timeout
+
+    - name: REDIS_HOST
+      description: Redis host URL for caching (optional, falls back to in-memory)
+      affects: Caching performance
 
     - name: CORS_ORIGIN
-      description: Allowed origins for CORS (auth dApp URLs)
+      description: Semicolon-separated regex patterns for allowed CORS origins (auth dApp URLs)
       affects: Cross-origin communication security
+
+    - name: CORS_METHODS
+      description: Allowed HTTP methods for CORS
+      affects: Cross-origin request handling
+
+    - name: WKC_METRICS_PUBLIC_PATH
+      description: Public path for Prometheus metrics endpoint (default /metrics)
+      affects: Metrics exposure
+
+    - name: WKC_METRICS_BEARER_TOKEN
+      description: Optional bearer token for metrics endpoint security
+      affects: Metrics endpoint authentication

@@ -30,8 +30,9 @@ Read the schema files. The output files must follow these schemas exactly.
 
 ## Rules
 
+- When regenerating, read existing `graph.yaml` and `index.yaml` first to preserve any manually added entries (e.g., edges for dependencies not yet in individual manifests)
 - Include every service found in the manifests — do not skip any
-- For the graph: derive edges from `dependencies.services` and event flows from `events.publishes` / `events.consumes`
-- For the index: extract only the compact fields (name, display_name, description, layer, repository, dependencies)
+- For the graph: create one node per service (`name`, `display_name`, `layer`, `repository`). Create edges from `dependencies.services` entries — use dependency `relationship`, `protocol`, and `purpose` (as description). Create event_flows from `events.publishes` matched with `events.consumes` across services.
+- For the index: for each service extract from the manifest: `name`, `display_name`, `description`, `layer`, `repository` from `service:` section; `role` (array) and `data_domain` (array) from `service:` section; dependencies list with `name`, `relationship`, and `protocol` from `dependencies.services`.
 - Follow the provided schemas exactly
 - Write the files directly — do not output to terminal

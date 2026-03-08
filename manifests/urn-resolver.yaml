@@ -1,13 +1,16 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: urn-resolver
   display_name: "@dcl/urn-resolver"
   description: TypeScript library that resolves and parses Decentraland asset URNs within the urn:decentraland namespace. Provides type-safe parsing of LAND, wearables, collections v1/v2, and third-party assets for ownership validation and content URL generation.
-  team: core
+  owner: core-engineering
   repository: https://github.com/decentraland/urn-resolver
   language: typescript
   layer: shared-library
+  role:
+    - library
+  data_domain: []
   ai-agent-context: https://github.com/decentraland/urn-resolver/blob/main/docs/ai-agent-context.md
 
 domain:

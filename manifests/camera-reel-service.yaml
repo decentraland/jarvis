@@ -1,13 +1,17 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: camera-reel-service
   display_name: Camera Reel Service
   description: Manages camera images captured from Decentraland Explorer. Provides upload, storage, retrieval, and metadata management for user-generated screenshots with visibility controls and place associations.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/camera-reel-service
   language: rust
   layer: feature-servers
+  role:
+    - gateway
+  data_domain:
+    - camera-images
   ai-agent-context: https://github.com/decentraland/camera-reel-service/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -77,7 +81,7 @@ domain:
       identity_field: imageId
 
 api:
-  openapi_url: https://github.com/decentraland/camera-reel-service/blob/main/docs/openapi.yaml
+  openapi_url: ""
 
 db:
   schema_url: https://github.com/decentraland/camera-reel-service/blob/main/docs/database-schemas.md
@@ -124,6 +128,30 @@ configuration:
       description: S3 endpoint URL (for MinIO or custom S3)
       affects: Storage service connectivity
 
+    - name: AWS_ACCESS_KEY_ID
+      description: AWS access key for S3 and SNS services
+      affects: AWS service authentication
+
+    - name: AWS_SECRET_ACCESS_KEY
+      description: AWS secret key for AWS services
+      affects: AWS service authentication
+
+    - name: AWS_DEFAULT_REGION
+      description: AWS region for S3 and SNS services
+      affects: AWS service regional configuration
+
+    - name: AWS_SNS_TOPIC_ARN
+      description: SNS topic ARN for image upload events (optional)
+      affects: Event publishing
+
+    - name: WKC_METRICS_BEARER_TOKEN
+      description: Optional bearer token for Prometheus metrics endpoint security
+      affects: Metrics endpoint authentication
+
+    - name: ENV
+      description: Environment name (affects behavior and authentication requirements)
+      affects: Environment-specific configuration
+
     - name: RUST_LOG
-      description: Logging level configuration
+      description: Logging level configuration (e.g., debug, info, warn, error)
       affects: Observability and debugging

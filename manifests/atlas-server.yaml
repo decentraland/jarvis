@@ -1,13 +1,19 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: atlas-server
   display_name: Atlas Server
   description: Provides REST API for querying Decentraland's Genesis City map data (parcels, estates, districts) and generating map visualizations as PNG images. Serves as the data layer for the Decentraland Atlas interface.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/atlas-server
   language: typescript
   layer: feature-servers
+  role:
+    - gateway
+  data_domain:
+    - map-tiles
+    - estates
+    - districts
   ai-agent-context: https://github.com/decentraland/atlas-server/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -81,7 +87,7 @@ domain:
     - name: Tile
       description: Parcel coordinate with ownership and metadata
       persistence: postgres
-      identity_field: id (string: "x,y")
+      identity_field: "id"
 
     - name: Map Image Cache
       description: Generated PNG map visualizations
@@ -92,10 +98,15 @@ api:
   openapi_url: https://github.com/decentraland/atlas-server/blob/main/docs/openapi.yaml
 
 db:
-  schema_url: https://github.com/decentraland/atlas-server/blob/main/docs/database-schemas.md
+  schema_url: ""
 
 dependencies:
-  services: []
+  services:
+    - name: signatures-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Rentals signature validation
+      critical: false
 
   external:
     - name: PostgreSQL
@@ -116,18 +127,94 @@ events:
 
 configuration:
   key_env_vars:
+    - name: HTTP_SERVER_PORT
+      description: Port on which the HTTP server listens (default 5000)
+      affects: Server binding
+
+    - name: HTTP_SERVER_HOST
+      description: Host address for the HTTP server (default 0.0.0.0)
+      affects: Server binding
+
+    - name: CORS_ORIGIN
+      description: Allowed CORS origins for cross-origin requests (default *)
+      affects: Cross-origin request security
+
+    - name: CORS_METHOD
+      description: Allowed CORS methods (default *)
+      affects: Cross-origin request handling
+
     - name: SUBGRAPH_URL
-      description: URL for The Graph subgraph providing blockchain data
+      description: The Graph subgraph URL for blockchain data (parcels, estates, marketplace)
       affects: Ownership and marketplace data accuracy
 
-    - name: AWS_S3_BUCKET
-      description: S3 bucket for caching map tiles and images
-      affects: Performance and storage costs
+    - name: SUBGRAPH_COMPONENT_QUERY_TIMEOUT
+      description: Timeout in milliseconds for subgraph queries (default 30000)
+      affects: Query performance and timeout handling
+
+    - name: CHAIN_ID
+      description: Ethereum chain ID (1 for mainnet)
+      affects: Blockchain network selection
 
     - name: API_BATCH_SIZE
-      description: Number of records to process per batch when querying subgraph
-      affects: Query performance and API load
+      description: Batch size for API queries (default 1000)
+      affects: Query performance and pagination
+
+    - name: API_CONCURRENCY
+      description: Number of concurrent API requests (default 5)
+      affects: Query performance and resource usage
 
     - name: REFRESH_INTERVAL
-      description: Interval in seconds for refreshing tile data from subgraph
-      affects: Data freshness
+      description: Interval in seconds for data refresh (default 60)
+      affects: Data freshness and cache updates
+
+    - name: ATLAS_SERVER_URL
+      description: Public URL of this atlas server (for URL generation)
+      affects: Generated URLs and redirects
+
+    - name: SIGNATURES_SERVER_URL
+      description: Signatures validation server URL for rentals
+      affects: Rentals signature verification
+
+    - name: FF_URL
+      description: Feature flags service URL
+      affects: Feature flag configuration
+
+    - name: AWS_S3_REGION
+      description: AWS S3 region for map tile storage (default us-east-1)
+      affects: S3 connectivity
+
+    - name: AWS_ACCESS_KEY_ID
+      description: AWS access key for S3 access
+      affects: S3 authentication
+
+    - name: AWS_SECRET_ACCESS_KEY
+      description: AWS secret key for S3 access
+      affects: S3 authentication
+
+    - name: AWS_S3_BUCKET
+      description: S3 bucket name for caching map tiles and images
+      affects: Storage location
+
+    - name: AWS_S3_ENDPOINT
+      description: Custom S3 endpoint (for MinIO or custom S3)
+      affects: S3 connectivity
+
+    - name: CDN_URL
+      description: CDN URL for serving cached images
+      affects: Image delivery performance
+
+    - name: LAND_CONTRACT_ADDRESS
+      description: Ethereum LAND contract address
+      affects: Blockchain contract queries
+
+    - name: ESTATE_CONTRACT_ADDRESS
+      description: Ethereum Estate contract address
+      affects: Blockchain contract queries
+
+    - name: IMAGE_BASE_URL
+      description: Base URL for generated map images
+      affects: Image URL generation
+
+    - name: EXTERNAL_BASE_URL
+      description: External base URL for API endpoints
+      affects: API URL generation

@@ -1,13 +1,17 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 service:
   name: realm-provider
   display_name: Realm Provider
   description: Provides realm configuration service for Decentraland clients. Implements ADR-110 realm descriptions, enabling clients to discover and connect to available Catalyst nodes, Lambdas services, and communication realms.
-  team: foundation
+  owner: core-engineering
   repository: https://github.com/decentraland/realm-provider
   language: typescript
   layer: feature-servers
+  role:
+    - discovery
+  data_domain:
+    - realms
   ai-agent-context: https://github.com/decentraland/realm-provider/blob/main/docs/ai-agent-context.md
 
 domain:
@@ -51,15 +55,20 @@ dependencies:
   services:
     - name: catalyst
       relationship: sync
-      purpose: Queries Catalyst nodes for realm information
+      protocol: HTTP
+      purpose: Queries Catalyst nodes for scene entities and realm information
       critical: true
 
     - name: archipelago-workers
-      relationship: sync
-      purpose: MAIN realm status and configuration
+      relationship: both
+      protocol: HTTP
+      purpose: MAIN realm status and configuration (stats and ws-connector services)
       critical: true
 
-  external: []
+  external:
+    - name: Content Client
+      purpose: DCL Catalyst Client library for fetching content entities
+      type: api
 
 events:
   publishes: []
@@ -67,9 +76,25 @@ events:
 
 configuration:
   key_env_vars:
-    - name: CATALYST_NODES
-      description: List of Catalyst node URLs to query
-      affects: Realm availability
+    - name: ARCHIPELAGO_STATS_URL
+      description: URL for archipelago stats service (core status and user counts)
+      affects: MAIN realm availability and user counts
+
+    - name: ARCHIPELAGO_WS_CONNECTOR_URL
+      description: URL for archipelago WebSocket connector
+      affects: MAIN realm adapter configuration
+
+    - name: CONTENT_URL
+      description: Catalyst content server URL for fetching scene entities
+      affects: Scene and thumbnail retrieval
+
+    - name: ETH_NETWORK
+      description: Ethereum network (mainnet, sepolia)
+      affects: Blockchain network selection
+
+    - name: BLACKLISTED_CATALYST
+      description: Semicolon-separated list of blacklisted Catalyst URLs
+      affects: Catalyst node filtering
 
 adrs:
   - id: ADR-110
