@@ -1,6 +1,6 @@
 {
   "name": "@dcl/jarvis",
-  "version": "0.0.1",
+  "version": "0.0.0-development",
   "description": "Decentraland services and UI manifests",
   "type": "module",
   "files": [
@@ -18,9 +18,19 @@
     "npm": ">=10.0.0"
   },
   "license": "Apache-2.0",
+  "release": {
+    "branches": ["main"],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/npm",
+      "@semantic-release/github"
+    ]
+  },
   "devDependencies": {
     "@mariozechner/pi-coding-agent": "^0.55.0",
     "@types/node": "^22.0.0",
+    "semantic-release": "^24.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.8.2"
   }
