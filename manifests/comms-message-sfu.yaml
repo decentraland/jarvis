@@ -11,6 +11,7 @@ service:
   role:
     - rt-gateway
   data_domain: []
+  ai-agent-context: ""
 
 domain:
   glossary:
@@ -71,6 +72,9 @@ domain:
 api:
   openapi_url: https://github.com/decentraland/comms-message-sfu/blob/main/docs/openapi.yaml
 
+db:
+  schema_url: ""
+
 dependencies:
   services:
     - name: social-service-ea
@@ -99,6 +103,7 @@ events:
   consumes: []
 
 configuration:
+  feature_flags: []
   key_env_vars:
     - name: HTTP_SERVER_PORT
       description: HTTP server port for API endpoints
@@ -151,3 +156,5 @@ configuration:
     - name: REPLICA_ID
       description: Unique identifier for this SFU replica instance
       affects: Load distribution and horizontal scaling
+
+adrs: []

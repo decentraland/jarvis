@@ -253,6 +253,18 @@ configuration:
       description: RPC/gRPC server port
       affects: gRPC endpoint for friendships
 
+    - name: CDN_URL
+      description: CDN URL for media delivery
+      affects: Media access URLs
+
+    - name: REFERRAL_MAX_IP_MATCHES
+      description: Maximum IP matches allowed for referral validation
+      affects: Referral fraud prevention
+
+    - name: REFERRAL_MIN_LOGIN_DAYS
+      description: Minimum login days for referral validation
+      affects: Referral qualification criteria
+
 adrs:
   - id: ADR-44
     title: Signed Fetch Authentication

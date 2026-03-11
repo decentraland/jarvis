@@ -117,21 +117,25 @@ dependencies:
   services:
     - name: events-notifier
       relationship: async
+      protocol: SNS/SQS
       purpose: Receives events from explorer and blockchain to trigger badge evaluation
       critical: true
 
     - name: notifications-workers
       relationship: async
+      protocol: SNS/SQS
       purpose: Delivers badge-granted notifications to users
       critical: false
 
     - name: catalyst
       relationship: sync
+      protocol: HTTP
       purpose: Fetches user profiles and entity data for badge verification
       critical: false
 
     - name: deployments-to-sqs
       relationship: async
+      protocol: SNS/SQS
       purpose: Receives deployment events from Catalyst for deployment-related badges
       critical: false
 

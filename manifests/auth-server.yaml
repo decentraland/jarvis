@@ -131,3 +131,27 @@ configuration:
     - name: WKC_METRICS_BEARER_TOKEN
       description: Optional bearer token for metrics endpoint security
       affects: Metrics endpoint authentication
+
+    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
+      description: PostgreSQL connection string for onboarding tracking
+      affects: Database connectivity for onboarding checkpoints
+
+    - name: SENDGRID_API_KEY
+      description: SendGrid API key for email notifications
+      affects: Onboarding email nudge system
+
+    - name: SENDGRID_FROM_EMAIL
+      description: SendGrid sender email address
+      affects: Email sender identity
+
+    - name: SENDGRID_TEMPLATE_ID
+      description: SendGrid dynamic template ID for onboarding emails
+      affects: Email template rendering
+
+    - name: ONBOARDING_API_KEY
+      description: API key for onboarding checkpoint endpoint
+      affects: Authorization for onboarding checkpoint updates
+
+    - name: ONBOARDING_ADMIN_ENABLED
+      description: Enable admin endpoints for onboarding testing (dev/staging only)
+      affects: Admin endpoint availability

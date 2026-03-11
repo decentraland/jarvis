@@ -17,7 +17,7 @@ service:
 domain:
   glossary:
     - term: Realm
-      definition: Communication/render configuration specifying which Catalyst, Lambdas, and comms services to use for client connections.
+      definition: Communication/render configuration specifying which Catalyst, Lambdas, and comms services to use for client connections. The realm is a description layer only — it tells clients where to connect, not whether they are authorized.
 
     - term: MAIN Realm
       definition: Default realm managed by Archipelago workers for Genesis City communication.
@@ -45,6 +45,12 @@ domain:
     - Expose hot scenes data
     - Provide MAIN realm information
     - Enable dynamic realm selection and load balancing
+
+  out_of_scope:
+    - Comms access control and gatekeeping (handled by comms-gatekeeper for Genesis City and worlds-content-server for Worlds)
+    - LiveKit token issuance and room management
+    - User validation and authentication
+    - State management (service is stateless and aggregates configuration from other services)
 
   owned_entities: []
 
@@ -95,6 +101,30 @@ configuration:
     - name: BLACKLISTED_CATALYST
       description: Semicolon-separated list of blacklisted Catalyst URLs
       affects: Catalyst node filtering
+
+    - name: HTTP_SERVER_HOST
+      description: HTTP server host
+      affects: Server listening address
+
+    - name: HTTP_SERVER_PORT
+      description: HTTP server port
+      affects: Server listening port
+
+    - name: HTTP_BASE_URL
+      description: Public base URL (auto-detected if not set)
+      affects: URL generation in responses
+
+    - name: WKC_METRICS_RESET_AT_NIGHT
+      description: Whether to reset metrics at 00:00 UTC
+      affects: Metrics behavior
+
+    - name: COMMIT_HASH
+      description: Git commit hash for version tracking (optional)
+      affects: Service version information
+
+    - name: CURRENT_VERSION
+      description: Service version number (optional)
+      affects: Service version information
 
 adrs:
   - id: ADR-110

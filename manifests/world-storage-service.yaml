@@ -36,6 +36,12 @@ domain:
     - term: Authoritative Server
       definition: Server-side runtime that executes SDK7 scene code and signs requests using its private key to access world storage and environment variables.
 
+    - term: Storage Namespaces
+      definition: Two distinct storage contexts - world storage (global to the world) and player storage (scoped per player address), both isolated by world name extracted from the signature.
+
+    - term: Authorization Model
+      definition: Three-tier authorization system - general authorization (for most operations), owner/deployer only (for sensitive bulk deletes and env var writes), and authorized addresses only (for env var reads).
+
   concept_relationships:
     cross_service:
       - local_concept: World Storage
@@ -43,6 +49,12 @@ domain:
         remote_concept: World
         mapping_type: references
         description: Storage is scoped to worlds deployed on worlds-content-server
+
+      - local_concept: Authoritative Server
+        remote_service: worlds-content-server
+        remote_concept: World Deployment
+        mapping_type: references
+        description: Authoritative Server signatures are validated against world deployments on worlds-content-server
 
   invariants:
     - rule: World name must be extracted from signed fetch metadata, never from user input
@@ -61,6 +73,14 @@ domain:
       enforced_at: domain_layer
       severity: hard
 
+    - rule: Client-side scenes (signer decentraland-kernel-scene) are explicitly rejected
+      enforced_at: api_validation
+      severity: hard
+
+    - rule: Bulk delete operations require confirmation header (X-Confirm-Delete-All)
+      enforced_at: api_validation
+      severity: hard
+
   responsibilities:
     - Provide persistent key-value storage for worlds
     - Manage per-player storage scoped to world and player
@@ -69,12 +89,17 @@ domain:
     - Support bulk delete operations with confirmation
     - Validate authoritative server signatures using ADR-44 specification
     - Prevent world name spoofing through cryptographic validation
+    - Extract world name from signed payload metadata (serverName or realmName)
+    - Implement three-tier authorization system for different operation sensitivity levels
+    - Encrypt environment variables at rest using configured encryption key
+    - Enforce storage size limits per namespace (env, world, player)
 
   out_of_scope:
     - Scene execution (handled by Authoritative Servers)
     - World deployment (handled by worlds-content-server)
     - Authentication token generation (handled by clients)
     - Client-side scene requests (explicitly rejected)
+    - World ownership management (delegated to worlds-content-server)
 
   owned_entities:
     - name: World Storage Entry

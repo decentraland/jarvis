@@ -23,6 +23,7 @@ domain:
       definition: SQS message triggering 3D-to-2D avatar image generation.
 
   concept_relationships:
+    internal: []
     cross_service:
       - local_concept: Profile Image
         remote_service: catalyst
@@ -30,12 +31,27 @@ domain:
         mapping_type: derived_from
         description: Profile images are rendered from Catalyst profile entities
 
+  invariants:
+    - rule: Profile images must be regenerated when avatar wearables or appearance changes
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Failed rendering jobs must be sent to dead letter queue for retry
+      enforced_at: domain_layer
+      severity: hard
+
   responsibilities:
     - Monitor Catalyst for profile changes
     - Queue rendering jobs to SQS
     - Render 3D avatars to 2D images
     - Upload generated images to S3
     - Retry failed rendering jobs
+
+  out_of_scope:
+    - Managing user profiles or avatar metadata
+    - Validating wearable compatibility or ownership
+    - 3D model hosting or distribution
+    - Profile authentication or authorization
 
   owned_entities:
     - name: Profile Image
@@ -45,6 +61,9 @@ domain:
 
 api:
   openapi_url: ""
+
+db:
+  schema_url: ""
 
 dependencies:
   services:
@@ -67,6 +86,7 @@ events:
   consumes: []
 
 configuration:
+  feature_flags: []
   key_env_vars:
     - name: HTTP_SERVER_HOST
       description: HTTP server host address
@@ -103,3 +123,5 @@ configuration:
     - name: AUTH_SECRET
       description: Secret for authenticating API requests
       affects: API authentication and authorization
+
+adrs: []

@@ -143,3 +143,19 @@ configuration:
     - name: MARKETPLACE_BASE_URL
       description: Marketplace frontend base URL
       affects: Event metadata enrichment
+
+    - name: AUTH_SERVER_URL
+      description: Auth server URL for onboarding checkpoint forwarding
+      affects: Onboarding integration
+
+    - name: AUTH_SERVER_ONBOARDING_API_KEY
+      description: API key for auth server onboarding endpoints
+      affects: Onboarding checkpoint authentication
+
+    - name: HTTP_SERVER_PORT
+      description: HTTP server port
+      affects: Server listening port
+
+    - name: HTTP_SERVER_HOST
+      description: HTTP server host
+      affects: Server listening address

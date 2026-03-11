@@ -21,6 +21,19 @@ domain:
     - term: Auth Chain
       definition: Chain of signed messages proving ownership of a wallet address.
 
+  concept_relationships:
+    internal:
+      - from: Auth Chain
+        to: Parcel Authorization
+        relationship: validates
+        description: Auth chain signatures are verified to ensure user is authorized to deploy to specific parcels
+    cross_service:
+      - local_concept: Parcel Authorization
+        remote_service: catalyst
+        remote_concept: Scene Deployment
+        mapping_type: controls_access_to
+        description: Parcel authorizations determine which users can deploy scenes to Foundation-owned parcels
+
   invariants:
     - rule: Users must be pre-authorized to deploy to specific parcels
       enforced_at: api_validation
@@ -32,10 +45,19 @@ domain:
     - Proxy entity uploads to Catalyst
     - Sign entities with server wallet
 
+  out_of_scope:
+    - Managing parcel ownership records
+    - Validating content entity schemas
+    - Storing deployed content
+    - User authentication beyond auth chain verification
+
   owned_entities: []
 
 api:
   openapi_url: https://github.com/decentraland/linker-server/blob/main/docs/openapi.yaml
+
+db:
+  schema_url: ""
 
 dependencies:
   services:
@@ -58,6 +80,7 @@ events:
   consumes: []
 
 configuration:
+  feature_flags: []
   key_env_vars:
     - name: HTTP_SERVER_PORT
       description: HTTP server port for API endpoints
@@ -90,3 +113,5 @@ configuration:
     - name: AUTHORIZATIONS_UPDATE_INTERVAL_MS
       description: Interval in milliseconds for refreshing authorization data
       affects: Authorization cache refresh frequency
+
+adrs: []

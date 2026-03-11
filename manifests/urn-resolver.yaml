@@ -116,6 +116,12 @@ domain:
       persistence: none (parse result)
       identity_field: uri
 
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
 dependencies:
   services: []
 
@@ -127,3 +133,13 @@ dependencies:
     - name: common-metaverse/urn-namespaces
       purpose: URN namespace specification that this library implements
       type: other
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+adrs: []

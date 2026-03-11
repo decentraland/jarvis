@@ -11,6 +11,7 @@ service:
   role:
     - gateway
   data_domain: []
+  ai-agent-context: ""
 
 domain:
   glossary:
@@ -92,6 +93,9 @@ domain:
 api:
   openapi_url: ""
 
+db:
+  schema_url: ""
+
 dependencies:
   services:
     - name: camera-reel-service
@@ -115,7 +119,12 @@ dependencies:
       purpose: Static asset hosting and delivery for Gatsby-built site
       type: cdn
 
+events:
+  publishes: []
+  consumes: []
+
 configuration:
+  feature_flags: []
   key_env_vars:
     - name: GATSBY_REEL_SERVICE_URL
       description: URL of the camera-reel-service backend API (also used as REEL_SERVICE_URL in worker)
@@ -156,3 +165,5 @@ configuration:
     - name: GATSBY_PLACES_URL
       description: Places service URL for location links
       affects: Links to place details from snapshots
+
+adrs: []

@@ -19,13 +19,19 @@ service:
 domain:
   glossary:
     - term: World
-      definition: Scene identified by a DCL name rather than parcel coordinates, supporting portable and single-scene experiences.
+      definition: Scene identified by a DCL name rather than parcel coordinates, supporting portable and single-scene experiences. A World is a fully isolated realm where users can only see and interact with other players within that same World.
 
     - term: Addressable URN
       definition: Entity URN format enabling global portable experiences and single-scene loading.
 
     - term: World Permissions
-      definition: JSON configuration controlling deployment, access, and streaming permissions (allow-list, unrestricted, shared-secret, NFT ownership).
+      definition: JSON configuration controlling deployment, access, and streaming permissions (allow-list, unrestricted, shared-secret, NFT ownership). These permissions control comms access (who can enter and interact), but scene content files are always publicly accessible.
+
+    - term: Global Portable Experience
+      definition: Experiences loaded for all users via GLOBAL_PX query parameter, enabling cross-world features like event calendars.
+
+    - term: Single Scene
+      definition: Loading a specific scene instead of Genesis City via SPACE query parameter, useful for testing and isolated experiences.
 
   concept_relationships:
     internal:
@@ -62,11 +68,15 @@ domain:
     - Provide content retrieval API for world scenes
     - Support addressable URNs for portable experiences
     - Manage world permissions configurations
+    - Act as LiveKit gatekeeper for World scenes (controls comms access via ACLs)
+    - Provide /world/{name}/about endpoint for realm connection and configuration
+    - Validate that deployer wallet owns the DCL name specified in scene.json
 
   out_of_scope:
     - Genesis City parcels (handled by Catalyst)
     - World storage and environment variables (handled by world-storage-service)
     - Scene execution (handled by client/renderer)
+    - Comms gatekeeping for Genesis City (handled by comms-gatekeeper)
 
   owned_entities:
     - name: World
@@ -78,7 +88,7 @@ api:
   openapi_url: https://github.com/decentraland/worlds-content-server/blob/main/docs/openapi.yaml
 
 db:
-  schema_url: https://github.com/decentraland/worlds-content-server/blob/main/docs/database-schemas.md
+  schema_url: https://github.com/decentraland/worlds-content-server/blob/main/docs/database-schema.md
 
 dependencies:
   services:
@@ -203,3 +213,87 @@ configuration:
     - name: SCENE_EVICTION_TTL_MS
       description: Time to keep undeployed scenes before deletion (ms)
       affects: Scene lifecycle management
+
+    - name: HTTP_SERVER_PORT
+      description: HTTP server port
+      affects: Server listening port
+
+    - name: HTTP_BASE_URL
+      description: Public base URL for the server
+      affects: URL generation in responses
+
+    - name: NOTIFICATION_SERVICE_URL
+      description: URL for notification service (optional)
+      affects: User notifications
+
+    - name: NOTIFICATION_SERVICE_TOKEN
+      description: Authentication token for notification service
+      affects: Notification service authentication
+
+    - name: LAMBDAS_URL
+      description: Catalyst lambdas base URL
+      affects: Catalyst integration
+
+    - name: CONTENT_URL
+      description: Catalyst content base URL
+      affects: Content retrieval
+
+    - name: MAX_PARCELS
+      description: Maximum parcels per world deployment
+      affects: Deployment validation
+
+    - name: MAX_SIZE
+      description: Maximum deployment size in MB
+      affects: Deployment validation
+
+    - name: ALLOW_SDK6
+      description: Whether to allow SDK6 deployments
+      affects: SDK version validation
+
+    - name: DEPLOYMENT_TTL
+      description: Time window for deployment timestamps (ms)
+      affects: Deployment validation
+
+    - name: BUILDER_URL
+      description: Builder platform URL for builder integration
+      affects: Builder service integration
+
+    - name: ALLOW_ENS_DOMAINS
+      description: Whether to allow ENS domain deployments
+      affects: Deployment validation
+
+    - name: AUTH_SECRET
+      description: Secret for signing and verifying authentication tokens
+      affects: Token-based authentication
+
+    - name: ETH_NETWORK
+      description: Ethereum network to use (mainnet, sepolia)
+      affects: Blockchain network selection
+
+    - name: GLOBAL_SCENES_URN
+      description: URN for global scenes configuration
+      affects: Global portable experiences
+
+    - name: SCENES_URN
+      description: URN for scenes configuration
+      affects: Scene loading configuration
+
+    - name: COMMS_ROOM_PREFIX
+      description: Prefix for comms room names
+      affects: LiveKit room naming for world comms
+
+    - name: SCENE_ROOM_PREFIX
+      description: Prefix for scene-specific room names
+      affects: LiveKit room naming for scenes
+
+    - name: ENS_MAX_SIZE
+      description: Maximum deployment size for ENS domains (MB)
+      affects: ENS domain deployment size limit
+
+    - name: SHARED_SECRET_MAX_ATTEMPTS_PER_MINUTE
+      description: Rate limit for shared secret authentication attempts per minute
+      affects: Rate limiting for shared secret access
+
+    - name: AWS_REGION
+      description: AWS region for S3 and SNS/SQS services
+      affects: AWS service configuration

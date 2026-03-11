@@ -36,19 +36,20 @@ Read `skills/manifest/schema.yaml`. Every output manifest must follow this schem
 
 For each repo, follow this exact order:
 
-1. **docs/ directory** — List and read **every file** in the repo's `docs/` directory (if it exists). These contain architecture decisions, API specs, and domain documentation that take priority over code inference
-2. **README** — Read the repo's own README for overview, setup, and deployment info
-3. **OpenAPI/AsyncAPI specs** — Check for any API specification files
-4. **Package manifest** — Read `package.json`, `go.mod`, or `Cargo.toml` for language, dependencies, and scripts
-5. **Source code — routes, events, logic** — Browse `src/` or equivalent for route definitions, event handlers, queue/topic names, and business logic
-6. **Service dependency discovery** — This is CRITICAL. Dependencies are often hidden behind adapter patterns and generic HTTP clients. You MUST check ALL of the following:
+1. **`docs/ai-agent-context.md`** — Read this file **first and with highest priority** if it exists. It is a curated, human-written document specifically intended for AI agents to understand the service's overall architecture, domain, key concepts, and design decisions. Treat every statement in it as authoritative ground truth — it overrides anything you infer from code or other docs. If this file exists, read it before anything else and use it as the foundation for the entire manifest. **In update mode, this file always wins over the existing manifest** — any responsibilities, out_of_scope entries, glossary terms, or domain descriptions stated here must be reflected in the output, even if the existing manifest has different or fewer entries.
+2. **docs/ directory** — List and read **every other file** in the repo's `docs/` directory (if it exists). These contain architecture decisions, API specs, and domain documentation that take priority over code inference
+3. **README** — Read the repo's own README for overview, setup, and deployment info
+4. **OpenAPI/AsyncAPI specs** — Check for any API specification files
+5. **Package manifest** — Read `package.json`, `go.mod`, or `Cargo.toml` for language, dependencies, and scripts
+6. **Source code — routes, events, logic** — Browse `src/` or equivalent for route definitions, event handlers, queue/topic names, and business logic
+7. **Service dependency discovery** — This is CRITICAL. Dependencies are often hidden behind adapter patterns and generic HTTP clients. You MUST check ALL of the following:
    a. **Adapters directory** — List `src/adapters/` (or similar). Each subdirectory named after another service (e.g., `src/adapters/social-service/`, `src/adapters/catalyst-client/`) is a service dependency. Read the main file in each to confirm the target service and protocol.
    b. **AppComponents / types** — Read `src/types.ts` or `src/components.ts`. The `AppComponents` interface lists all injected components — look for adapters that wrap calls to other Decentraland services.
    c. **Environment variables** — Read `.env.default`, `.env`, or grep for `process.env` / `getEnvConfig`. URLs like `*_SERVICE_URL`, `*_API_URL`, or `*_BASE_URL` point to service dependencies (e.g., `SOCIAL_SERVICE_URL` means this service calls social-service-ea).
    d. **HTTP fetch calls** — Search source for `fetch(`, `fetcher.`, `httpClient`, or URL-building patterns that target other Decentraland services.
    e. **gRPC / protobuf clients** — Search for `createRpcClient`, `@dcl/protocol` imports, or `.proto` usage indicating gRPC dependencies.
    f. **SNS/SQS publishers and consumers** — Search for SNS topic ARNs, SQS queue names, or `sns.publish` / `sqs.receiveMessage` patterns to find async dependencies.
-7. **Environment variable discovery for `key_env_vars`** — This is CRITICAL to avoid hallucination. You MUST derive env var names from actual code, never guess them. Check these sources in order:
+8. **Environment variable discovery for `key_env_vars`** — This is CRITICAL to avoid hallucination. You MUST derive env var names from actual code, never guess them. Check these sources in order:
    a. **`.env.default`** — Read this file first. It is the canonical list of all configurable env vars with their default values and often includes comments explaining each one.
    b. **`config.requireString` / `config.getString` / `config.getNumber`** — Search source for these patterns (used by `@well-known-components/env-config-provider`). Each call references an actual env var name.
    c. **`process.env`** — Search for direct `process.env.VAR_NAME` access.
@@ -64,7 +65,7 @@ For each repo, follow this exact order:
 - For `events`, only list events that are explicitly published or consumed in the code
 - Prefer information from `docs/` files over inference from code — if a doc describes an API endpoint, use that description rather than guessing from route handlers
 - For `configuration.key_env_vars`, ONLY list env vars found in `.env.default`, `config.requireString()`, `config.getString()`, or `process.env`. Never invent env var names — this is a common source of hallucination.
-- When updating an existing manifest, treat it as curated truth. Only override fields where code evidence is stronger. Exception: `key_env_vars` should always be replaced with code-verified values since existing ones may have been hallucinated.
+- When updating an existing manifest, treat it as curated truth for fields not covered by `docs/ai-agent-context.md`. For fields that `ai-agent-context.md` covers (responsibilities, out_of_scope, glossary, domain descriptions), always sync from that file — it is the source of truth. Exception: `key_env_vars` should always be replaced with code-verified values since existing ones may have been hallucinated.
 - For URL fields (`ai-agent-context`, `openapi_url`, `schema_url`, `repository`), only use URLs that point to files confirmed to exist in the repo. Check `docs/` directory listing to verify. If a file doesn't exist, leave the field as an empty string `""` — never guess or construct URLs for files that may not exist.
 
 ## Update Mode
@@ -72,14 +73,20 @@ For each repo, follow this exact order:
 When `manifests/<name>.yaml` already exists:
 
 1. **Read the existing manifest first** — it is your baseline
-2. **Preserve all existing sections** — do not remove or rewrite content that is already correct
-3. **Add missing fields** — if exploration reveals fields the existing manifest lacks (e.g., missing dependencies, missing events, missing env vars), add them
-4. **Update stale fields** — if the code clearly contradicts the manifest (e.g., a dependency was removed, a field value is wrong), update it
-5. **Never downgrade** — do not remove domain glossary entries, concept relationships, invariants, or other rich content just because you didn't find them in code. These may have been manually curated.
-6. **Merge dependencies** — for `dependencies.services`, union the existing list with newly discovered dependencies. Do not drop existing ones unless the code proves they no longer exist.
-7. **Schema compliance** — Compare the existing manifest against `skills/manifest/schema.yaml`. If the schema has fields that the manifest is missing, add them by exploring the codebase. Update `schema_version` to match the schema's version.
+2. **Sync from `docs/ai-agent-context.md` (always)** — If the file exists, its content is the authoritative source for the following fields. Always replace/extend the manifest with what this file states, regardless of what the existing manifest says:
+   - `domain.responsibilities` — replace with the full list derived from this file (union with existing if existing has entries not contradicted here)
+   - `domain.out_of_scope` — replace with the full list derived from this file (same union rule)
+   - `domain.glossary` — add any terms defined here that are missing from the manifest
+   - `service.description`, `service.role`, `service.layer` — update if this file provides a clearer or more complete description
+   - Any concept relationships, invariants, or domain facts stated here that are missing from the manifest
+3. **Preserve all other existing sections** — do not remove or rewrite content not covered by `ai-agent-context.md` and not contradicted by code
+4. **Add missing fields** — if exploration reveals fields the existing manifest lacks (e.g., missing dependencies, missing events, missing env vars), add them
+5. **Update stale fields** — if the code clearly contradicts the manifest (e.g., a dependency was removed, a field value is wrong), update it
+6. **Never downgrade** — do not remove domain glossary entries, concept relationships, invariants, or other rich content just because you didn't find them in code. These may have been manually curated.
+7. **Merge dependencies** — for `dependencies.services`, union the existing list with newly discovered dependencies. Do not drop existing ones unless the code proves they no longer exist.
+8. **Schema compliance** — Compare the existing manifest against `skills/manifest/schema.yaml`. If the schema has fields that the manifest is missing, add them by exploring the codebase. Update `schema_version` to match the schema's version.
 
-Priority order for conflicts: docs/ > existing manifest > code inference
+Priority order for conflicts: `docs/ai-agent-context.md` > other docs/ files > existing manifest > code inference
 
 ## Output
 

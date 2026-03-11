@@ -71,6 +71,12 @@ dependencies:
       purpose: Receives notification events
       critical: true
 
+    - name: catalyst
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetches user profiles and avatars via lambdas client
+      critical: false
+
   external:
     - name: PostgreSQL
       purpose: Notification storage, subscriptions

@@ -11,6 +11,7 @@ service:
   role:
     - library
   data_domain: []
+  ai-agent-context: ""
 
 domain:
   glossary:
@@ -127,6 +128,12 @@ domain:
       persistence: tracked by IProcessedSnapshotStorageComponent
       identity_field: hash
 
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
 dependencies:
   services:
     - name: catalyst
@@ -152,5 +159,12 @@ dependencies:
       purpose: Manages concurrent download operations with queue and retry mechanisms
       type: other
 
+events:
+  publishes: []
+  consumes: []
+
 configuration:
+  feature_flags: []
   key_env_vars: []
+
+adrs: []

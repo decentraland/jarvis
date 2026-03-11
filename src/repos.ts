@@ -6,20 +6,20 @@ export interface Repo {
 export const workspaces: Record<string, Repo[]> = {
   'https://github.com/decentraland/core-workspace': [
     { url: 'https://github.com/decentraland/schemas', lastCommit: 'ce200bbfa936f417c6467dda572cbde52734b57d' },
-    { url: 'https://github.com/decentraland/worlds-content-server', lastCommit: '6e3176d6731c532e4a643a7968bcd5da227f7be8' },
-    { url: 'https://github.com/decentraland/realm-provider', lastCommit: '6e94fcd6ee5a92213b903702585aeb22f97e3a19' },
-    { url: 'https://github.com/decentraland/comms-gatekeeper', lastCommit: '3f016c505053b2c7a04b3c1215607863b0a2a86a' },
+    { url: 'https://github.com/decentraland/worlds-content-server', lastCommit: '3fe5a11d79f44fd83ac3702950f505af4cf1d6fc' },
+    { url: 'https://github.com/decentraland/realm-provider', lastCommit: '54a5d6e35133ed881fc518bc4f8a8f9368413a04' },
+    { url: 'https://github.com/decentraland/comms-gatekeeper', lastCommit: '1a1e115cf3c4ccb0ebf8d2def47de20edd84b2ce' },
     { url: 'https://github.com/decentraland/archipelago-workers', lastCommit: 'f6a935459ce3cfd6b85e606dd6884dab490c8144' },
-    { url: 'https://github.com/decentraland/social-service-ea', lastCommit: '651efa31c501cc84d49dc5d899ff8aa5097334b7' },
-    { url: 'https://github.com/decentraland/catalyst', lastCommit: '14db3b89907803a180279497fe1098d0bcd228f3' },
+    { url: 'https://github.com/decentraland/social-service-ea', lastCommit: '8b7b42d4bfaa28e718f6d1608212c9f1a22ee4aa' },
+    { url: 'https://github.com/decentraland/catalyst', lastCommit: 'abc06c6a0532b942944d18d58ecdbacb2bb7a39b' },
     { url: 'https://github.com/decentraland/lamb2', lastCommit: 'dbeb1343d58c92e4dbdb21d03986d924571d13bc' },
-    { url: 'https://github.com/decentraland/asset-bundle-registry', lastCommit: '7caf25fce68e5609ce38e1db03a508a02db3adfb' },
-    { url: 'https://github.com/decentraland/events-notifier', lastCommit: 'fb3e03beac08fde924ace0a7de84dcd8eddf1364' },
+    { url: 'https://github.com/decentraland/asset-bundle-registry', lastCommit: 'e00fa84b3f7a974ccf6c619482f7330df8c74b26' },
+    { url: 'https://github.com/decentraland/events-notifier', lastCommit: '89c8cfcc19b2984e029fc4abb791296216f19465' },
     { url: 'https://github.com/decentraland/badges', lastCommit: '64733aeda818a50f296979165efeeb772a0861c6' },
     { url: 'https://github.com/decentraland/credits-server', lastCommit: 'fd1f7e0b6ea1f833de88541d047f4f5848c7f80d' },
     { url: 'https://github.com/decentraland/notifications-workers', lastCommit: 'f90378765feeb4c5a3aeb0e5cf79e97a821b2ac9' },
-    { url: 'https://github.com/decentraland/auth-server', lastCommit: 'a21f5f4d1bb0540c13e6c581ec7ae0d52d929312' },
-    { url: 'https://github.com/decentraland/marketplace-server', lastCommit: '22727beb390001fb32480108f556955a01078a74' },
+    { url: 'https://github.com/decentraland/auth-server', lastCommit: '5b0e995d387f638ed0d89f3e5bc20d1b3d2e5fc1' },
+    { url: 'https://github.com/decentraland/marketplace-server', lastCommit: 'b9f47e9d348ffe378f33219856e023eac7cc4f4d' },
     { url: 'https://github.com/decentraland/events', lastCommit: '7d4ab0fe613c81afce69835ac99e6af93289d48c' },
     { url: 'https://github.com/decentraland/referral', lastCommit: '18779831947ebdbf89add759387895746c7c0380' },
     { url: 'https://github.com/decentraland/camera-reel-service', lastCommit: '040eaf0d18664e9eabca41111fa9d9f057d5fee7' },
@@ -50,5 +50,5 @@ export const workspaces: Record<string, Repo[]> = {
 }
 
 export const standalone: Repo[] = [
-  { url: 'https://github.com/decentraland/unity-explorer', lastCommit: '596c84c0dd1f6a1b5802b1895d0a3cba67ff6bcf' },
+  { url: 'https://github.com/decentraland/unity-explorer', lastCommit: '29e00f6532f7d919738c9c3b1562ae461a0ce346' },
 ]

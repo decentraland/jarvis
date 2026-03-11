@@ -51,6 +51,16 @@ domain:
         - "Plugin settings reference assets via AssetReferenceT"
         - "Contextual assets load only when needed"
 
+    - term: Contextual Asset Loading
+      definition: System for loading and unloading assets only when needed based on active context, freeing memory when assets are not actively used
+      examples:
+        - "Loading screen images loaded only for current screen"
+        - "UI assets released when switching screens"
+
+    - term: Plugin Settings
+      definition: Configuration values and addressable asset references scoped to individual plugins, stored in PluginSettingsContainer scriptable object
+      not_to_be_confused_with: "Runtime settings - plugin settings are design-time configuration"
+
   concept_relationships:
     internal:
       - from: Scene Runtime
@@ -67,6 +77,11 @@ domain:
         to: Addressables
         relationship: loaded_via
         description: Asset bundles are loaded and managed through Unity's Addressables system
+
+      - from: Contextual Asset Loading
+        to: Addressables
+        relationship: uses
+        description: Contextual assets leverage Unity's Addressables for efficient load/unload cycles
 
     cross_service:
       - local_concept: Realm
@@ -115,6 +130,9 @@ domain:
     - Implement gameplay features (badges, quests, daily rewards)
     - Manage realm connections and scene lifecycle
     - Render procedurally-generated landscapes for undeveloped parcels
+    - Synchronize Unity ECS entities with JavaScript scene state via CRDT messages
+    - Implement plugin-based architecture for modular feature composition
+    - Manage memory efficiently through contextual asset loading and Addressables
 
   out_of_scope:
     - Content authoring and deployment (handled by Creator Hub and worlds-content-server)
@@ -123,14 +141,15 @@ domain:
     - Content hosting and distribution (handled by Catalyst and worlds-content-server)
     - Authentication token generation (handled by auth-server)
     - World permissions management (handled by worlds-content-server)
+    - Blockchain transaction execution (delegated to wallet and transactions API)
 
   owned_entities: []
 
 api:
-  openapi_url: null
+  openapi_url: ""
 
 db:
-  schema_url: null
+  schema_url: ""
 
 dependencies:
   services:
@@ -245,6 +264,10 @@ dependencies:
 
     - name: Transactions API
       purpose: Submit meta-transactions for blockchain operations
+      type: api
+
+    - name: CoinGecko API
+      purpose: Fetch MANA/USD exchange rate
       type: api
 
 events:

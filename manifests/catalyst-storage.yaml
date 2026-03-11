@@ -11,6 +11,7 @@ service:
   role:
     - library
   data_domain: []
+  ai-agent-context: ""
 
 domain:
   glossary:
@@ -87,6 +88,12 @@ domain:
       persistence: none (derived from storage backend)
       identity_field: fileId
 
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
 dependencies:
   services: []
 
@@ -103,8 +110,15 @@ dependencies:
       purpose: Provides component interfaces for filesystem, config, and logging
       type: other
 
+events:
+  publishes: []
+  consumes: []
+
 configuration:
+  feature_flags: []
   key_env_vars:
     - name: AWS_REGION
       description: AWS region for S3 bucket operations
       affects: S3 storage backend initialization and operations
+
+adrs: []

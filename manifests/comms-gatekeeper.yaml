@@ -35,6 +35,9 @@ domain:
     - term: Scene Ban
       definition: Administrative action blocking a user from accessing communication channels in a specific scene.
 
+    - term: Genesis City Access Control
+      definition: Comms Gatekeeper is the access authority for player-to-player interaction in Genesis City. It controls access to both scene-specific LiveKit rooms and island rooms managed by Archipelago. Without a valid token from this service, clients cannot join LiveKit rooms and interact with other players in Genesis City. This role is scoped to Genesis City only — Worlds use worlds-content-server for access control.
+
   concept_relationships:
     internal:
       - from: LiveKit Token
@@ -94,7 +97,7 @@ domain:
       severity: hard
 
   responsibilities:
-    - Generate secure LiveKit tokens for scene/world communication rooms
+    - Generate secure LiveKit tokens for Genesis City scene and island communication rooms
     - Manage scene administration permissions
     - Provide RTMP streaming URLs and keys for content creators
     - Handle private and community voice chat sessions
@@ -102,12 +105,14 @@ domain:
     - Manage streaming access lifecycle with expiration
     - Handle user privacy settings and access control
     - Process LiveKit webhooks for real-time event handling
+    - Control access to player-to-player interaction in Genesis City (scene-specific and island rooms)
 
   out_of_scope:
     - Actual voice/video streaming (handled by LiveKit)
     - Island clustering logic (handled by archipelago-workers)
     - Message routing and validation (handled by comms-message-sfu)
     - Content moderation of messages (handled by police-server)
+    - Access control for Worlds (handled by worlds-content-server — Worlds may use separate LiveKit infrastructure)
 
   owned_entities:
     - name: Scene Admin
@@ -199,9 +204,21 @@ configuration:
       description: PostgreSQL host for gatekeeper database
       affects: Database connectivity
 
+    - name: PG_COMPONENT_PSQL_PORT
+      description: PostgreSQL port for gatekeeper database
+      affects: Database connectivity
+
     - name: PG_COMPONENT_PSQL_DATABASE
       description: PostgreSQL database name
       affects: Database selection
+
+    - name: PG_COMPONENT_PSQL_USER
+      description: PostgreSQL user for authentication
+      affects: Database authentication
+
+    - name: PG_COMPONENT_PSQL_PASSWORD
+      description: PostgreSQL password for authentication
+      affects: Database authentication
 
     - name: PROD_LIVEKIT_HOST
       description: Production LiveKit server host URL
@@ -275,9 +292,73 @@ configuration:
       description: Prefix for LiveKit room names
       affects: Room naming convention
 
+    - name: SCENE_ROOM_PREFIX
+      description: Prefix for scene-specific LiveKit room names
+      affects: Scene room naming convention
+
     - name: AUTHORITATIVE_SERVER_ADDRESS
       description: Public address for signed-fetch validation
       affects: ADR-44 authentication validation
+
+    - name: HTTP_SERVER_PORT
+      description: HTTP server port
+      affects: Server listening port
+
+    - name: HTTP_SERVER_HOST
+      description: HTTP server host
+      affects: Server listening address
+
+    - name: CAST2_URL
+      description: URL for Cast service
+      affects: Streaming integration
+
+    - name: ENV
+      description: Environment name (dev, stg, prod)
+      affects: Environment-specific configuration
+
+    - name: LOG_LEVEL
+      description: Logging level (OFF, DEBUG, INFO, WARN, ERROR)
+      affects: Log verbosity
+
+    - name: WORLD_ROOM_PREFIX
+      description: Prefix for world-specific LiveKit room names
+      affects: World room naming convention
+
+    - name: PRIVATE_MESSAGES_ROOM_ID
+      description: Room ID for private messages
+      affects: Private messaging room identification
+
+    - name: PREVIEW_LIVEKIT_API_KEY
+      description: Preview LiveKit API key
+      affects: Preview token generation
+
+    - name: PREVIEW_LIVEKIT_API_SECRET
+      description: Preview LiveKit API secret
+      affects: Preview token signing
+
+    - name: AWS_SNS_ENDPOINT
+      description: AWS SNS endpoint URL for custom configurations
+      affects: SNS service endpoint
+
+    - name: VOICE_CHAT_EXPIRED_BATCH_SIZE
+      description: Batch size for expired voice chat cleanup
+      affects: Voice chat cleanup performance
+
+    - name: ANALYTICS_CONTEXT
+      description: Analytics context identifier
+      affects: Analytics tagging
+
+    - name: ANALYTICS_API_URL
+      description: Analytics service URL
+      affects: Analytics event delivery
+
+    - name: ANALYTICS_API_TOKEN
+      description: Analytics authentication token
+      affects: Analytics authorization
+
+    - name: WKC_METRICS_RESET_AT_NIGHT
+      description: Whether to reset metrics at 00:00 UTC
+      affects: Metrics behavior
 
 adrs:
   - id: ADR-44

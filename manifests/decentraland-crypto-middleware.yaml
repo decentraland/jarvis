@@ -11,6 +11,7 @@ service:
   role:
     - library
   data_domain: []
+  ai-agent-context: ""
 
 domain:
   glossary:
@@ -89,10 +90,17 @@ domain:
       persistence: none (request-scoped)
       identity_field: auth
 
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
 dependencies:
   services:
     - name: catalyst
       relationship: sync
+      protocol: HTTP
       purpose: Validates EIP-1654 smart contract wallet signatures via /lambdas/crypto/validate-signature endpoint
       critical: true
 
@@ -101,7 +109,12 @@ dependencies:
       purpose: Provides core cryptographic verification utilities and Authenticator for validating auth chains
       type: other
 
+events:
+  publishes: []
+  consumes: []
+
 configuration:
+  feature_flags: []
   key_env_vars:
     - name: catalyst
       description: Catalyst URL for smart contract wallet signature validation
@@ -114,3 +127,5 @@ configuration:
     - name: optional
       description: Whether to allow unauthenticated requests to pass through (default false)
       affects: Authentication enforcement behavior
+
+adrs: []
