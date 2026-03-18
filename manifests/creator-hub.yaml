@@ -1,0 +1,272 @@
+schema_version: "1.1"
+
+service:
+  name: creator-hub
+  display_name: Decentraland Creator Hub
+  description: Cross-platform Electron desktop application for creating, editing, and deploying Decentraland SDK7 scenes. Provides visual scene editing via embedded Inspector, asset management with curated Smart Items, and deployment to Genesis City, Worlds, or custom servers.
+  owner: sdk-team
+  repository: https://github.com/decentraland/creator-hub
+  language: typescript
+  layer: client
+  role:
+    - client
+  data_domain: []
+  ai-agent-context: https://github.com/decentraland/creator-hub/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Creator Hub
+      definition: Desktop application (Electron-based) that bundles the Inspector and provides file system access, project management, and scene deployment capabilities
+      examples:
+        - "User creates a new scene using Creator Hub"
+        - "Creator Hub manages local scene files and assets"
+
+    - term: Inspector
+      definition: Web-based 3D scene editor embedded in Creator Hub via IFrame, provides real-time visual editing with Babylon.js-powered level editor
+      examples:
+        - "Inspector renders the 3D scene with Babylon.js"
+        - "User drags and drops assets in Inspector"
+
+    - term: Asset Pack
+      definition: Curated collection of themed 3D assets and Smart Items distributed via content-addressed storage (S3 CDN)
+      examples:
+        - "cyberpunk asset pack"
+        - "genesis_city asset pack"
+
+    - term: Smart Item
+      definition: Interactive 3D item with configurable parameters and programmable behaviors (e.g., door, video player, trigger area)
+      examples:
+        - "Door Smart Item with open/close behavior"
+        - "Video Player Smart Item with URL parameter"
+
+    - term: Static Item
+      definition: Non-interactive 3D model with textures and materials, no programmable behavior
+
+    - term: Scene
+      definition: Decentraland SDK7 project containing 3D content, scripts, and configuration for deployment to Genesis City or Worlds
+
+    - term: RPC Data Layer
+      definition: Protocol Buffers-based communication protocol between Inspector and Creator Hub for file operations and scene state synchronization
+
+  concept_relationships:
+    internal:
+      - from: Creator Hub
+        to: Inspector
+        relationship: contains
+        description: Creator Hub embeds Inspector via IFrame and provides file system access through RPC
+
+      - from: Inspector
+        to: Asset Pack
+        relationship: uses
+        description: Inspector loads and renders assets from asset packs via CDN
+
+      - from: Scene
+        to: Smart Item
+        relationship: contains
+        description: Scenes can contain multiple Smart Items with behaviors and parameters
+
+      - from: Scene
+        to: Static Item
+        relationship: contains
+        description: Scenes contain Static Items for visual composition
+
+    cross_service:
+      - local_concept: Scene
+        remote_service: worlds-content-server
+        remote_concept: World Deployment
+        mapping_type: deploys_to
+        description: Scenes are deployed as entities to Worlds Content Server for named worlds
+
+      - local_concept: Scene
+        remote_service: catalyst
+        remote_concept: Entity Deployment
+        mapping_type: deploys_to
+        description: Scenes are deployed as entities to Catalyst servers for Genesis City parcels
+
+      - local_concept: Asset Pack
+        remote_service: asset-bundle-registry
+        remote_concept: Asset Bundle
+        mapping_type: references
+        description: Asset packs are converted to asset bundles and cached in the registry
+
+  invariants:
+    - rule: Inspector must communicate with Creator Hub only via RPC protocol (no direct file system access)
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: All assets must be content-addressed (referenced by hash) to ensure immutability
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Scene deployment requires valid wallet signature via decentraland-crypto-fetch
+      enforced_at: api_validation
+      severity: hard
+
+  responsibilities:
+    - Provide desktop application for scene creation and editing
+    - Embed Inspector web application via IFrame with RPC communication
+    - Manage local file system operations (read, write, delete scene files)
+    - Load and distribute asset packs via CDN
+    - Deploy scenes to Catalyst servers (Genesis City) and Worlds Content Server
+    - Manage user authentication and wallet integration
+    - Fetch land ownership and world permissions from blockchain and backend services
+    - Track deployment history and status
+    - Provide auto-update mechanism via electron-updater
+
+  out_of_scope:
+    - 3D rendering engine (delegated to Inspector/Babylon.js)
+    - Asset bundle conversion (handled by asset-bundle-converter)
+    - Content validation (handled by content-validator)
+    - Blockchain interactions beyond read operations (no on-chain deployments)
+    - Scene runtime execution (handled by Explorer clients)
+
+  owned_entities:
+    - name: Scene Project
+      description: Local file system representation of a Decentraland SDK7 scene with scene.json, TypeScript/JavaScript files, and assets
+      persistence: filesystem
+      identity_field: projectId
+      state_machine: ""
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: worlds-content-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Deploy scenes to named worlds, manage world settings and permissions, fetch world metadata and scenes
+      critical: true
+
+    - name: social-service-ea
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch user communities for world access permissions and community-based deployment authorization
+      critical: false
+
+    - name: atlas-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch map tiles and land parcel data for scene placement visualization
+      critical: false
+
+    - name: asset-bundle-registry
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch asset bundle URLs for scene preview and deployment status
+      critical: false
+
+    - name: auth-server
+      relationship: sync
+      protocol: HTTP
+      purpose: User authentication and identity validation via SSO
+      critical: true
+
+    - name: catalyst
+      relationship: sync
+      protocol: HTTP
+      purpose: Deploy scenes to Genesis City parcels, fetch available catalyst servers via dcl-catalyst-client
+      critical: true
+
+  external:
+    - name: GitHub CDN
+      purpose: Distribution of asset packs content (builder-items.decentraland.org)
+      type: cdn
+
+    - name: npm Registry
+      purpose: Distribution of @dcl/asset-packs and @dcl/inspector packages
+      type: api
+
+    - name: GitHub Releases
+      purpose: Distribution of Creator Hub desktop app installers and auto-updates via electron-updater
+      type: other
+
+    - name: Ethereum RPC
+      purpose: Read blockchain data for land ownership, ENS names, and NFT verification via viem
+      type: blockchain
+
+    - name: The Graph (Subgraphs)
+      purpose: Query marketplace, ENS, rentals, and land manager data via GraphQL
+      type: api
+
+    - name: Segment
+      purpose: Analytics tracking for user behavior and feature usage
+      type: other
+
+    - name: Sentry
+      purpose: Error tracking and crash reporting for Electron app
+      type: other
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars:
+    - name: VITE_APP_VERSION
+      description: Application version injected from package.json
+      affects: Displayed version in UI and update checks
+
+    - name: VITE_SEGMENT_CREATORS_HUB_API_KEY
+      description: Segment analytics API key for Creator Hub events
+      affects: Analytics tracking
+
+    - name: VITE_SEGMENT_INSPECTOR_API_KEY
+      description: Segment analytics API key for Inspector events
+      affects: Analytics tracking
+
+    - name: VITE_INSPECTOR_PORT
+      description: Local inspector dev server port for development mode
+      affects: Development environment only
+
+    - name: VITE_ASSET_PACKS_CONTENT_URL
+      description: URL for asset packs content server (production or local)
+      affects: Asset loading source
+
+    - name: VITE_ASSET_PACKS_JS_PORT
+      description: SDK7 dev server port for local asset-packs development
+      affects: Development environment only
+
+    - name: VITE_ASSET_PACKS_JS_PATH
+      description: Absolute path to bin/index.js for Smart Items runtime in development
+      affects: Development environment only
+
+    - name: VITE_ENABLE_DEV_APP_UPDATE
+      description: Enable auto-update in development builds
+      affects: Auto-update behavior
+
+    - name: VITE_WORLDS_SERVER
+      description: Override worlds content server URL (for testing)
+      affects: World deployment target
+
+    - name: VITE_TEST_SERVER
+      description: Override test server URL (for catalyst deployment testing)
+      affects: Catalyst deployment target
+
+    - name: VITE_ALLOWED_EXTERNAL_ORIGINS
+      description: Comma-separated list of allowed external origins for opening links
+      affects: Security - external link navigation
+
+    - name: VITE_SENTRY_DSN
+      description: Sentry DSN for error tracking
+      affects: Error reporting
+
+adrs:
+  - id: ADR-280
+    title: Binary Management in Creator Hub
+    url: https://adr.decentraland.org/adr/ADR-280
+    relevance: Describes approach for managing Node.js binaries and their execution within Creator Hub, including cross-platform binary execution, process monitoring, and ASAR unpacking strategy
+
+  - id: ADR-281
+    title: Items in Decentraland tooling
+    url: https://adr.decentraland.org/adr/ADR-281
+    relevance: Explains the Items abstraction (Static Items, Smart Items, Custom Items) and technical implementation details for asset packs and item behaviors
+
+  - id: ADR-282
+    title: Decentraland Inspector
+    url: https://adr.decentraland.org/adr/ADR-282
+    relevance: Details the Inspector's architecture, component structure, and integration approaches (WebSocket vs IFrame), RPC protocol design

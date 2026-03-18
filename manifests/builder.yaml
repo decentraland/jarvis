@@ -1,0 +1,328 @@
+schema_version: "1.1"
+
+service:
+  name: builder
+  display_name: Decentraland Builder
+  description: Web-based application for creating, editing, and publishing Decentraland content. Provides drag-and-drop scene creation (SDK6), Inspector-based editing (SDK7), wearable and emote design, LAND and Estate management, and Worlds deployment with permission controls.
+  owner: sdk-team
+  repository: https://github.com/decentraland/builder
+  language: typescript
+  layer: client
+  role:
+    - client
+  data_domain: []
+  ai-agent-context: https://github.com/decentraland/builder/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Project/Scene
+      definition: A 3D scene with entities, components, and assets that can be deployed to LAND or Worlds
+      examples:
+        - "SDK6 scene created with drag-and-drop editor"
+        - "SDK7 scene created with Inspector integration"
+
+    - term: Item
+      definition: A wearable or emote with 3D models, metadata, and rarity that belongs to a collection
+      examples:
+        - "T-shirt wearable with common rarity"
+        - "Dance emote with rare rarity"
+
+    - term: Collection
+      definition: A group of items (standard or third-party) that can be published on-chain
+      examples:
+        - "Standard DCL collection with 10 wearables"
+        - "Third-party collection linked to external NFT contract"
+
+    - term: LAND
+      definition: Virtual real estate in Decentraland represented as NFT; smallest unit of owned space
+      not_to_be_confused_with: Estate (which is a group of adjacent LANDs)
+
+    - term: Estate
+      definition: Group of adjacent LAND parcels managed as a single entity
+      examples:
+        - "Estate composed of 4 adjacent LAND parcels"
+
+    - term: World
+      definition: Personal space where users can deploy scenes without owning LAND
+      examples:
+        - "User creates a World named 'my-gallery.dcl.eth'"
+
+    - term: DCL Name
+      definition: Decentraland's native naming system; names can be linked to LAND, Worlds, Avatars, or wallet addresses, and can be transferred between users
+      examples:
+        - "User claims 'johndoe.dcl.eth'"
+        - "Name linked to World for custom URL"
+
+    - term: ENS Domain
+      definition: External Ethereum Name Service domain that can be linked to LAND or Worlds for custom URLs
+      not_to_be_confused_with: DCL Name (which is Decentraland's native naming system)
+
+    - term: Curation
+      definition: Review process for collections before they are approved for publication
+      examples:
+        - "Curator reviews collection for policy compliance"
+
+    - term: Third-Party Collection
+      definition: Linked wearables from external NFT contracts mapped to Decentraland items
+      examples:
+        - "BoredApe NFT mapped to Decentraland wearable"
+
+  concept_relationships:
+    internal:
+      - from: Item
+        to: Collection
+        relationship: belongs_to
+        description: Items must belong to a Collection before publication
+
+      - from: Collection
+        to: Curation
+        relationship: transitions_to
+        description: Collections must go through Curation before on-chain publication
+
+      - from: LAND
+        to: Estate
+        relationship: belongs_to
+        description: Multiple LAND parcels can be grouped into an Estate
+
+      - from: Scene
+        to: LAND
+        relationship: deploys_to
+        description: Scenes can be deployed to owned LAND parcels
+
+      - from: Scene
+        to: World
+        relationship: deploys_to
+        description: Scenes can be deployed to personal Worlds without owning LAND
+
+    cross_service:
+      - local_concept: Scene
+        remote_service: catalyst
+        remote_concept: Entity Deployment
+        mapping_type: deploys_to
+        description: Scenes are deployed as entities to Catalyst servers for Genesis City parcels
+
+      - local_concept: Scene
+        remote_service: worlds-content-server
+        remote_concept: World Deployment
+        mapping_type: deploys_to
+        description: Scenes are deployed as entities to Worlds Content Server for named worlds
+
+      - local_concept: Project
+        remote_service: builder-server
+        remote_concept: Stored Project
+        mapping_type: equivalent
+        description: Projects are stored and retrieved from Builder API backend
+
+      - local_concept: Collection
+        remote_service: builder-server
+        remote_concept: Stored Collection
+        mapping_type: equivalent
+        description: Collections are stored in Builder API before on-chain publication
+
+  invariants:
+    - rule: Items must belong to a Collection before they can be published
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Collections must pass Curation before on-chain publication (for standard collections)
+      enforced_at: api_validation
+      severity: hard
+
+    - rule: LAND deployments require ownership or operator permissions
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: World deployments require authenticated signature via decentraland-crypto-fetch
+      enforced_at: api_validation
+      severity: hard
+
+  responsibilities:
+    - Provide web-based scene creation and editing for SDK6 and SDK7
+    - Manage wearable and emote creation with 3D preview
+    - Store projects, items, and collections via Builder API
+    - Deploy scenes to LAND parcels via Catalyst servers
+    - Deploy scenes to Worlds via Worlds Content Server
+    - Manage LAND and Estate NFTs (transfer, operators, ENS linking)
+    - Manage DCL Names (claim, transfer, link to LAND/Worlds/Avatars)
+    - Link ENS domains to LAND parcels and Worlds
+    - Provide curation workflow for reviewing collections
+    - Manage World permissions (access, deployment, streaming)
+    - Query blockchain data via The Graph subgraphs
+    - Execute blockchain transactions via ethers.js
+
+  out_of_scope:
+    - Backend storage (delegated to builder-server)
+    - Content distribution (delegated to Catalyst and Worlds Content Server)
+    - Scene runtime execution (handled by Explorer clients)
+    - Blockchain infrastructure (uses Ethereum RPC providers)
+    - Wearable rendering in-world (handled by Explorer renderers)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: builder-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Store and retrieve projects, items, collections, asset packs, and deployment records
+      critical: true
+
+    - name: catalyst
+      relationship: sync
+      protocol: HTTP
+      purpose: Deploy scenes to Genesis City LAND parcels, fetch profile data, retrieve content entities
+      critical: true
+
+    - name: worlds-content-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Deploy scenes to personal Worlds, manage World settings and permissions, fetch World metadata
+      critical: true
+
+    - name: marketplace-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Retrieve marketplace items on sale, query order and transaction data
+      critical: false
+
+    - name: credits-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Query and manage user credits for publishing fees
+      critical: false
+
+  external:
+    - name: The Graph (Subgraphs)
+      purpose: Query on-chain data for LAND, Estates, Marketplace, Rentals, and ENS via GraphQL
+      type: api
+
+    - name: Ethereum RPC
+      purpose: Execute blockchain transactions and read smart contract data via ethers.js
+      type: blockchain
+
+    - name: Transactions API
+      purpose: Meta-transactions service for gasless blockchain operations
+      type: api
+
+    - name: DCL Lists Server
+      purpose: Fetch lists and bans for content moderation
+      type: api
+
+    - name: Segment
+      purpose: Analytics tracking for user behavior and feature usage
+      type: other
+
+    - name: Sentry
+      purpose: Error tracking and crash reporting
+      type: other
+
+    - name: Intercom
+      purpose: User support and messaging
+      type: other
+
+    - name: Contentful
+      purpose: CMS for templates and educational content
+      type: other
+
+    - name: GitHub CDN
+      purpose: Distribution of Inspector content and asset packs (builder-items.decentraland.org)
+      type: cdn
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars:
+    - name: VITE_REACT_APP_DCL_DEFAULT_ENV
+      description: Default environment for UI configuration (dev, stg, prod)
+      affects: Environment-specific configuration loading
+
+    - name: VITE_BASE_URL
+      description: Base URL for the application
+      affects: Routing and link generation
+
+    - name: CHAIN_ID
+      description: Ethereum chain ID (1 for mainnet, 11155111 for Sepolia)
+      affects: Blockchain network selection
+
+    - name: BUILDER_SERVER_URL
+      description: URL for Builder API backend
+      affects: Project and collection storage
+
+    - name: PEER_URL
+      description: Catalyst/Peer server URL for deployments and profiles
+      affects: Scene deployment target and profile data source
+
+    - name: PEER_TESTING_URL
+      description: Testing Catalyst server URL for development deployments
+      affects: Development deployment target
+
+    - name: WORLDS_CONTENT_SERVER
+      description: Worlds Content Server URL for World deployments
+      affects: World deployment target
+
+    - name: MARKETPLACE_API
+      description: Marketplace API URL for item and order queries
+      affects: Marketplace data source
+
+    - name: MARKETPLACE_SERVER_URL
+      description: Marketplace server URL (alternative endpoint)
+      affects: Marketplace data source
+
+    - name: CREDITS_SERVER_URL
+      description: Credits server URL for publishing fees
+      affects: Fee management and payment
+
+    - name: LAND_MANAGER_GRAPH_URL
+      description: The Graph subgraph URL for LAND and Estate data
+      affects: LAND ownership and Estate queries
+
+    - name: MARKETPLACE_GRAPH_URL
+      description: The Graph subgraph URL for marketplace transactions
+      affects: Marketplace transaction history
+
+    - name: RENTALS_GRAPH_URL
+      description: The Graph subgraph URL for LAND rentals
+      affects: Rental data queries
+
+    - name: ENS_SUBGRAPH_URL
+      description: The Graph subgraph URL for ENS domain ownership
+      affects: ENS domain queries
+
+    - name: TRANSACTIONS_API_URL
+      description: Transactions API URL for meta-transactions
+      affects: Gasless transaction execution
+
+    - name: DCL_LISTS_SERVER
+      description: DCL Lists server URL for moderation data
+      affects: Content moderation and bans
+
+    - name: INSPECTOR_CONTENT_URL
+      description: CDN URL for Inspector content and asset packs
+      affects: Asset loading source
+
+    - name: SEGMENT_API_KEY
+      description: Segment analytics API key
+      affects: Analytics tracking
+
+    - name: INSPECTOR_SEGMENT_API_KEY
+      description: Segment analytics API key for Inspector events
+      affects: Inspector analytics tracking
+
+    - name: SENTRY_DSN
+      description: Sentry DSN for error tracking
+      affects: Error reporting
+
+    - name: INTERCOM_APP_ID
+      description: Intercom application ID for user support
+      affects: Support chat integration
+
+adrs: []

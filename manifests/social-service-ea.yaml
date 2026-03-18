@@ -30,6 +30,24 @@ domain:
     - term: Private Voice Chat
       definition: One-on-one voice chat session between users with expiration time.
 
+    - term: Friendship
+      definition: Bidirectional social connection between two users, managed via RPC/gRPC interface, enabling enhanced social features and friend list visibility.
+
+    - term: Community Privacy
+      definition: Access control setting determining who can view and join a community - either public (anyone can view/join) or private (requires invitation or approval).
+
+    - term: Community Visibility
+      definition: Discoverability setting controlling whether a community appears in public listings - either listed (appears in searches) or unlisted (accessible only via direct link).
+
+    - term: Request Type
+      definition: Classification of community membership workflows - either invite (community sends invitation to user) or request_to_join (user requests to join private community).
+
+    - term: User Mute
+      definition: Privacy control allowing users to mute other users, preventing their messages and interactions from being visible, with pagination and address filtering support.
+
+    - term: Referral System
+      definition: User invitation tracking system that monitors referral progress, tier achievements, email associations, and integrates with rewards-server for incentive distribution.
+
   concept_relationships:
     internal:
       - from: Community
@@ -70,14 +88,25 @@ domain:
       severity: hard
 
   responsibilities:
-    - Manage communities with privacy and visibility settings
-    - Handle member management with role-based permissions
-    - Process community posts with likes
-    - Link communities with Decentraland places
-    - Facilitate voice chat sessions
-    - Manage friendships and social connections
-    - Track user referrals and progress
-    - Handle privacy controls and blocking
+    - Create and manage communities with customizable privacy settings (public/private) and visibility (listed/unlisted)
+    - Handle member management with role-based permissions (owner, moderator, member) including invitation and join request workflows
+    - Process community posts and announcements with like functionality
+    - Link communities with specific Decentraland places and locations
+    - Facilitate real-time voice chat sessions within communities with role-based participation
+    - Manage friendship relationships and social connections via RPC/gRPC interface
+    - Track user referrals, invitations, and referral progress with reward system integration
+    - Handle privacy controls including blocking and user muting with address filtering
+    - Integrate with user profiles including claimed names and avatars
+    - Track and provide online status information for community members
+    - Send notifications for social events via email and other channels
+    - Provide Server-Sent Events (SSE) for real-time notification streams
+
+  out_of_scope:
+    - Voice chat infrastructure and media streaming (handled by LiveKit and comms-gatekeeper)
+    - User profile storage and avatar rendering (handled by Catalyst)
+    - Content deployment and entity validation (handled by Catalyst)
+    - Reward distribution and virtual currency management (handled by rewards-server)
+    - Place and scene metadata management (handled by Places API)
 
   owned_entities:
     - name: Community
@@ -264,6 +293,134 @@ configuration:
     - name: REFERRAL_MIN_LOGIN_DAYS
       description: Minimum login days for referral validation
       affects: Referral qualification criteria
+
+    - name: UWS_SERVER_PORT
+      description: UWS (WebSocket) server port
+      affects: WebSocket server endpoint
+
+    - name: API_HTTP_SERVER_PORT
+      description: Alternative HTTP API server port
+      affects: API endpoint configuration
+
+    - name: PEER_SYNC_INTERVAL_MS
+      description: Interval in milliseconds for syncing peer information
+      affects: Real-time peer data synchronization frequency
+
+    - name: PEERS_SYNC_CACHE_TTL_MS
+      description: Cache TTL in milliseconds for peer sync data
+      affects: Peer data cache expiration
+
+    - name: SENTRY_DSN
+      description: Sentry DSN for error tracking
+      affects: Error reporting and monitoring
+
+    - name: SENTRY_TRACES_SAMPLE_RATE
+      description: Sample rate for Sentry traces (0.0 to 1.0)
+      affects: Performance monitoring sampling
+
+    - name: SENTRY_PROFILE_SESSION_SAMPLE_RATE
+      description: Sample rate for Sentry profiling sessions
+      affects: Profiling data collection
+
+    - name: SENTRY_PROFILE_LIFECYCLE
+      description: Sentry profile lifecycle mode (e.g., trace)
+      affects: Profiling behavior
+
+    - name: REFERRAL_METABASE_DASHBOARD
+      description: Metabase dashboard URL for referral analytics
+      affects: Analytics dashboard integration
+
+    - name: PRIVATE_VOICE_CHAT_JOB_INTERVAL
+      description: Interval in milliseconds for voice chat cleanup job
+      affects: Voice chat expiration job frequency
+
+    - name: PRIVATE_VOICE_CHAT_EXPIRATION_BATCH_SIZE
+      description: Batch size for expired voice chat cleanup
+      affects: Voice chat cleanup performance
+
+    - name: AWS_REGION
+      description: AWS region for S3 and SNS services
+      affects: AWS service region selection
+
+    - name: CDN_CACHE_INVALIDATOR_API_URL
+      description: CDN cache invalidator API URL
+      affects: CDN cache management
+
+    - name: CDN_CACHE_INVALIDATOR_API_TOKEN
+      description: Authentication token for CDN cache invalidator
+      affects: CDN cache management authorization
+
+    - name: ENV
+      description: Environment name (dev, stg, prd)
+      affects: Environment-specific configuration
+
+    - name: ANALYTICS_API_URL
+      description: Analytics service URL
+      affects: Analytics event delivery
+
+    - name: ANALYTICS_API_TOKEN
+      description: Analytics authentication token
+      affects: Analytics authorization
+
+    - name: ANALYTICS_CONTEXT
+      description: Analytics context identifier for this service
+      affects: Analytics tagging
+
+    - name: REWARDS_API_KEY_BY_REFERRAL_INVITED_USERS_5
+      description: Rewards API key for 5 invited users tier
+      affects: Referral reward tier 5 distribution
+
+    - name: REWARDS_API_KEY_BY_REFERRAL_INVITED_USERS_10
+      description: Rewards API key for 10 invited users tier
+      affects: Referral reward tier 10 distribution
+
+    - name: REWARDS_API_KEY_BY_REFERRAL_INVITED_USERS_20
+      description: Rewards API key for 20 invited users tier
+      affects: Referral reward tier 20 distribution
+
+    - name: REWARDS_API_KEY_BY_REFERRAL_INVITED_USERS_25
+      description: Rewards API key for 25 invited users tier
+      affects: Referral reward tier 25 distribution
+
+    - name: REWARDS_API_KEY_BY_REFERRAL_INVITED_USERS_30
+      description: Rewards API key for 30 invited users tier
+      affects: Referral reward tier 30 distribution
+
+    - name: REWARDS_API_KEY_BY_REFERRAL_INVITED_USERS_50
+      description: Rewards API key for 50 invited users tier
+      affects: Referral reward tier 50 distribution
+
+    - name: REWARDS_API_KEY_BY_REFERRAL_INVITED_USERS_60
+      description: Rewards API key for 60 invited users tier
+      affects: Referral reward tier 60 distribution
+
+    - name: REWARDS_API_KEY_BY_REFERRAL_INVITED_USERS_75
+      description: Rewards API key for 75 invited users tier
+      affects: Referral reward tier 75 distribution
+
+    - name: REWARDS_API_KEY_BY_REFERRAL_INVITED_USERS_100
+      description: Rewards API key for 100 invited users tier
+      affects: Referral reward tier 100 distribution
+
+    - name: SLACK_BOT_TOKEN
+      description: Slack bot authentication token
+      affects: Slack integration for notifications
+
+    - name: COMMUNITY_VOICE_CHAT_POLLING_JOB_INTERVAL
+      description: Interval in milliseconds for community voice chat polling job
+      affects: Voice chat status update frequency
+
+    - name: REFERRAL_FIVE_MINUTES_IN_MS
+      description: Five minutes in milliseconds for referral validations
+      affects: Referral time-based validation threshold
+
+    - name: OPENAI_API_URL
+      description: OpenAI API URL for AI compliance features
+      affects: AI service endpoint
+
+    - name: OPEN_AI_MODEL
+      description: OpenAI model identifier for AI compliance
+      affects: AI model selection
 
 adrs:
   - id: ADR-44

@@ -360,6 +360,10 @@ configuration:
       description: Whether to reset metrics at 00:00 UTC
       affects: Metrics behavior
 
+    - name: SERVICE_BASE_URL
+      description: Public base URL for the comms-gatekeeper service
+      affects: Service URL construction and callback URLs
+
 adrs:
   - id: ADR-44
     title: Signed Fetch Authentication

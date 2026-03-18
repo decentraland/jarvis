@@ -159,3 +159,27 @@ configuration:
     - name: HTTP_SERVER_HOST
       description: HTTP server host
       affects: Server listening address
+
+    - name: PG_COMPONENT_PSQL_USER
+      description: PostgreSQL user for authentication
+      affects: Database authentication
+
+    - name: PG_COMPONENT_PSQL_PASSWORD
+      description: PostgreSQL password for authentication
+      affects: Database authentication
+
+    - name: PG_COMPONENT_PSQL_PORT
+      description: PostgreSQL port
+      affects: Database connectivity
+
+    - name: ENV
+      description: Environment name (dev, stg, prod)
+      affects: Environment-specific configuration
+
+    - name: AWS_SNS_ENDPOINT
+      description: AWS SNS endpoint URL for custom configurations
+      affects: SNS service endpoint
+
+    - name: AWS_SQS_ENDPOINT
+      description: AWS SQS endpoint URL for custom configurations
+      affects: SQS service endpoint

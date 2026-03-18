@@ -1,0 +1,168 @@
+schema_version: "1.1"
+
+service:
+  name: js-sdk-toolchain
+  display_name: Decentraland SDK Toolchain
+  description: Monorepo containing the core packages for Decentraland's SDK7 and development tools. Provides the Entity Component System (ECS), React bindings, runtime definitions, and CLI tools for building, testing, and deploying Decentraland scenes using TypeScript/JavaScript.
+  owner: sdk-team
+  repository: https://github.com/decentraland/js-sdk-toolchain
+  language: typescript
+  layer: library
+  role:
+    - library
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: ECS
+      definition: Entity Component System - Core architecture pattern for Decentraland scenes using CRDT-based networking for state synchronization
+      examples:
+        - "Developer creates entities and attaches Transform, GltfContainer components"
+
+    - term: CRDT
+      definition: Conflict-free Replicated Data Type - Used for scene state synchronization between clients without conflicts
+      examples:
+        - "Scene state synchronized across multiple users using CRDT protocol"
+
+    - term: Entity
+      definition: Unique identifier (number) representing an object in the scene
+      examples:
+        - "const entity = engine.addEntity()"
+
+    - term: Component
+      definition: Data container attached to entities defining their properties (Transform, Material, etc.)
+      examples:
+        - "Transform component with position, rotation, scale"
+
+    - term: System
+      definition: Logic that operates on entities with specific component combinations
+      examples:
+        - "Input system processing keyboard events"
+
+    - term: Scene
+      definition: Decentraland SDK7 project containing TypeScript/JavaScript code, 3D assets, and configuration for deployment
+      examples:
+        - "Scene with multiple entities, components, and systems"
+
+  concept_relationships:
+    internal:
+      - from: Component
+        to: Entity
+        relationship: belongs_to
+        description: Components are attached to Entities to define their properties
+
+      - from: System
+        to: Entity
+        relationship: operates_on
+        description: Systems process entities with specific component combinations
+
+      - from: Scene
+        to: Entity
+        relationship: contains
+        description: Scenes contain multiple entities that make up the 3D environment
+
+    cross_service: []
+
+  invariants:
+    - rule: Entities must exist in the engine before components can be attached
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Component data must be serializable via Protocol Buffers for network synchronization
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Provide ECS implementation with CRDT-based networking
+    - Offer React bindings for UI development with JSX syntax
+    - Supply TypeScript definitions for scene runtime environment
+    - Provide CLI tools for scene creation, development, testing, and deployment
+    - Support snapshot testing for runtime performance tracking
+    - Compile Protocol Buffer definitions for type-safe communication
+    - Enable scene development with QuickJS runtime integration
+    - Package playground assets for Decentraland Playground
+
+  out_of_scope:
+    - Scene execution (handled by Explorer runtime environments)
+    - Content distribution (handled by Catalyst and Worlds Content Server)
+    - 3D rendering (handled by Explorer renderers like Unity, Babylon.js)
+    - Blockchain transactions (handled by user wallets and smart contracts)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: Protocol Buffers
+      purpose: Type-safe serialization for component data and network messages
+      type: other
+
+    - name: QuickJS
+      purpose: JavaScript runtime for scene execution via @dcl/quickjs-emscripten
+      type: other
+
+    - name: npm Registry
+      purpose: Package distribution for @dcl/sdk, @dcl/ecs, @dcl/sdk-commands, and related packages
+      type: api
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+adrs:
+  - id: ADR-117
+    title: CRDT Protocol for Scenes
+    url: https://adr.decentraland.org/adr/ADR-117
+    relevance: Details the scene state synchronization protocol using CRDT for conflict-free updates across clients
+
+  - id: ADR-123
+    title: Schema and Serialization
+    url: https://adr.decentraland.org/adr/ADR-123
+    relevance: Explains component data handling and Protocol Buffer serialization strategy
+
+  - id: ADR-124
+    title: Implementing Flexbox-based UI
+    url: https://adr.decentraland.org/adr/ADR-124
+    relevance: Describes the UI layout system using Flexbox for scene UI components
+
+  - id: ADR-125
+    title: User Interface Components
+    url: https://adr.decentraland.org/adr/ADR-125
+    relevance: Covers the UI system architecture and component design
+
+  - id: ADR-133
+    title: Scene Runtime Definition
+    url: https://adr.decentraland.org/adr/ADR-133
+    relevance: Details how scenes are executed in different runtime environments
+
+  - id: ADR-153
+    title: Transform SDK Component
+    url: https://adr.decentraland.org/adr/ADR-153
+    relevance: Explains the core Transform component used for entity positioning and orientation
+
+  - id: ADR-165
+    title: Component Declaration
+    url: https://adr.decentraland.org/adr/ADR-165
+    relevance: Describes the ECS component system design and declaration patterns
+
+  - id: ADR-237
+    title: SDK 7 Custom UI Components
+    url: https://adr.decentraland.org/adr/ADR-237
+    relevance: Details the UI component system and customization capabilities
+
+  - id: ADR-281
+    title: Items in Decentraland tooling
+    url: https://adr.decentraland.org/adr/ADR-281
+    relevance: Explains the Items abstraction used across SDK tooling and Builder integration

@@ -1,638 +1,882 @@
-schema_version: "1.0"
+schema_version: '1.0'
 services:
-  - name: archipelago-workers
-    display_name: Archipelago Workers
-    description: Monorepo containing three services that implement the Archipelago protocol for clustering users into dynamic islands based on their positions in Decentraland's metaverse. Enables scalable crowd management and efficient real-time communication for standalone realms.
-    layer: entry-points
-    repository: https://github.com/decentraland/archipelago-workers
-    role:
-      - rt-gateway
-      - worker
-    data_domain:
-      - islands
-      - peers
-    dependencies:
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
-  - name: architecture
-    display_name: Decentraland Architecture Diagram
-    description: Repository containing the main Decentraland backend architecture diagram defined using D2 language. Provides comprehensive documentation of architectural layers (Entry Points, Real-Time, Content, Feature Servers), service responsibilities, and communication patterns to help understand how components interact.
-    layer: Other
-    repository: https://github.com/decentraland/architecture
-    role:
-      - other
-    data_domain: []
-    dependencies: []
-  - name: asset-bundle-converter
-    display_name: Asset Bundle Converter
-    description: Converts Decentraland scene assets (GLTF models, textures) into optimized Unity Asset Bundles for improved WebGL performance. Monitors deployment events and processes entities by re-importing GLTF files in Unity and packaging them into versioned, compressed Asset Bundles stored on CDN.
-    layer: content
-    repository: https://github.com/decentraland/asset-bundle-converter
-    role:
-      - worker
-    data_domain:
-      - asset-bundles
-    dependencies:
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
-      - name: deployments-to-sqs
-        relationship: async
-        protocol: SNS/SQS
-      - name: asset-bundle-registry
-        relationship: async
-        protocol: SNS/SQS
-  - name: asset-bundle-registry
-    display_name: Asset Bundle Registry
-    description: Orchestrates and tracks the availability of optimized Decentraland entities (scenes, worlds, wearables, emotes, profiles). Acts as a state management service coordinating between entity deployments, optimization services, and client requests to ensure optimized content is always available.
-    layer: content
-    repository: https://github.com/decentraland/asset-bundle-registry
-    role:
-      - worker
-    data_domain:
-      - entity-registry
-      - optimization-status
-    dependencies:
-      - name: deployments-to-sqs
-        relationship: async
-        protocol: SNS/SQS
-      - name: asset-bundle-converter
-        relationship: async
-        protocol: SNS/SQS
-      - name: worlds-content-server
-        relationship: both
-        protocol: HTTP
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
-  - name: atlas-server
-    display_name: Atlas Server
-    description: Provides REST API for querying Decentraland's Genesis City map data (parcels, estates, districts) and generating map visualizations as PNG images. Serves as the data layer for the Decentraland Atlas interface.
-    layer: feature-servers
-    repository: https://github.com/decentraland/atlas-server
-    role:
-      - gateway
-    data_domain:
-      - map-tiles
-      - estates
-      - districts
-    dependencies:
-      - name: signatures-server
-        relationship: sync
-        protocol: HTTP
-  - name: auth-server
-    display_name: Auth Server
-    description: Facilitates secure communication between the Decentraland desktop client and browser-based authentication dApp. Enables the desktop client to execute wallet operations (transactions, signatures) using the user's browser wallet through a request-response relay pattern.
-    layer: feature-servers
-    repository: https://github.com/decentraland/auth-server
-    role:
-      - auth
-    data_domain:
-      - authentication-requests
-    dependencies: []
-  - name: badges
-    display_name: Badges
-    description: Manages user achievements (badges) within the Decentraland ecosystem. Tracks user actions both in-world and on-platform to grant badges, publishes badge-granted events, and provides APIs for querying badge definitions and user achievements.
-    layer: feature-servers
-    repository: https://github.com/decentraland/badges
-    role:
-      - worker
-    data_domain:
-      - badges
-    dependencies:
-      - name: events-notifier
-        relationship: async
-        protocol: HTTP
-      - name: notifications-workers
-        relationship: async
-        protocol: HTTP
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
-      - name: deployments-to-sqs
-        relationship: async
-        protocol: HTTP
-  - name: block-indexer
-    display_name: Block Indexer Library
-    description: TypeScript component library that finds the blockchain block that was at the tip of the blockchain at a given timestamp. Provides efficient timestamp-to-block-number lookup with caching for Ethereum and other EVM-compatible chains, essential for historical queries and timestamp-based content validation.
-    layer: Shared Libraries
-    repository: https://github.com/decentraland/block-indexer
-    role:
-      - library
-    data_domain: []
-    dependencies: []
-  - name: camera-reel-service
-    display_name: Camera Reel Service
-    description: Manages camera images captured from Decentraland Explorer. Provides upload, storage, retrieval, and metadata management for user-generated screenshots with visibility controls and place associations.
-    layer: feature-servers
-    repository: https://github.com/decentraland/camera-reel-service
-    role:
-      - gateway
-    data_domain:
-      - camera-images
-    dependencies: []
+- name: archipelago-workers
+  display_name: Archipelago Workers
+  description: Monorepo containing three services that implement the Archipelago protocol
+    for clustering users into dynamic islands based on their positions in Decentraland's
+    metaverse. Enables scalable crowd management and efficient real-time communication
+    for standalone realms.
+  layer: entry-points
+  repository: https://github.com/decentraland/archipelago-workers
+  role:
+  - rt-gateway
+  - worker
+  data_domain:
+  - islands
+  - peers
+  dependencies:
   - name: catalyst
-    display_name: Catalyst
-    description: Monorepo containing the core Catalyst server implementation. Catalyst servers are the decentralized content infrastructure for Decentraland, bundling multiple services (Content Server, Lambdas, BFF, Archipelago) to provide entity storage, content delivery, peer communication, and client APIs.
-    layer: content
-    repository: https://github.com/decentraland/catalyst
-    role:
-      - content
-      - storage
-    data_domain:
-      - entities
-      - deployments
-      - content-files
-    dependencies:
-      - name: archipelago-workers
-        relationship: both
-        protocol: WebSocket
-  - name: catalyst-contracts
-    display_name: Catalyst Contracts Library
-    description: TypeScript library providing smart contract addresses and ABIs for Decentraland blockchain contracts across multiple networks (Ethereum mainnet, Sepolia, Polygon, Mumbai, Amoy). Centralizes contract deployment information including LAND, Collections, Third Party Registry, POI, MANA token, Catalyst contracts, and name denylist across L1 and L2 networks.
-    layer: Shared Libraries
-    repository: https://github.com/decentraland/catalyst-contracts
-    role:
-      - library
-    data_domain: []
-    dependencies: []
-  - name: catalyst-storage
-    display_name: "@dcl/catalyst-storage"
-    description: Storage abstraction library providing unified API for file storage across multiple backends (S3, filesystem, in-memory). Handles content streaming, compression, and metadata for Catalyst content servers.
-    layer: shared-library
-    repository: https://github.com/decentraland/catalyst-storage
-    role:
-      - library
-    data_domain: []
-    dependencies: []
-  - name: comms-gatekeeper
-    display_name: Comms Gatekeeper
-    description: Acts as the guardian of LiveKit tokens within Decentraland's communication architecture. Processes signed fetch requests from clients and generates tokens that grant access to LiveKit rooms dedicated to specific scenes or worlds. Manages scene administration, streaming access, voice chat, and user moderation.
-    layer: real-time
-    repository: https://github.com/decentraland/comms-gatekeeper
-    role:
-      - auth
-      - gateway
-    data_domain:
-      - scene-administration
-      - streaming-access
-      - scene-bans
-      - voice-chat
-    dependencies:
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
-      - name: worlds-content-server
-        relationship: sync
-        protocol: HTTP
-      - name: places-api
-        relationship: sync
-        protocol: HTTP
-      - name: social-service-ea
-        relationship: sync
-        protocol: HTTP
-      - name: notifications-workers
-        relationship: sync
-        protocol: HTTP
-  - name: comms-message-sfu
-    display_name: Comms Message SFU
-    description: Real-time message routing and validation service for Decentraland's LiveKit communications infrastructure. Acts as a LiveKit participant that receives directed chat messages, validates community context, and re-publishes them to appropriate recipients.
-    layer: real-time
-    repository: https://github.com/decentraland/comms-message-sfu
-    role:
-      - rt-gateway
-    data_domain: []
-    dependencies:
-      - name: social-service-ea
-        relationship: sync
-        protocol: HTTP
-      - name: comms-gatekeeper
-        relationship: sync
-        protocol: HTTP
-  - name: content-validator
-    display_name: Content Validator Library
-    description: Decentraland entity deployment validation library for Catalyst servers that provides comprehensive validation functions for entity structure, metadata, access permissions, content integrity, and size constraints. Ensures only valid and authorized content is deployed to the Decentraland content network.
-    layer: Shared Libraries
-    repository: https://github.com/decentraland/content-validator
-    role:
-      - library
-    data_domain: []
-    dependencies: []
-  - name: core-components
-    display_name: Core Components Library
-    description: Monorepo of reusable TypeScript components and utilities for the Decentraland backend ecosystem. Provides standardized implementations for infrastructure concerns including HTTP servers, databases, caching, messaging, observability, and distributed tracing that are shared across multiple Decentraland services.
-    layer: Shared Libraries
-    repository: https://github.com/decentraland/core-components
-    role:
-      - library
-    data_domain: []
-    dependencies: []
-  - name: credits-server
-    display_name: Credits Server
-    description: Manages user credits system for Decentraland, integrating on-chain credit consumption tracking with off-chain credit grants. Handles credit issuance, tracking, expiration, and status calculation by combining database-stored grants with Squid indexer on-chain consumption data.
-    layer: feature-servers
-    repository: https://github.com/decentraland/credits-server
-    role:
-      - gateway
-    data_domain:
-      - credits
-      - seasons
-      - goals
-    dependencies:
-      - name: events
-        relationship: sync
-        protocol: HTTP
-      - name: archipelago-workers
-        relationship: sync
-        protocol: HTTP
-  - name: decentraland-crypto-middleware
-    display_name: Decentraland Crypto Middleware
-    description: Multi-framework authentication middleware for verifying requests signed with @decentraland/SignedFetch. Provides integrations for Express, Koa, PassportJS, and Well-Known Components to authenticate Decentraland users via cryptographic signature verification.
-    layer: shared-library
-    repository: https://github.com/decentraland/decentraland-crypto-middleware
-    role:
-      - library
-    data_domain: []
-    dependencies:
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
+    relationship: sync
+    protocol: HTTP
+- name: architecture
+  display_name: Decentraland Architecture Diagram
+  description: Repository containing the main Decentraland backend architecture diagram
+    defined using D2 language. Provides comprehensive documentation of architectural
+    layers (Entry Points, Real-Time, Content, Feature Servers), service responsibilities,
+    and communication patterns to help understand how components interact.
+  layer: Other
+  repository: https://github.com/decentraland/architecture
+  role:
+  - other
+  data_domain: []
+  dependencies: []
+- name: asset-bundle-converter
+  display_name: Asset Bundle Converter
+  description: Converts Decentraland scene assets (GLTF models, textures) into optimized
+    Unity Asset Bundles for improved WebGL performance. Monitors deployment events
+    and processes entities by re-importing GLTF files in Unity and packaging them
+    into versioned, compressed Asset Bundles stored on CDN.
+  layer: content
+  repository: https://github.com/decentraland/asset-bundle-converter
+  role:
+  - worker
+  data_domain:
+  - asset-bundles
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
   - name: deployments-to-sqs
-    display_name: Deployments to SQS
-    description: Monitors Catalyst content servers for new entity deployments and publishes deployment events to AWS SNS. Acts as the event source for downstream optimization services that process wearables, emotes, and scenes.
-    layer: feature-servers
-    repository: https://github.com/decentraland/deployments-to-sqs
-    role:
-      - worker
-    data_domain: []
-    dependencies:
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
-  - name: events
-    display_name: Community Events
-    description: Full-stack web application that manages community events within the Decentraland virtual world. Allows users to create, discover, and attend events in both land-based locations (Genesis City) and virtual worlds, providing a dApp interface with recurrent events, schedules, notifications, and social sharing capabilities.
-    layer: Feature Servers Layer
-    repository: https://github.com/decentraland/events
-    role:
-      - gateway
-    data_domain:
-      - events
-      - schedules
-      - event-attendance
-    dependencies:
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
-      - name: social-service-ea
-        relationship: sync
-        protocol: HTTP
-      - name: notifications-workers
-        relationship: async
-        protocol: SNS/SQS
-      - name: events-notifier
-        relationship: async
-        protocol: SNS/SQS
-      - name: worlds-content-server
-        relationship: sync
-        protocol: HTTP
-      - name: badges
-        relationship: async
-        protocol: SNS/SQS
-  - name: events-notifier
-    display_name: Events Notifier
-    description: Monitors blockchain events and publishes notifications to internal event-driven systems. Runs scheduled cron jobs that query The Graph subgraphs to detect marketplace transactions, rentals, and royalties, then publishes structured events for downstream consumers.
-    layer: feature-servers
-    repository: https://github.com/decentraland/events-notifier
-    role:
-      - worker
-    data_domain:
-      - event-cursors
-    dependencies: []
-  - name: exploration-games
-    display_name: Exploration Games
-    description: Manages exploration games and related functionality within Decentraland. Provides services for game discovery, participation tracking, and reward distribution for exploration-based gameplay experiences.
-    layer: feature-servers
-    repository: https://github.com/decentraland/exploration-games
-    role:
-      - gateway
-    data_domain:
-      - exploration-games
-      - player-progress
-    dependencies:
-      - name: reward-server
-        relationship: sync
-        protocol: HTTP
-  - name: hashing
-    display_name: "@dcl/hashing"
-    description: Hashing utilities library that provides content identifier calculation functions for Decentraland. Generates IPFSv1 compatible hashes (ba-prefixed) for content addressing and ADR-32 compliant entity hashing for on-chain storage.
-    layer: Shared Libraries
-    repository: https://github.com/decentraland/hashing
-    role:
-      - library
-    data_domain: []
-    dependencies: []
-  - name: lamb2
-    display_name: Lambdas v2
-    description: Provides utility APIs for Decentraland clients to interact with Catalyst Content Servers. Replaces the legacy lambdas service with improved architecture, offering entity resolution, ownership validation, asset queries, and client helper functions.
-    layer: content
-    repository: https://github.com/decentraland/lamb2
-    role:
-      - gateway
-    data_domain: []
-    dependencies:
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
-      - name: archipelago-workers
-        relationship: sync
-        protocol: HTTP
-  - name: linker-server
-    display_name: Linker Server
-    description: Acts as an intermediary for deploying content to Decentraland's Catalyst network. Validates authorization for specific parcels and proxies upload requests to Catalyst with server-signed authentication.
-    layer: feature-servers
-    repository: https://github.com/decentraland/linker-server
-    role:
-      - gateway
-    data_domain: []
-    dependencies:
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
-  - name: marketplace-server
-    display_name: Marketplace Server
-    description: Provides comprehensive marketplace APIs for the Decentraland Marketplace. Enables browsing, searching, and interacting with NFTs (wearables, emotes, LAND, estates, ENS names), managing trades and orders, and accessing marketplace analytics.
-    layer: feature-servers
-    repository: https://github.com/decentraland/marketplace-server
-    role:
-      - gateway
-    data_domain:
-      - trades
-      - favorites
-    dependencies:
-      - name: signatures-server
-        relationship: sync
-        protocol: HTTP
-  - name: notifications-workers
-    display_name: Notifications Workers
-    description: Manages user notifications across the Decentraland platform. Split into Processor and Inbox workers for scalability. Handles notification production, storage, delivery via Server-Sent Events, and email notifications via SendGrid.
-    layer: feature-servers
-    repository: https://github.com/decentraland/notifications-workers
-    role:
-      - worker
-    data_domain:
-      - notifications
-      - subscriptions
-    dependencies:
-      - name: events-notifier
-        relationship: async
-        protocol: SNS/SQS
-  - name: platform-crypto-middleware
-    display_name: Platform Authentication Middleware
-    description: Multi-framework HTTP middleware library for authenticating requests signed with @decentraland/SignedFetch. Validates cryptographic signatures (AuthChain) in HTTP headers to verify request authenticity and extract wallet addresses, supporting optional and required authentication modes.
-    layer: Shared Libraries
-    repository: https://github.com/decentraland/platform-crypto-middleware
-    role:
-      - library
-    data_domain: []
-    dependencies: []
-  - name: police-server
-    display_name: Police Server
-    description: Moderation and monitoring service for Decentraland's voice communications. Monitors LiveKit rooms, enforces rate limits to prevent spam, and automatically revokes permissions from abusive participants.
-    layer: real-time
-    repository: https://github.com/decentraland/police-server
-    role:
-      - worker
-    data_domain: []
-    dependencies: []
-  - name: profile-images
-    display_name: Profile Images
-    description: Generates 2D profile images (body and face) from 3D avatar models. Uses producer-consumer pattern to monitor profile changes and render avatar images for display in applications and user interfaces.
-    layer: feature-servers
-    repository: https://github.com/decentraland/profile-images
-    role:
-      - worker
-    data_domain:
-      - profile-images
-    dependencies:
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
-  - name: prometheus-nats-exporter
-    display_name: Prometheus NATS Exporter
-    description: Docker wrapper for the official NATS Prometheus exporter that exposes NATS messaging metrics for Prometheus monitoring. Runs as a sidecar container alongside NATS servers to provide observability into message broker performance and health.
-    layer: Other
-    repository: https://github.com/decentraland/prometheus-nats-exporter
-    role:
-      - other
-    data_domain: []
-    dependencies:
-      - name: NATS Server
-        relationship: sync
-        protocol: HTTP
-  - name: protocol
-    display_name: Protocol Definitions
-    description: Protobuf protocol definitions for Decentraland that define the communication contracts between client, kernel, Unity renderer, SDK toolchain, and comms services. Provides code generation for TypeScript and other languages to ensure type-safe cross-service and cross-platform communication.
-    layer: Shared Libraries
-    repository: https://github.com/decentraland/protocol
-    role:
-      - library
-    data_domain: []
-    dependencies: []
-  - name: realm-provider
-    display_name: Realm Provider
-    description: Provides realm configuration service for Decentraland clients. Implements ADR-110 realm descriptions, enabling clients to discover and connect to available Catalyst nodes, Lambdas services, and communication realms.
-    layer: feature-servers
-    repository: https://github.com/decentraland/realm-provider
-    role:
-      - discovery
-    data_domain:
-      - realms
-    dependencies:
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
-      - name: archipelago-workers
-        relationship: both
-        protocol: HTTP
-  - name: reels
-    display_name: Reels Frontend
-    description: Gatsby-based static site frontend for viewing and sharing Decentraland user snapshots (reels). Displays photo metadata including location, visible users, wearables, and realm information with Open Graph support for social media sharing. Deployed to Cloudflare Workers.
-    layer: entry-points
-    repository: https://github.com/decentraland/reels
-    role:
-      - gateway
-    data_domain: []
-    dependencies:
-      - name: camera-reel-service
-        relationship: sync
-        protocol: HTTP
-      - name: urn-resolver
-        relationship: sync
-        protocol: HTTP
-  - name: referral
-    display_name: Reward Services
-    description: Comprehensive reward and campaign management system for the Decentraland ecosystem that enables creation of reward campaigns, distribution of NFTs and tokens, management of referral codes, blockchain transaction handling, and tracking of user referrals with support for multiple blockchain networks (Ethereum, Polygon).
-    layer: Feature Servers Layer
-    repository: https://github.com/decentraland/referral
-    role:
-      - gateway
-    data_domain:
-      - campaigns
-      - rewards
-      - referrals
-    dependencies:
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
-      - name: archipelago-workers
-        relationship: sync
-        protocol: HTTP
-  - name: schemas
-    display_name: Decentraland Schemas
-    description: Shared TypeScript type definitions and JSON Schema validators for all Decentraland data structures. Provides compile-time type safety and runtime validation for entities, profiles, scenes, wearables, events, and marketplace data across the entire platform.
-    layer: shared-library
-    repository: https://github.com/decentraland/schemas
-    role:
-      - library
-    data_domain: []
-    dependencies: []
-  - name: snapshots-fetcher
-    display_name: "@dcl/snapshots-fetcher"
-    description: Component library for fetching and synchronizing entity snapshots from Catalyst content servers. Downloads entity deployments with their content files, supports incremental snapshot synchronization, and provides resilient fetching with retry logic and queue management.
-    layer: shared-library
-    repository: https://github.com/decentraland/snapshots-fetcher
-    role:
-      - library
-    data_domain: []
-    dependencies:
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
-  - name: social-service-ea
-    display_name: Social Service EA
-    description: Microservice handling social interactions for Decentraland. Enables users to create and manage communities, connect with friends, participate in voice chats, and engage in social activities within the metaverse.
-    layer: feature-servers
-    repository: https://github.com/decentraland/social-service-ea
-    role:
-      - other
-    data_domain:
-      - communities
-      - friendships
-      - social-settings
-    dependencies:
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
-      - name: comms-gatekeeper
-        relationship: sync
-        protocol: HTTP
-      - name: archipelago-workers
-        relationship: sync
-        protocol: HTTP
-      - name: places-api
-        relationship: sync
-        protocol: HTTP
-      - name: notifications-workers
-        relationship: sync
-        protocol: HTTP
-      - name: rewards-server
-        relationship: sync
-        protocol: HTTP
-  - name: unity-explorer
-    display_name: Unity Explorer
-    description: Official desktop client implementation for Decentraland 2.0, allowing users to explore and interact with the Decentraland metaverse using Unity. Delivers enhanced performance, immersive graphics, and improved user experience compared to web-based clients.
-    layer: client
-    repository: https://github.com/decentraland/unity-explorer
-    role:
-      - client
-    data_domain: []
-    dependencies:
-      - name: catalyst
-        relationship: sync
-        protocol: HTTP
-      - name: worlds-content-server
-        relationship: sync
-        protocol: HTTP
-      - name: asset-bundle-registry
-        relationship: sync
-        protocol: HTTP
-      - name: realm-provider
-        relationship: sync
-        protocol: HTTP
-      - name: social-service-ea
-        relationship: both
-        protocol: WebSocket
-      - name: archipelago-workers
-        relationship: both
-        protocol: WebSocket
-      - name: comms-gatekeeper
-        relationship: sync
-        protocol: HTTP
-      - name: badges
-        relationship: sync
-        protocol: HTTP
-      - name: camera-reel-service
-        relationship: sync
-        protocol: HTTP
-      - name: auth-server
-        relationship: sync
-        protocol: HTTP
-      - name: marketplace-server
-        relationship: sync
-        protocol: HTTP
-      - name: notifications-workers
-        relationship: sync
-        protocol: HTTP
-      - name: credits-server
-        relationship: sync
-        protocol: HTTP
-      - name: events-notifier
-        relationship: sync
-        protocol: HTTP
-  - name: urn-resolver
-    display_name: "@dcl/urn-resolver"
-    description: TypeScript library that resolves and parses Decentraland asset URNs within the urn:decentraland namespace. Provides type-safe parsing of LAND, wearables, collections v1/v2, and third-party assets for ownership validation and content URL generation.
-    layer: shared-library
-    repository: https://github.com/decentraland/urn-resolver
-    role:
-      - library
-    data_domain: []
-    dependencies: []
-  - name: world-storage-service
-    display_name: World Storage Service
-    description: Provides secure, isolated storage and environment variable access for Decentraland worlds. Acts as an API gateway for persistent storage and secrets management for Authoritative Servers running server-side scene code.
-    layer: feature-servers
-    repository: https://github.com/decentraland/world-storage-service
-    role:
-      - storage
-    data_domain:
-      - world-storage
-      - player-storage
-      - environment-variables
-    dependencies:
-      - name: worlds-content-server
-        relationship: sync
-        protocol: HTTP
+    relationship: async
+    protocol: SNS/SQS
+  - name: asset-bundle-registry
+    relationship: async
+    protocol: SNS/SQS
+- name: asset-bundle-registry
+  display_name: Asset Bundle Registry
+  description: Orchestrates and tracks the availability of optimized Decentraland
+    entities (scenes, worlds, wearables, emotes, profiles). Acts as a state management
+    service coordinating between entity deployments, optimization services, and client
+    requests to ensure optimized content is always available.
+  layer: content
+  repository: https://github.com/decentraland/asset-bundle-registry
+  role:
+  - worker
+  data_domain:
+  - entity-registry
+  - optimization-status
+  dependencies:
+  - name: deployments-to-sqs
+    relationship: async
+    protocol: SNS/SQS
+  - name: asset-bundle-converter
+    relationship: async
+    protocol: SNS/SQS
   - name: worlds-content-server
-    display_name: Worlds Content Server
-    description: Content server specifically for Decentraland Worlds (named scenes). Enables deployment and retrieval of world scenes identified by DCL names rather than parcel coordinates. Supports global portable experiences and single-scene loading.
-    layer: content
-    repository: https://github.com/decentraland/worlds-content-server
-    role:
-      - content
-      - storage
-    data_domain:
-      - worlds
-      - world-permissions
-    dependencies:
-      - name: social-service-ea
-        relationship: sync
-        protocol: HTTP
-      - name: comms-gatekeeper
-        relationship: sync
-        protocol: HTTP
-      - name: notifications-workers
-        relationship: sync
-        protocol: HTTP
+    relationship: both
+    protocol: HTTP
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+- name: atlas-server
+  display_name: Atlas Server
+  description: Provides REST API for querying Decentraland's Genesis City map data
+    (parcels, estates, districts) and generating map visualizations as PNG images.
+    Serves as the data layer for the Decentraland Atlas interface.
+  layer: feature-servers
+  repository: https://github.com/decentraland/atlas-server
+  role:
+  - gateway
+  data_domain:
+  - map-tiles
+  - estates
+  - districts
+  dependencies:
+  - name: signatures-server
+    relationship: sync
+    protocol: HTTP
+- name: auth-server
+  display_name: Auth Server
+  description: Facilitates secure communication between the Decentraland desktop client
+    and browser-based authentication dApp. Enables the desktop client to execute wallet
+    operations (transactions, signatures) using the user's browser wallet through
+    a request-response relay pattern.
+  layer: feature-servers
+  repository: https://github.com/decentraland/auth-server
+  role:
+  - auth
+  data_domain:
+  - authentication-requests
+  dependencies: []
+- name: badges
+  display_name: Badges
+  description: Manages user achievements (badges) within the Decentraland ecosystem.
+    Tracks user actions both in-world and on-platform to grant badges, publishes badge-granted
+    events, and provides APIs for querying badge definitions and user achievements.
+  layer: feature-servers
+  repository: https://github.com/decentraland/badges
+  role:
+  - worker
+  data_domain:
+  - badges
+  dependencies:
+  - name: events-notifier
+    relationship: async
+    protocol: SNS/SQS
+  - name: notifications-workers
+    relationship: async
+    protocol: SNS/SQS
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: deployments-to-sqs
+    relationship: async
+    protocol: SNS/SQS
+- name: block-indexer
+  display_name: Block Indexer Library
+  description: TypeScript component library that finds the blockchain block that was
+    at the tip of the blockchain at a given timestamp. Provides efficient timestamp-to-block-number
+    lookup with caching for Ethereum and other EVM-compatible chains, essential for
+    historical queries and timestamp-based content validation.
+  layer: Shared Libraries
+  repository: https://github.com/decentraland/block-indexer
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: builder
+  display_name: Decentraland Builder
+  description: Web-based application for creating, editing, and publishing Decentraland
+    content. Provides drag-and-drop scene creation (SDK6), Inspector-based editing
+    (SDK7), wearable and emote design, LAND and Estate management, and Worlds deployment
+    with permission controls.
+  layer: client
+  repository: https://github.com/decentraland/builder
+  role:
+  - client
+  data_domain: []
+  dependencies:
+  - name: builder-server
+    relationship: sync
+    protocol: HTTP
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+  - name: marketplace-server
+    relationship: sync
+    protocol: HTTP
+  - name: credits-server
+    relationship: sync
+    protocol: HTTP
+- name: builder-client
+  display_name: Builder Client
+  description: TypeScript/JavaScript library providing a programmatic interface to
+    the Decentraland Builder Server API. Enables developers to create, edit, and manage
+    wearables and emotes without using the Builder UI, making it suitable for automation,
+    bulk operations, and integration into other tools.
+  layer: Shared Libraries
+  repository: https://github.com/decentraland/builder-client
+  role:
+  - library
+  - client
+  data_domain: []
+  dependencies:
+  - name: builder-server
+    relationship: sync
+    protocol: HTTP
+- name: builder-server
+  display_name: Builder Server
+  description: Backend service for the Decentraland Builder application. Provides
+    REST APIs for creating and managing scene projects, wearable and emote collections,
+    asset packs, and facilitates the publication workflow to the Decentraland platform.
+  layer: feature
+  repository: https://github.com/decentraland/builder-server
+  role:
+  - gateway
+  data_domain:
+  - scene_projects
+  - collections
+  - items
+  - asset_packs
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+- name: camera-reel-service
+  display_name: Camera Reel Service
+  description: Manages camera images captured from Decentraland Explorer. Provides
+    upload, storage, retrieval, and metadata management for user-generated screenshots
+    with visibility controls and place associations.
+  layer: feature-servers
+  repository: https://github.com/decentraland/camera-reel-service
+  role:
+  - gateway
+  data_domain:
+  - camera-images
+  dependencies: []
+- name: catalyst
+  display_name: Catalyst
+  description: Monorepo containing the core Catalyst server implementation. Catalyst
+    servers are the decentralized content infrastructure for Decentraland, bundling
+    multiple services (Content Server, Lambdas, BFF, Archipelago) to provide entity
+    storage, content delivery, peer communication, and client APIs.
+  layer: content
+  repository: https://github.com/decentraland/catalyst
+  role:
+  - content
+  - storage
+  data_domain:
+  - entities
+  - deployments
+  - content-files
+  dependencies:
+  - name: archipelago-workers
+    relationship: both
+    protocol: WebSocket
+- name: catalyst-contracts
+  display_name: Catalyst Contracts Library
+  description: TypeScript library providing smart contract addresses and ABIs for
+    Decentraland blockchain contracts across multiple networks (Ethereum mainnet,
+    Sepolia, Polygon, Mumbai, Amoy). Centralizes contract deployment information including
+    LAND, Collections, Third Party Registry, POI, MANA token, Catalyst contracts,
+    and name denylist across L1 and L2 networks.
+  layer: Shared Libraries
+  repository: https://github.com/decentraland/catalyst-contracts
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: catalyst-storage
+  display_name: '@dcl/catalyst-storage'
+  description: Storage abstraction library providing unified API for file storage
+    across multiple backends (S3, filesystem, in-memory). Handles content streaming,
+    compression, and metadata for Catalyst content servers.
+  layer: shared-library
+  repository: https://github.com/decentraland/catalyst-storage
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: comms-gatekeeper
+  display_name: Comms Gatekeeper
+  description: Acts as the guardian of LiveKit tokens within Decentraland's communication
+    architecture. Processes signed fetch requests from clients and generates tokens
+    that grant access to LiveKit rooms dedicated to specific scenes or worlds. Manages
+    scene administration, streaming access, voice chat, and user moderation.
+  layer: real-time
+  repository: https://github.com/decentraland/comms-gatekeeper
+  role:
+  - auth
+  - gateway
+  data_domain:
+  - scene-administration
+  - streaming-access
+  - scene-bans
+  - voice-chat
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+  - name: places-api
+    relationship: sync
+    protocol: HTTP
+  - name: social-service-ea
+    relationship: sync
+    protocol: HTTP
+  - name: notifications-workers
+    relationship: sync
+    protocol: HTTP
+- name: comms-message-sfu
+  display_name: Comms Message SFU
+  description: Real-time message routing and validation service for Decentraland's
+    LiveKit communications infrastructure. Acts as a LiveKit participant that receives
+    directed chat messages, validates community context, and re-publishes them to
+    appropriate recipients.
+  layer: real-time
+  repository: https://github.com/decentraland/comms-message-sfu
+  role:
+  - rt-gateway
+  data_domain: []
+  dependencies:
+  - name: social-service-ea
+    relationship: sync
+    protocol: HTTP
+- name: content-validator
+  display_name: Content Validator Library
+  description: Decentraland entity deployment validation library for Catalyst servers
+    that provides comprehensive validation functions for entity structure, metadata,
+    access permissions, content integrity, and size constraints. Ensures only valid
+    and authorized content is deployed to the Decentraland content network.
+  layer: Shared Libraries
+  repository: https://github.com/decentraland/content-validator
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: core-components
+  display_name: Core Components Library
+  description: Monorepo of reusable TypeScript components and utilities for the Decentraland
+    backend ecosystem. Provides standardized implementations for infrastructure concerns
+    including HTTP servers, databases, caching, messaging, observability, and distributed
+    tracing that are shared across multiple Decentraland services.
+  layer: Shared Libraries
+  repository: https://github.com/decentraland/core-components
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: creator-hub
+  display_name: Decentraland Creator Hub
+  description: Cross-platform Electron desktop application for creating, editing,
+    and deploying Decentraland SDK7 scenes. Provides visual scene editing via embedded
+    Inspector, asset management with curated Smart Items, and deployment to Genesis
+    City, Worlds, or custom servers.
+  layer: client
+  repository: https://github.com/decentraland/creator-hub
+  role:
+  - client
+  data_domain: []
+  dependencies:
+  - name: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+  - name: social-service-ea
+    relationship: sync
+    protocol: HTTP
+  - name: atlas-server
+    relationship: sync
+    protocol: HTTP
+  - name: asset-bundle-registry
+    relationship: sync
+    protocol: HTTP
+  - name: auth-server
+    relationship: sync
+    protocol: HTTP
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+- name: credits-server
+  display_name: Credits Server
+  description: Manages user credits system for Decentraland, integrating on-chain
+    credit consumption tracking with off-chain credit grants. Handles credit issuance,
+    tracking, expiration, and status calculation by combining database-stored grants
+    with Squid indexer on-chain consumption data.
+  layer: feature-servers
+  repository: https://github.com/decentraland/credits-server
+  role:
+  - gateway
+  data_domain:
+  - credits
+  - seasons
+  - goals
+  dependencies:
+  - name: events
+    relationship: sync
+    protocol: HTTP
+  - name: archipelago-workers
+    relationship: sync
+    protocol: HTTP
+- name: decentraland-crypto-middleware
+  display_name: Decentraland Crypto Middleware
+  description: Multi-framework authentication middleware for verifying requests signed
+    with @decentraland/SignedFetch. Provides integrations for Express, Koa, PassportJS,
+    and Well-Known Components to authenticate Decentraland users via cryptographic
+    signature verification.
+  layer: shared-library
+  repository: https://github.com/decentraland/decentraland-crypto-middleware
+  role:
+  - library
+  data_domain: []
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+- name: deployments-to-sqs
+  display_name: Deployments to SQS
+  description: Monitors Catalyst content servers for new entity deployments and publishes
+    deployment events to AWS SNS. Acts as the event source for downstream optimization
+    services that process wearables, emotes, and scenes.
+  layer: feature-servers
+  repository: https://github.com/decentraland/deployments-to-sqs
+  role:
+  - worker
+  data_domain: []
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+- name: events
+  display_name: Community Events
+  description: Full-stack web application that manages community events within the
+    Decentraland virtual world. Allows users to create, discover, and attend events
+    in both land-based locations (Genesis City) and virtual worlds, providing a dApp
+    interface with recurrent events, schedules, notifications, and social sharing
+    capabilities.
+  layer: Feature Servers Layer
+  repository: https://github.com/decentraland/events
+  role:
+  - gateway
+  data_domain:
+  - events
+  - schedules
+  - event-attendance
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: social-service-ea
+    relationship: sync
+    protocol: HTTP
+  - name: notifications-workers
+    relationship: async
+    protocol: SNS/SQS
+  - name: events-notifier
+    relationship: async
+    protocol: SNS/SQS
+  - name: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+  - name: badges
+    relationship: async
+    protocol: SNS/SQS
+- name: events-notifier
+  display_name: Events Notifier
+  description: Monitors blockchain events and publishes notifications to internal
+    event-driven systems. Runs scheduled cron jobs that query The Graph subgraphs
+    to detect marketplace transactions, rentals, and royalties, then publishes structured
+    events for downstream consumers.
+  layer: feature-servers
+  repository: https://github.com/decentraland/events-notifier
+  role:
+  - worker
+  data_domain:
+  - event-cursors
+  dependencies: []
+- name: exploration-games
+  display_name: Exploration Games
+  description: Manages exploration games and related functionality within Decentraland.
+    Provides services for game discovery, participation tracking, and reward distribution
+    for exploration-based gameplay experiences.
+  layer: feature-servers
+  repository: https://github.com/decentraland/exploration-games
+  role:
+  - gateway
+  data_domain:
+  - exploration-games
+  - player-progress
+  dependencies:
+  - name: reward-server
+    relationship: sync
+    protocol: HTTP
+- name: gltf-validator-ts
+  display_name: GLTF Validator (TypeScript)
+  description: TypeScript implementation of GLTF/GLB validation compatible with the
+    official Khronos validator. Validates GLTF 2.0 files for specification compliance,
+    extension support, and structural correctness with detailed error reporting.
+  layer: library
+  repository: https://github.com/decentraland/gltf-validator-ts
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: hashing
+  display_name: '@dcl/hashing'
+  description: Hashing utilities library that provides content identifier calculation
+    functions for Decentraland. Generates IPFSv1 compatible hashes (ba-prefixed) for
+    content addressing and ADR-32 compliant entity hashing for on-chain storage.
+  layer: Shared Libraries
+  repository: https://github.com/decentraland/hashing
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: js-sdk-toolchain
+  display_name: Decentraland SDK Toolchain
+  description: Monorepo containing the core packages for Decentraland's SDK7 and development
+    tools. Provides the Entity Component System (ECS), React bindings, runtime definitions,
+    and CLI tools for building, testing, and deploying Decentraland scenes using TypeScript/JavaScript.
+  layer: library
+  repository: https://github.com/decentraland/js-sdk-toolchain
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: lamb2
+  display_name: Lambdas v2
+  description: Provides utility APIs for Decentraland clients to interact with Catalyst
+    Content Servers. Replaces the legacy lambdas service with improved architecture,
+    offering entity resolution, ownership validation, asset queries, and client helper
+    functions.
+  layer: content
+  repository: https://github.com/decentraland/lamb2
+  role:
+  - gateway
+  data_domain: []
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: archipelago-workers
+    relationship: sync
+    protocol: HTTP
+- name: linker-server
+  display_name: Linker Server
+  description: Acts as an intermediary for deploying content to Decentraland's Catalyst
+    network. Validates authorization for specific parcels and proxies upload requests
+    to Catalyst with server-signed authentication.
+  layer: feature-servers
+  repository: https://github.com/decentraland/linker-server
+  role:
+  - gateway
+  data_domain: []
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+- name: marketplace-server
+  display_name: Marketplace Server
+  description: Provides comprehensive marketplace APIs for the Decentraland Marketplace.
+    Enables browsing, searching, and interacting with NFTs (wearables, emotes, LAND,
+    estates, ENS names), managing trades and orders, and accessing marketplace analytics.
+  layer: feature-servers
+  repository: https://github.com/decentraland/marketplace-server
+  role:
+  - gateway
+  data_domain:
+  - trades
+  - favorites
+  dependencies:
+  - name: signatures-server
+    relationship: sync
+    protocol: HTTP
+- name: notifications-workers
+  display_name: Notifications Workers
+  description: Manages user notifications across the Decentraland platform. Split
+    into Processor and Inbox workers for scalability. Handles notification production,
+    storage, delivery via Server-Sent Events, and email notifications via SendGrid.
+  layer: feature-servers
+  repository: https://github.com/decentraland/notifications-workers
+  role:
+  - worker
+  data_domain:
+  - notifications
+  - subscriptions
+  dependencies:
+  - name: events-notifier
+    relationship: async
+    protocol: SNS/SQS
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+- name: platform-crypto-middleware
+  display_name: Platform Authentication Middleware
+  description: Multi-framework HTTP middleware library for authenticating requests
+    signed with @decentraland/SignedFetch. Validates cryptographic signatures (AuthChain)
+    in HTTP headers to verify request authenticity and extract wallet addresses, supporting
+    optional and required authentication modes.
+  layer: Shared Libraries
+  repository: https://github.com/decentraland/platform-crypto-middleware
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: police-server
+  display_name: Police Server
+  description: Moderation and monitoring service for Decentraland's voice communications.
+    Monitors LiveKit rooms, enforces rate limits to prevent spam, and automatically
+    revokes permissions from abusive participants.
+  layer: real-time
+  repository: https://github.com/decentraland/police-server
+  role:
+  - worker
+  data_domain: []
+  dependencies: []
+- name: profile-images
+  display_name: Profile Images
+  description: Generates 2D profile images (body and face) from 3D avatar models.
+    Uses producer-consumer pattern to monitor profile changes and render avatar images
+    for display in applications and user interfaces.
+  layer: feature-servers
+  repository: https://github.com/decentraland/profile-images
+  role:
+  - worker
+  data_domain:
+  - profile-images
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+- name: prometheus-nats-exporter
+  display_name: Prometheus NATS Exporter
+  description: Docker wrapper for the official NATS Prometheus exporter that exposes
+    NATS messaging metrics for Prometheus monitoring. Runs as a sidecar container
+    alongside NATS servers to provide observability into message broker performance
+    and health.
+  layer: Other
+  repository: https://github.com/decentraland/prometheus-nats-exporter
+  role:
+  - other
+  data_domain: []
+  dependencies:
+  - name: NATS Server
+    relationship: sync
+    protocol: HTTP
+- name: protocol
+  display_name: Protocol Definitions
+  description: Protobuf protocol definitions for Decentraland that define the communication
+    contracts between client, kernel, Unity renderer, SDK toolchain, and comms services.
+    Provides code generation for TypeScript and other languages to ensure type-safe
+    cross-service and cross-platform communication.
+  layer: Shared Libraries
+  repository: https://github.com/decentraland/protocol
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: realm-provider
+  display_name: Realm Provider
+  description: Provides realm configuration service for Decentraland clients. Implements
+    ADR-110 realm descriptions, enabling clients to discover and connect to available
+    Catalyst nodes, Lambdas services, and communication realms.
+  layer: feature-servers
+  repository: https://github.com/decentraland/realm-provider
+  role:
+  - discovery
+  data_domain:
+  - realms
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: archipelago-workers
+    relationship: both
+    protocol: HTTP
+- name: reels
+  display_name: Reels Frontend
+  description: Gatsby-based static site frontend for viewing and sharing Decentraland
+    user snapshots (reels). Displays photo metadata including location, visible users,
+    wearables, and realm information with Open Graph support for social media sharing.
+    Deployed to Cloudflare Workers.
+  layer: entry-points
+  repository: https://github.com/decentraland/reels
+  role:
+  - gateway
+  data_domain: []
+  dependencies:
+  - name: camera-reel-service
+    relationship: sync
+    protocol: HTTP
+  - name: urn-resolver
+    relationship: sync
+    protocol: HTTP
+- name: referral
+  display_name: Reward Services
+  description: Comprehensive reward and campaign management system for the Decentraland
+    ecosystem that enables creation of reward campaigns, distribution of NFTs and
+    tokens, management of referral codes, blockchain transaction handling, and tracking
+    of user referrals with support for multiple blockchain networks (Ethereum, Polygon).
+  layer: Feature Servers Layer
+  repository: https://github.com/decentraland/referral
+  role:
+  - gateway
+  data_domain:
+  - campaigns
+  - rewards
+  - referrals
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: archipelago-workers
+    relationship: sync
+    protocol: HTTP
+- name: schemas
+  display_name: Decentraland Schemas
+  description: Shared TypeScript type definitions and JSON Schema validators for all
+    Decentraland data structures. Provides compile-time type safety and runtime validation
+    for entities, profiles, scenes, wearables, events, and marketplace data across
+    the entire platform.
+  layer: shared-library
+  repository: https://github.com/decentraland/schemas
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: snapshots-fetcher
+  display_name: '@dcl/snapshots-fetcher'
+  description: Component library for fetching and synchronizing entity snapshots from
+    Catalyst content servers. Downloads entity deployments with their content files,
+    supports incremental snapshot synchronization, and provides resilient fetching
+    with retry logic and queue management.
+  layer: shared-library
+  repository: https://github.com/decentraland/snapshots-fetcher
+  role:
+  - library
+  data_domain: []
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+- name: social-service-ea
+  display_name: Social Service EA
+  description: Microservice handling social interactions for Decentraland. Enables
+    users to create and manage communities, connect with friends, participate in voice
+    chats, and engage in social activities within the metaverse.
+  layer: feature-servers
+  repository: https://github.com/decentraland/social-service-ea
+  role:
+  - other
+  data_domain:
+  - communities
+  - friendships
+  - social-settings
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: comms-gatekeeper
+    relationship: sync
+    protocol: HTTP
+  - name: archipelago-workers
+    relationship: sync
+    protocol: HTTP
+  - name: places-api
+    relationship: sync
+    protocol: HTTP
+  - name: notifications-workers
+    relationship: sync
+    protocol: HTTP
+  - name: rewards-server
+    relationship: sync
+    protocol: HTTP
+- name: unity-explorer
+  display_name: Unity Explorer
+  description: Official desktop client implementation for Decentraland 2.0, allowing
+    users to explore and interact with the Decentraland metaverse using Unity. Delivers
+    enhanced performance, immersive graphics, and improved user experience compared
+    to web-based clients.
+  layer: client
+  repository: https://github.com/decentraland/unity-explorer
+  role:
+  - client
+  data_domain: []
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+  - name: asset-bundle-registry
+    relationship: sync
+    protocol: HTTP
+  - name: realm-provider
+    relationship: sync
+    protocol: HTTP
+  - name: social-service-ea
+    relationship: both
+    protocol: WebSocket
+  - name: archipelago-workers
+    relationship: both
+    protocol: WebSocket
+  - name: comms-gatekeeper
+    relationship: sync
+    protocol: HTTP
+  - name: badges
+    relationship: sync
+    protocol: HTTP
+  - name: camera-reel-service
+    relationship: sync
+    protocol: HTTP
+  - name: auth-server
+    relationship: sync
+    protocol: HTTP
+  - name: marketplace-server
+    relationship: sync
+    protocol: HTTP
+  - name: notifications-workers
+    relationship: sync
+    protocol: HTTP
+  - name: credits-server
+    relationship: sync
+    protocol: HTTP
+  - name: events-notifier
+    relationship: sync
+    protocol: HTTP
+- name: urn-resolver
+  display_name: '@dcl/urn-resolver'
+  description: TypeScript library that resolves and parses Decentraland asset URNs
+    within the urn:decentraland namespace. Provides type-safe parsing of LAND, wearables,
+    collections v1/v2, and third-party assets for ownership validation and content
+    URL generation.
+  layer: shared-library
+  repository: https://github.com/decentraland/urn-resolver
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: wearable-preview
+  display_name: Wearable Preview
+  description: Web application that renders interactive 3D previews of Decentraland
+    wearables, emotes, and avatars. Designed to be embedded as an iframe in Builder,
+    Marketplace, and third-party tools, with configuration via query parameters and
+    postMessage API for runtime control.
+  layer: client
+  repository: https://github.com/decentraland/wearable-preview
+  role:
+  - client
+  data_domain: []
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: marketplace-server
+    relationship: sync
+    protocol: HTTP
+- name: world-storage-service
+  display_name: World Storage Service
+  description: Provides secure, isolated storage and environment variable access for
+    Decentraland worlds. Acts as an API gateway for persistent storage and secrets
+    management for Authoritative Servers running server-side scene code.
+  layer: feature-servers
+  repository: https://github.com/decentraland/world-storage-service
+  role:
+  - storage
+  data_domain:
+  - world-storage
+  - player-storage
+  - environment-variables
+  dependencies:
+  - name: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+- name: worlds-content-server
+  display_name: Worlds Content Server
+  description: Content server specifically for Decentraland Worlds (named scenes).
+    Enables deployment and retrieval of world scenes identified by DCL names rather
+    than parcel coordinates. Supports global portable experiences and single-scene
+    loading.
+  layer: content
+  repository: https://github.com/decentraland/worlds-content-server
+  role:
+  - content
+  - storage
+  data_domain:
+  - worlds
+  - world-permissions
+  dependencies:
+  - name: social-service-ea
+    relationship: sync
+    protocol: HTTP
+  - name: comms-gatekeeper
+    relationship: sync
+    protocol: HTTP
+  - name: notifications-workers
+    relationship: sync
+    protocol: HTTP

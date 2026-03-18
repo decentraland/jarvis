@@ -38,12 +38,6 @@ domain:
         mapping_type: derived_from
         description: Destination identities are resolved from Social Service community membership data
 
-      - local_concept: SFU Replica
-        remote_service: comms-gatekeeper
-        remote_concept: LiveKit Token
-        mapping_type: uses
-        description: SFU replicas authenticate to LiveKit rooms using tokens from comms-gatekeeper
-
   invariants:
     - rule: Sender must be a valid community member to send messages
       enforced_at: domain_layer
@@ -63,14 +57,14 @@ domain:
 
   out_of_scope:
     - Content moderation (handled by police-server)
-    - Token generation (handled by comms-gatekeeper)
+    - Token generation (generates its own LiveKit tokens using livekit-server-sdk)
     - Island clustering (handled by archipelago-workers)
     - User privacy settings (handled by comms-gatekeeper)
 
   owned_entities: []
 
 api:
-  openapi_url: https://github.com/decentraland/comms-message-sfu/blob/main/docs/openapi.yaml
+  openapi_url: ""
 
 db:
   schema_url: ""
@@ -80,13 +74,7 @@ dependencies:
     - name: social-service-ea
       relationship: sync
       protocol: HTTP
-      purpose: Validates community membership and resolves active members
-      critical: true
-
-    - name: comms-gatekeeper
-      relationship: sync
-      protocol: HTTP
-      purpose: Provides LiveKit tokens for SFU replica authentication
+      purpose: Accesses social-service-ea PostgreSQL database directly to validate community membership and resolve active members
       critical: true
 
   external:
@@ -95,7 +83,7 @@ dependencies:
       type: other
 
     - name: PostgreSQL
-      purpose: Optional caching of membership data
+      purpose: Direct database access to social-service-ea database for membership validation and community member resolution
       type: storage
 
 events:
@@ -113,16 +101,24 @@ configuration:
       description: HTTP server host address
       affects: Server binding configuration
 
+    - name: WKC_METRICS_RESET_AT_NIGHT
+      description: Whether to reset metrics at 00:00 UTC
+      affects: Metrics collection behavior
+
+    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
+      description: PostgreSQL connection string (alternative to individual connection params)
+      affects: Database connection
+
     - name: PG_COMPONENT_PSQL_PORT
-      description: PostgreSQL port for optional membership caching
+      description: PostgreSQL port for social-service-ea database access
       affects: Database connection
 
     - name: PG_COMPONENT_PSQL_HOST
-      description: PostgreSQL host for optional membership caching
+      description: PostgreSQL host for social-service-ea database access
       affects: Database connection
 
     - name: PG_COMPONENT_PSQL_DATABASE
-      description: PostgreSQL database name
+      description: PostgreSQL database name (social_service_ea)
       affects: Database connection
 
     - name: PG_COMPONENT_PSQL_USER
@@ -143,18 +139,26 @@ configuration:
 
     - name: LIVEKIT_API_SECRET
       description: LiveKit API secret for token generation
-      affects: LiveKit authentication
+      affects: LiveKit token generation for SFU replicas
 
     - name: LIVEKIT_ROOM_ID
       description: LiveKit room ID to join as participant
       affects: Message routing scope
 
     - name: LIVEKIT_IDENTITY_PREFIX
-      description: Prefix for LiveKit identity of SFU participants
+      description: Prefix for LiveKit identity of SFU participants (default message-router)
       affects: Participant identification in LiveKit
 
-    - name: REPLICA_ID
-      description: Unique identifier for this SFU replica instance
+    - name: REPLICA_NUMBER
+      description: Unique number identifier for this SFU replica instance (used with identity prefix)
       affects: Load distribution and horizontal scaling
+
+    - name: LIVEKIT_MAX_RECONNECT_ATTEMPTS
+      description: Maximum number of reconnection attempts to LiveKit (default 5)
+      affects: Connection resilience
+
+    - name: LIVEKIT_RECONNECT_DELAY_IN_MS
+      description: Delay in milliseconds between reconnection attempts (default 1000)
+      affects: Connection retry behavior
 
 adrs: []

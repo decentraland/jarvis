@@ -1,0 +1,377 @@
+schema_version: "1.1"
+
+service:
+  name: builder-server
+  display_name: Builder Server
+  description: Backend service for the Decentraland Builder application. Provides REST APIs for creating and managing scene projects, wearable and emote collections, asset packs, and facilitates the publication workflow to the Decentraland platform.
+  owner: sdk-team
+  repository: https://github.com/decentraland/builder-server
+  language: typescript
+  layer: feature
+  role:
+    - gateway
+  data_domain:
+    - scene_projects
+    - collections
+    - items
+    - asset_packs
+  ai-agent-context: https://github.com/decentraland/builder-server/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Project
+      definition: User-owned scene configuration stored on the server, containing entities, components, and assets for deployment to LAND or Worlds
+      not_to_be_confused_with: Pool (which is a public copy of a project shared with the community)
+
+    - term: Pool
+      definition: Public copy of a project shared with the community, allowing likes and categorization
+      examples:
+        - "User publishes their project as a pool for others to discover"
+
+    - term: Collection
+      definition: Group of wearable or emote items that can be published on-chain, either standard (Decentraland contract) or third-party (external contract)
+      examples:
+        - "Standard collection with 10 wearables deployed to Decentraland's collection factory"
+        - "Third-party collection linked to external NFT contract"
+
+    - term: Item
+      definition: Individual wearable or emote with 3D models, metadata, rarity, and content files belonging to a collection
+      examples:
+        - "T-shirt wearable with common rarity"
+
+    - term: Curation
+      definition: Approval workflow record for collections and items reviewed by committee members before publication
+      examples:
+        - "Curator assigns themselves to review a collection"
+        - "Curation record with 'approved' status allows blockchain publication"
+
+    - term: Asset Pack
+      definition: Reusable collection of 3D assets for scene building, can be default (available to all) or user-created (max 80 assets)
+      examples:
+        - "Default 'cyberpunk' asset pack"
+        - "User-created custom asset pack for their scenes"
+
+    - term: URN
+      definition: Uniform Resource Name uniquely identifying Decentraland assets. Format varies by asset type (standard vs third-party collections)
+      examples:
+        - "urn:decentraland:matic:collections-v2:{contract_address}"
+        - "urn:decentraland:matic:collections-thirdparty:{third_party_id}:{collection_urn_suffix}:{item_urn_suffix}"
+
+    - term: Slot Usage Cheque
+      definition: Signed authorization for third-party collections to use item slots for publishing
+      examples:
+        - "Third-party provider signs cheque authorizing collection to use 100 slots"
+
+  concept_relationships:
+    internal:
+      - from: Item
+        to: Collection
+        relationship: belongs_to
+        description: Items must belong to a Collection before publication
+
+      - from: Collection
+        to: Curation
+        relationship: transitions_to
+        description: Collections go through pending → approved/rejected curation states before publication
+
+      - from: Pool
+        to: Project
+        relationship: derived_from
+        description: Pools are public copies of user Projects
+
+      - from: Asset Pack
+        to: Project
+        relationship: used_by
+        description: Projects reference Asset Packs for 3D assets
+
+    cross_service:
+      - local_concept: Project
+        remote_service: catalyst
+        remote_concept: Entity Deployment
+        mapping_type: deploys_to
+        description: Projects are deployed as scene entities to Catalyst servers
+
+      - local_concept: Project
+        remote_service: worlds-content-server
+        remote_concept: World Deployment
+        mapping_type: deploys_to
+        description: Projects can be deployed to Worlds Content Server for personal worlds
+
+      - local_concept: Collection
+        remote_service: blockchain
+        remote_concept: Collection Contract
+        mapping_type: publishes_to
+        description: Collections are published as smart contracts on Polygon blockchain
+
+  invariants:
+    - rule: All Ethereum addresses must be stored in lowercase for consistent querying
+      enforced_at: database
+      severity: hard
+
+    - rule: Locked collections (with lock timestamp) cannot be modified until published
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Items cannot be published if content_hash differs from approved curation content_hash
+      enforced_at: api_validation
+      severity: hard
+
+    - rule: Third-party collections require valid slot usage cheques for publication
+      enforced_at: api_validation
+      severity: hard
+
+    - rule: Projects and asset packs use soft deletes (is_deleted flag) instead of hard deletes
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Store and manage scene projects for Builder UI
+    - Manage wearable and emote collections with full lifecycle
+    - Provide curation workflow with committee review for items
+    - Support third-party collection integration
+    - Manage asset packs for scene building
+    - Provide pool system for community scene sharing
+    - Store project files and thumbnails in S3-compatible storage
+    - Integrate with Discourse forum for collection submissions
+    - Query blockchain data via The Graph subgraphs
+    - Authenticate requests via Decentraland Signed Fetch
+
+  out_of_scope:
+    - Blockchain transactions (delegated to Builder UI and user wallets)
+    - Content distribution (delegated to Catalyst and S3)
+    - Scene runtime execution (handled by Explorer clients)
+    - Item rendering in-world (handled by Explorer renderers)
+    - Smart contract deployment (handled by Builder UI via user wallets)
+
+  owned_entities:
+    - name: Project
+      description: Scene configuration with entities, components, and deployment metadata
+      persistence: postgres
+      identity_field: id
+      state_machine: ""
+
+    - name: Collection
+      description: Group of wearable/emote items with publication lifecycle
+      persistence: postgres
+      identity_field: id
+      state_machine: ""
+
+    - name: Item
+      description: Individual wearable or emote with 3D models and metadata
+      persistence: postgres
+      identity_field: id
+      state_machine: ""
+
+    - name: Pool
+      description: Public scene with likes and categorization
+      persistence: postgres
+      identity_field: id
+      state_machine: ""
+
+    - name: Asset Pack
+      description: Reusable collection of 3D assets
+      persistence: postgres
+      identity_field: id
+      state_machine: ""
+
+    - name: Curation
+      description: Approval workflow record for collections and items
+      persistence: postgres
+      identity_field: id
+      state_machine: pending → approved | rejected
+
+api:
+  openapi_url: https://github.com/decentraland/builder-server/blob/main/docs/openapi.yaml
+
+db:
+  schema_url: https://github.com/decentraland/builder-server/blob/main/docs/database-schemas.md
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      protocol: HTTP
+      purpose: Content server for deployed scenes and wearables, fetch entity data
+      critical: false
+
+  external:
+    - name: PostgreSQL
+      purpose: Primary database for all service data (projects, collections, items, asset packs, pools)
+      type: storage
+
+    - name: AWS S3 / MinIO
+      purpose: Object storage for project files, thumbnails, and content files
+      type: storage
+
+    - name: The Graph (Subgraphs)
+      purpose: Query blockchain data for collections, items, rarities, and third-party collections via GraphQL
+      type: api
+
+    - name: Discourse Forum API
+      purpose: Forum integration for automatic collection submission posts
+      type: api
+
+    - name: IPFS (Infura)
+      purpose: Alternative content storage for project assets
+      type: storage
+
+    - name: OpenSea API
+      purpose: External NFT marketplace integration for third-party items
+      type: api
+
+    - name: Newsletter Service
+      purpose: Email subscription management for Builder updates
+      type: api
+
+    - name: Warehouse
+      purpose: Analytics data ingestion for metrics and reporting
+      type: other
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars:
+    - name: SERVER_PORT
+      description: Port to run the server (default 5000)
+      affects: Server listening port
+
+    - name: API_VERSION
+      description: API version prefix (default v1)
+      affects: URL routing structure
+
+    - name: CORS_ORIGIN
+      description: Allowed CORS origins for browser clients
+      affects: API accessibility from web frontends
+
+    - name: CORS_METHOD
+      description: Allowed CORS methods
+      affects: API accessibility
+
+    - name: CONNECTION_STRING
+      description: PostgreSQL connection string
+      affects: Database connection
+
+    - name: AWS_ACCESS_KEY
+      description: AWS/MinIO access key for S3 storage
+      affects: S3 authentication
+
+    - name: AWS_ACCESS_SECRET
+      description: AWS/MinIO secret key for S3 storage
+      affects: S3 authentication
+
+    - name: AWS_BUCKET_NAME
+      description: S3 bucket name for storing project files
+      affects: Storage location
+
+    - name: AWS_STORAGE_URL
+      description: S3-compatible storage URL
+      affects: Storage endpoint
+
+    - name: AWS_MAX_FILE_SIZE
+      description: Maximum file size in bytes (default 25MB)
+      affects: File upload limits
+
+    - name: BUILDER_URL
+      description: Builder UI URL for generating links
+      affects: Link generation
+
+    - name: BUILDER_SERVER_URL
+      description: Public URL of this server for self-referencing
+      affects: URL generation in responses
+
+    - name: BUILDER_SHARE_URL
+      description: URL for shared scene links
+      affects: Share link generation
+
+    - name: EXPLORER_URL
+      description: Explorer URL for scene preview links
+      affects: Preview link generation
+
+    - name: PEER_URL
+      description: Catalyst peer URL for content queries
+      affects: Catalyst integration
+
+    - name: RPC_URL
+      description: Polygon RPC URL for blockchain queries
+      affects: Blockchain connectivity
+
+    - name: COLLECTIONS_GRAPH_URL
+      description: The Graph subgraph URL for collections data
+      affects: Collection blockchain queries
+
+    - name: THIRD_PARTY_GRAPH_URL
+      description: The Graph subgraph URL for third-party collections
+      affects: Third-party collection queries
+
+    - name: GRAPH_QUERY_TIMEOUT
+      description: Timeout in ms for GraphQL queries (default 10000)
+      affects: Subgraph query performance
+
+    - name: IPFS_URL
+      description: IPFS node URL for content storage
+      affects: IPFS integration
+
+    - name: IPFS_PROJECT_ID
+      description: IPFS project ID for Infura authentication
+      affects: IPFS authentication
+
+    - name: IPFS_API_KEY
+      description: IPFS API key for Infura authentication
+      affects: IPFS authentication
+
+    - name: FORUM_URL
+      description: Discourse forum URL for integration
+      affects: Forum post creation
+
+    - name: FORUM_API_KEY
+      description: Discourse API key for authentication
+      affects: Forum integration
+
+    - name: FORUM_API_USERNAME
+      description: Discourse API username for authentication
+      affects: Forum integration
+
+    - name: FORUM_CATEGORY
+      description: Forum category for collection posts
+      affects: Forum post categorization
+
+    - name: OPEN_SEA_URL
+      description: OpenSea API URL for NFT metadata
+      affects: Third-party item integration
+
+    - name: NEWSLETTER_SERVICE_URL
+      description: Newsletter service URL for subscriptions
+      affects: Email subscription management
+
+    - name: WAREHOUSE_URL
+      description: Analytics warehouse URL for metrics ingestion
+      affects: Analytics integration
+
+    - name: WAREHOUSE_TOKEN
+      description: Analytics warehouse authentication token
+      affects: Analytics authentication
+
+    - name: WKC_METRICS_BEARER_TOKEN
+      description: Bearer token for metrics endpoint authentication
+      affects: Metrics endpoint security
+
+    - name: DEFAULT_USER_ID
+      description: Default user ID for seeding and development
+      affects: Development environment seeding
+
+    - name: DEFAULT_ETH_ADDRESS
+      description: Default ETH address for development
+      affects: Development environment seeding
+
+    - name: DEFAULT_ASSET_PACK_CACHE
+      description: Asset pack cache TTL in ms (default 24h)
+      affects: Asset pack caching
+
+adrs:
+  - id: ADR-44
+    title: Decentraland Signed Fetch
+    url: https://adr.decentraland.org/adr/ADR-44
+    relevance: Authentication mechanism used for all authenticated API requests via X-Identity-Auth-Chain-* headers

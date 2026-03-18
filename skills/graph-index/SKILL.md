@@ -34,5 +34,6 @@ Read the schema files. The output files must follow these schemas exactly.
 - Include every service found in the manifests — do not skip any
 - For the graph: create one node per service (`name`, `display_name`, `layer`, `repository`). Create edges from `dependencies.services` entries — use dependency `relationship`, `protocol`, and `purpose` (as description). Create event_flows from `events.publishes` matched with `events.consumes` across services.
 - For the index: for each service extract from the manifest: `name`, `display_name`, `description`, `layer`, `repository` from `service:` section; `role` (array) and `data_domain` (array) from `service:` section; dependencies list with `name`, `relationship`, and `protocol` from `dependencies.services`.
+- Deduplicate: if the same dependency `name` appears more than once under a service, keep only one entry
 - Follow the provided schemas exactly
 - Write the files directly — do not output to terminal

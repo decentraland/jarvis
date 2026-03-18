@@ -1,0 +1,207 @@
+schema_version: "1.1"
+
+service:
+  name: wearable-preview
+  display_name: Wearable Preview
+  description: Web application that renders interactive 3D previews of Decentraland wearables, emotes, and avatars. Designed to be embedded as an iframe in Builder, Marketplace, and third-party tools, with configuration via query parameters and postMessage API for runtime control.
+  owner: sdk-team
+  repository: https://github.com/decentraland/wearable-preview
+  language: typescript
+  layer: client
+  role:
+    - client
+  data_domain: []
+  ai-agent-context: https://github.com/decentraland/wearable-preview/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: WearableDefinition
+      definition: Schema type defining a wearable with metadata, representations (body-shape-specific 3D models), and content URLs
+      examples:
+        - "T-shirt wearable with BaseMale and BaseFemale representations"
+
+    - term: EmoteDefinition
+      definition: Schema type defining an emote with animation data, representations, and audio
+      examples:
+        - "Dance emote with looping animation and music track"
+
+    - term: Profile
+      definition: User's avatar configuration including equipped wearables, colors (skin, hair, eyes), and body shape
+      examples:
+        - "Avatar with default wearables and custom skin color"
+
+    - term: URN
+      definition: Uniform Resource Name uniquely identifying a specific wearable or emote in the Decentraland ecosystem
+      examples:
+        - "urn:decentraland:matic:collections-v2:{contract}:{item}"
+
+    - term: Representation
+      definition: Body-shape-specific version of a wearable/emote containing 3D models, textures, and configuration for either BaseMale or BaseFemale
+      examples:
+        - "Hat wearable with separate representations for male and female avatars"
+
+    - term: Social Emote
+      definition: Two-person emote that displays two avatars playing coordinated animations for social interactions
+      examples:
+        - "High-five emote with both avatars animated"
+
+    - term: Controller RPC
+      definition: Request/response messaging system for programmatic control of preview (screenshots, animation playback)
+      examples:
+        - "Parent app requests screenshot via controller RPC"
+
+  concept_relationships:
+    internal:
+      - from: WearableDefinition
+        to: Representation
+        relationship: has_many
+        description: Wearables have multiple representations for different body shapes
+
+      - from: Profile
+        to: WearableDefinition
+        relationship: contains
+        description: Profiles contain multiple equipped wearables
+
+      - from: EmoteDefinition
+        to: Social Emote
+        relationship: is_a
+        description: Social Emotes are a specialized type of EmoteDefinition with two-person animations
+
+    cross_service:
+      - local_concept: URN
+        remote_service: catalyst
+        remote_concept: Entity
+        mapping_type: references
+        description: URNs reference wearable/emote entities stored in Catalyst servers
+
+      - local_concept: Profile
+        remote_service: catalyst
+        remote_concept: Avatar Profile
+        mapping_type: equivalent
+        description: Profiles are fetched from Catalyst servers by wallet address
+
+  invariants:
+    - rule: Each wearable must have at least one representation (BaseMale or BaseFemale)
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Emote animations must be compatible with Babylon.js or Unity animation systems
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Render 3D avatars with equipped wearables using Babylon.js or Unity WebGL
+    - Preview individual wearables on configurable avatars
+    - Play and control emote animations with playback controls
+    - Support social emotes with two-person interactions
+    - Provide interactive camera controls (pan, zoom, rotate)
+    - Capture screenshots programmatically via RPC
+    - Load items from multiple sources (URN, URL, base64, contract/item IDs)
+    - Customize avatar appearance (skin, hair, eyes, body shape)
+    - Embed as iframe with postMessage API for runtime control
+    - Emit events for load status and animation playback
+
+  out_of_scope:
+    - Content storage (delegated to Catalyst and Marketplace servers)
+    - Wearable creation and editing (handled by Builder)
+    - Blockchain transactions (handled by user wallets)
+    - NFT minting (handled by Collection Manager contracts)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch wearable/emote entities, avatar profiles, and content files by URN or wallet address
+      critical: true
+
+    - name: marketplace-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Retrieve item and NFT metadata by contract address and item/token ID
+      critical: false
+
+  external:
+    - name: Babylon.js
+      purpose: Primary 3D rendering engine for avatars, wearables, and emotes
+      type: other
+
+    - name: Unity WebGL
+      purpose: Alternative 3D rendering engine for avatars and wearables
+      type: other
+
+    - name: Sentry
+      purpose: Error tracking and crash reporting
+      type: other
+
+events:
+  publishes:
+    - name: PreviewMessageType.LOAD
+      description: Emitted when preview finishes loading successfully
+      channel: postMessage
+      key_payload_fields:
+        - type
+
+    - name: PreviewMessageType.ERROR
+      description: Emitted when an error occurs during preview rendering
+      channel: postMessage
+      key_payload_fields:
+        - type
+        - payload.message
+
+    - name: PreviewMessageType.EMOTE_EVENT
+      description: Emitted for animation events (play, pause, loop, end, playing)
+      channel: postMessage
+      key_payload_fields:
+        - type
+        - payload.type
+        - payload.length
+
+    - name: PreviewMessageType.CONTROLLER_RESPONSE
+      description: RPC response to controller requests
+      channel: postMessage
+      key_payload_fields:
+        - id
+        - ok
+        - result
+        - error
+
+  consumes:
+    - name: PreviewMessageType.UPDATE
+      source_service: parent-application
+      description: Update preview options at runtime without reloading
+      channel: postMessage
+
+    - name: PreviewMessageType.CONTROLLER_REQUEST
+      source_service: parent-application
+      description: RPC request for screenshot capture or emote control
+      channel: postMessage
+
+configuration:
+  feature_flags: []
+  key_env_vars:
+    - name: REACT_APP_SENTRY_DSN
+      description: Sentry DSN for error tracking
+      affects: Error reporting
+
+    - name: REACT_APP_PEER_URL
+      description: Default Catalyst/Peer server URL (can be overridden via peerUrl query param)
+      affects: Content fetching
+
+    - name: REACT_APP_MARKETPLACE_SERVER_URL
+      description: Default Marketplace API URL (can be overridden via marketplaceServerUrl query param)
+      affects: Item data fetching
+
+    - name: REACT_APP_ENV
+      description: Environment (prod, dev) for loading configuration
+      affects: Default service URLs and behavior
+
+adrs: []

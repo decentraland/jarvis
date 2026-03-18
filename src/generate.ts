@@ -167,7 +167,7 @@ async function main(): Promise<void> {
       try {
         if (existsSync(dest)) {
           console.log(`[generate] updating ${name}...`)
-          pullRepo(dest)
+          pullRepo(dest, repo.url)
         } else {
           console.log(`[generate] cloning ${name}...`)
           cloneRepo(repo.url, dest)
@@ -201,7 +201,7 @@ async function main(): Promise<void> {
     try {
       if (existsSync(dest)) {
         console.log(`[generate] updating ${name}...`)
-        pullRepo(dest)
+        pullRepo(dest, repo.url)
       } else {
         console.log(`[generate] cloning ${name}...`)
         cloneRepo(repo.url, dest)

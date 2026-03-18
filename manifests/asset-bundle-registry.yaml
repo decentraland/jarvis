@@ -228,3 +228,35 @@ configuration:
     - name: SERVICE_URL
       description: Public service URL for external access
       affects: Service discovery
+
+    - name: HTTP_SERVER_PORT
+      description: HTTP server port
+      affects: Server listening port
+
+    - name: HTTP_SERVER_HOST
+      description: HTTP server host
+      affects: Server listening address
+
+    - name: PG_COMPONENT_PSQL_USER
+      description: PostgreSQL user for authentication
+      affects: Database authentication
+
+    - name: PG_COMPONENT_PSQL_PORT
+      description: PostgreSQL port
+      affects: Database connectivity
+
+    - name: PG_COMPONENT_PSQL_PASSWORD
+      description: PostgreSQL password for authentication
+      affects: Database authentication
+
+    - name: SENTRY_DSN
+      description: Sentry DSN for error tracking
+      affects: Error reporting and monitoring
+
+    - name: ENV
+      description: Environment name (dev, stg, prod)
+      affects: Environment-specific configuration
+
+    - name: SENTRY_TRACES_SAMPLE_RATE
+      description: Sample rate for Sentry traces (0.0 to 1.0)
+      affects: Performance monitoring sampling
