@@ -1,0 +1,277 @@
+schema_version: "1.1"
+
+service:
+  name: "marketplace"
+  display_name: "Decentraland Marketplace (Frontend)"
+  description: "The frontend web application for Decentraland's NFT marketplace, enabling users to buy, sell, rent, and browse virtual land parcels, wearables, emotes, and names. Built with React and Redux, it integrates with blockchain smart contracts and backend services."
+  owner: "decentraland-foundation"
+  repository: "https://github.com/decentraland/marketplace"
+  language: "typescript"
+  layer: "client"
+  role:
+    - "client"
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: "NFT"
+      definition: "Non-Fungible Token representing unique digital assets in Decentraland, including land parcels, estates, wearables, emotes, and names."
+      examples:
+        - "A parcel of LAND at coordinates 10,20"
+        - "A wearable item like a hat or outfit"
+        - "An emote animation"
+      not_to_be_confused_with: ""
+    - term: "Order"
+      definition: "A listing for sale of an NFT at a specified price, stored on-chain and queryable through the marketplace."
+      examples:
+        - "A LAND parcel listed for 1000 MANA"
+      not_to_be_confused_with: "Bid"
+    - term: "Bid"
+      definition: "An offer to purchase an NFT at a specified price, which the owner can accept or reject."
+      examples: []
+      not_to_be_confused_with: "Order"
+    - term: "Rental"
+      definition: "A time-limited lease of LAND or estates, allowing temporary usage without transferring ownership."
+      examples:
+        - "Renting a parcel for 30 days"
+      not_to_be_confused_with: ""
+    - term: "Estate"
+      definition: "A collection of adjacent LAND parcels grouped together as a single NFT."
+      examples:
+        - "A 2x2 estate containing 4 parcels"
+      not_to_be_confused_with: "LAND parcel"
+    - term: "Wearable"
+      definition: "A virtual clothing or accessory item that can be equipped on a Decentraland avatar."
+      examples:
+        - "Hats, shoes, outfits, accessories"
+      not_to_be_confused_with: "Emote"
+    - term: "Emote"
+      definition: "An avatar animation that users can trigger to express emotions or actions."
+      examples:
+        - "Dance, wave, clap animations"
+      not_to_be_confused_with: "Wearable"
+
+  concept_relationships:
+    internal:
+      - from: "Order"
+        to: "NFT"
+        relationship: "references"
+        description: "An order represents a sale listing for a specific NFT"
+      - from: "Bid"
+        to: "NFT"
+        relationship: "references"
+        description: "A bid represents an offer to purchase a specific NFT"
+      - from: "Rental"
+        to: "NFT"
+        relationship: "references"
+        description: "A rental allows temporary use of a LAND or estate NFT"
+      - from: "Estate"
+        to: "LAND"
+        relationship: "contains"
+        description: "An estate is composed of multiple adjacent LAND parcels"
+
+    cross_service:
+      - local_concept: "NFT"
+        remote_service: "marketplace-server"
+        remote_concept: "NFT"
+        mapping_type: "equivalent"
+        description: "The frontend queries NFT data from the marketplace-server backend API"
+      - local_concept: "Order"
+        remote_service: "marketplace-server"
+        remote_concept: "Order"
+        mapping_type: "equivalent"
+        description: "Orders are indexed by marketplace-server from blockchain data"
+      - local_concept: "Bid"
+        remote_service: "marketplace-server"
+        remote_concept: "Bid"
+        mapping_type: "equivalent"
+        description: "Bids are indexed by marketplace-server from blockchain data"
+      - local_concept: "Rental"
+        remote_service: "marketplace-server"
+        remote_concept: "Rental"
+        mapping_type: "equivalent"
+        description: "Rentals are indexed by marketplace-server from blockchain data"
+      - local_concept: "Wearable"
+        remote_service: "catalyst"
+        remote_concept: "Wearable Entity"
+        mapping_type: "references"
+        description: "Wearable metadata and images are fetched from catalyst content servers"
+
+  invariants:
+    - rule: "NFT sales and purchases must be executed through blockchain smart contracts"
+      enforced_at: "domain_layer"
+      severity: "hard"
+    - rule: "Only the NFT owner can create an order to sell that NFT"
+      enforced_at: "domain_layer"
+      severity: "hard"
+    - rule: "Rental periods must have a defined start and end date"
+      enforced_at: "domain_layer"
+      severity: "hard"
+
+  responsibilities:
+    - "Provide a user interface for browsing, searching, and filtering NFTs (land, wearables, emotes, names)"
+    - "Enable users to list NFTs for sale (create orders)"
+    - "Enable users to purchase NFTs by accepting orders"
+    - "Enable users to place bids on NFTs and accept bids"
+    - "Manage LAND and estate rentals (list, rent, manage rental periods)"
+    - "Display NFT details including metadata, pricing, ownership, and trading history"
+    - "Integrate with Web3 wallets for blockchain transactions"
+    - "Execute blockchain transactions for sales, purchases, bids, and rentals"
+    - "Display real-time price data for MANA and other tokens"
+    - "Support cross-chain bridging for MANA token swaps"
+    - "Display user profile information and owned NFTs"
+    - "Integrate with analytics and monitoring services (Segment, Sentry, Intercom)"
+
+  out_of_scope:
+    - "Indexing blockchain data (handled by marketplace-server)"
+    - "Storing NFT metadata or content (handled by catalyst and builder)"
+    - "Creating or editing wearables/emotes (handled by builder)"
+    - "Managing smart contracts or deploying contracts"
+    - "Processing payments or holding funds (all transactions are on-chain)"
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: "marketplace-server"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch NFT data, orders, bids, sales, rentals, collections, and contracts indexed from blockchain"
+      critical: true
+    - name: "atlas-server"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch LAND parcel coordinates, estate information, and map data"
+      critical: true
+    - name: "catalyst"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch user profiles, avatar data, wearable metadata, and content entities"
+      critical: true
+    - name: "builder"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Access builder API for scene and wearable information"
+      critical: false
+    - name: "signatures-api"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Manage cryptographic signatures for authenticated requests"
+      critical: false
+    - name: "transactions-api"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Track transaction history and status"
+      critical: false
+    - name: "credits-server"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Manage Decentraland credits and credit-based purchases"
+      critical: false
+
+  external:
+    - name: "The Graph (Subgraph Worker)"
+      purpose: "Query indexed blockchain data via GraphQL subgraphs for NFT events, ownership, and history"
+      type: "api"
+    - name: "Ethereum Blockchain"
+      purpose: "Execute smart contract transactions for NFT sales, purchases, bids, and rentals"
+      type: "blockchain"
+    - name: "Squid Router"
+      purpose: "Cross-chain bridge for MANA token swaps and cross-chain transactions"
+      type: "api"
+    - name: "CoinGecko API"
+      purpose: "Fetch real-time cryptocurrency price data for MANA and other tokens"
+      type: "api"
+    - name: "Transak"
+      purpose: "Fiat-to-crypto on-ramp for purchasing MANA with credit cards"
+      type: "api"
+    - name: "MoonPay"
+      purpose: "Alternative fiat-to-crypto on-ramp service"
+      type: "api"
+    - name: "Wert"
+      purpose: "Fiat-to-crypto payment widget"
+      type: "api"
+    - name: "Segment"
+      purpose: "Analytics tracking for user behavior and events"
+      type: "api"
+    - name: "Sentry"
+      purpose: "Error tracking and monitoring"
+      type: "api"
+    - name: "Intercom"
+      purpose: "Customer support and messaging"
+      type: "api"
+    - name: "Contentful CMS"
+      purpose: "Content management for marketplace admin messages and announcements"
+      type: "api"
+    - name: "DCL Lists Server"
+      purpose: "Manage user-created lists of favorite NFTs and collections"
+      type: "api"
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: "VITE_DCL_DEFAULT_ENV"
+      description: "Determines which environment configuration to use (dev, stg, prod)"
+      affects: "Application environment and configuration selection"
+    - name: "MARKETPLACE_SERVER_URL"
+      description: "URL for the marketplace backend API"
+      affects: "NFT data fetching and marketplace functionality"
+    - name: "BUILDER_SERVER_URL"
+      description: "URL for the builder backend API"
+      affects: "Builder data and scene information retrieval"
+    - name: "ATLAS_SERVER_URL"
+      description: "URL for the atlas server API"
+      affects: "LAND coordinate and map data retrieval"
+    - name: "PEER_URL"
+      description: "Catalyst peer URL for fetching user profiles and content"
+      affects: "User profile and avatar data"
+    - name: "SIGNATURES_SERVER_URL"
+      description: "URL for the signatures API"
+      affects: "Cryptographic signature management"
+    - name: "TRANSACTIONS_API_URL"
+      description: "URL for the transactions API"
+      affects: "Transaction history tracking"
+    - name: "CREDITS_SERVER_URL"
+      description: "URL for the credits server"
+      affects: "Credit-based purchases and balance queries"
+    - name: "SUBGRAPH_WORKER"
+      description: "URL for The Graph subgraph worker endpoint"
+      affects: "Blockchain data queries via GraphQL"
+    - name: "SQUID_API_URL"
+      description: "URL for Squid Router API for cross-chain bridging"
+      affects: "Cross-chain MANA swaps and transactions"
+    - name: "SQUID_ROUTER_API_URL"
+      description: "Alternative Squid Router API URL"
+      affects: "Cross-chain routing functionality"
+    - name: "COINGECKO_API_URL"
+      description: "URL for CoinGecko API"
+      affects: "Cryptocurrency price data retrieval"
+    - name: "SEGMENT_API_KEY"
+      description: "Segment analytics API key"
+      affects: "Analytics tracking"
+    - name: "SENTRY_DSN"
+      description: "Sentry DSN for error tracking"
+      affects: "Error monitoring and reporting"
+    - name: "INTERCOM_APP_ID"
+      description: "Intercom application ID"
+      affects: "Customer support chat widget"
+    - name: "CONTENTFUL_SPACE_ID"
+      description: "Contentful space ID for CMS content"
+      affects: "Admin messages and announcement content"
+    - name: "DCL_LISTS_SERVER"
+      description: "URL for DCL lists server"
+      affects: "User favorites and list management"
+
+adrs: []

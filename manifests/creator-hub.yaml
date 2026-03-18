@@ -16,37 +16,66 @@ service:
 domain:
   glossary:
     - term: Creator Hub
-      definition: Desktop application (Electron-based) that bundles the Inspector and provides file system access, project management, and scene deployment capabilities
+      definition: Cross-platform Electron desktop application that bundles the Inspector and provides file system access, project management, and scene deployment capabilities. Consists of three processes (main, preload, renderer) communicating via IPC.
       examples:
         - "User creates a new scene using Creator Hub"
         - "Creator Hub manages local scene files and assets"
+        - "Creator Hub forks Node.js processes for CLI commands"
+      not_to_be_confused_with: ""
 
     - term: Inspector
-      definition: Web-based 3D scene editor embedded in Creator Hub via IFrame, provides real-time visual editing with Babylon.js-powered level editor
+      definition: Web-based 3D scene editor embedded in Creator Hub via IFrame with postMessage communication. Provides real-time visual editing with Babylon.js-powered level editor, component manipulation, and CRDT state synchronization.
       examples:
         - "Inspector renders the 3D scene with Babylon.js"
         - "User drags and drops assets in Inspector"
+        - "Inspector communicates with CLI via WebSocket for standalone mode"
+      not_to_be_confused_with: ""
 
     - term: Asset Pack
-      definition: Curated collection of themed 3D assets and Smart Items distributed via content-addressed storage (S3 CDN)
+      definition: Curated collection of themed 3D assets (static items) and Smart Items distributed via content-addressed storage (S3 CDN). Each asset is referenced by content hash ensuring immutability.
       examples:
-        - "cyberpunk asset pack"
+        - "cyberpunk asset pack with themed 3D models"
         - "genesis_city asset pack"
+        - "Asset referenced by SHA-256 hash in catalog.json"
+      not_to_be_confused_with: ""
 
     - term: Smart Item
-      definition: Interactive 3D item with configurable parameters and programmable behaviors (e.g., door, video player, trigger area)
+      definition: Interactive 3D item with configurable parameters and programmable behaviors. Requires SDK7 runtime (bin/index.js) to execute behaviors in scenes.
       examples:
         - "Door Smart Item with open/close behavior"
         - "Video Player Smart Item with URL parameter"
+        - "Trigger Area Smart Item that fires events"
+      not_to_be_confused_with: "Static Item"
 
     - term: Static Item
-      definition: Non-interactive 3D model with textures and materials, no programmable behavior
+      definition: Non-interactive 3D model with textures and materials, no programmable behavior or runtime requirements.
+      examples: []
+      not_to_be_confused_with: "Smart Item"
 
     - term: Scene
-      definition: Decentraland SDK7 project containing 3D content, scripts, and configuration for deployment to Genesis City or Worlds
+      definition: Decentraland SDK7 project containing 3D content, TypeScript/JavaScript scripts, and scene.json configuration for deployment to Genesis City parcels or named Worlds.
+      examples:
+        - "Scene deployed to parcel 0,0 in Genesis City"
+        - "Scene deployed to myworld.dcl.eth"
+      not_to_be_confused_with: ""
 
     - term: RPC Data Layer
-      definition: Protocol Buffers-based communication protocol between Inspector and Creator Hub for file operations and scene state synchronization
+      definition: Protocol Buffers-based communication protocol between Inspector and Creator Hub (or CLI) for file operations, scene state synchronization, and component manipulation. Supports WebSocket transport (CLI) and MessageTransport (IFrame).
+      examples:
+        - "RPC handler for read_file operation"
+        - "CRDT state synchronization via RPC"
+      not_to_be_confused_with: ""
+
+    - term: catalog.json
+      definition: Central registry containing all asset packs metadata and content hashes. Maps human-readable names to content-addressed asset references.
+      examples: []
+      not_to_be_confused_with: ""
+
+    - term: Content-Addressed Storage
+      definition: Storage system where assets are referenced by content hash (SHA-256), ensuring immutability and enabling permanent CDN caching. Assets stored in S3 with Cloudflare CDN.
+      examples:
+        - "Asset at https://builder-items.decentraland.org/contents/:hash"
+      not_to_be_confused_with: ""
 
   concept_relationships:
     internal:
@@ -103,22 +132,33 @@ domain:
       severity: hard
 
   responsibilities:
-    - Provide desktop application for scene creation and editing
-    - Embed Inspector web application via IFrame with RPC communication
-    - Manage local file system operations (read, write, delete scene files)
-    - Load and distribute asset packs via CDN
-    - Deploy scenes to Catalyst servers (Genesis City) and Worlds Content Server
-    - Manage user authentication and wallet integration
-    - Fetch land ownership and world permissions from blockchain and backend services
-    - Track deployment history and status
-    - Provide auto-update mechanism via electron-updater
+    - Provide cross-platform Electron desktop application for SDK7 scene creation and editing
+    - Embed Inspector web application via IFrame with postMessage/RPC communication
+    - Manage local file system operations (read, write, delete scene files) via three-process architecture (main, preload, renderer)
+    - Distribute curated asset packs via content-addressed S3 CDN storage
+    - Deploy scenes to Catalyst servers (Genesis City parcels) and Worlds Content Server (named worlds)
+    - Manage user authentication via SSO and ephemeral wallet creation (viem)
+    - Fetch land ownership from Ethereum blockchain and subgraphs via viem and GraphQL
+    - Fetch world permissions from worlds-content-server and community data from social-service-ea
+    - Track deployment history and status with detailed error reporting
+    - Provide seamless auto-update mechanism via electron-updater and GitHub Releases
+    - Fork Node.js processes for SDK7 CLI commands (@dcl/sdk-commands)
+    - Generate and manage Protocol Buffers for RPC data layer communication
+    - Support both Genesis City parcel deployment and custom server deployment
+    - Integrate analytics tracking (Segment) and error reporting (Sentry)
+    - Manage npm binary execution unpacked from ASAR for CLI operations
+    - Support Unity CDP debugging via bundled DevTools frontend (devtools-frontend submodule)
 
   out_of_scope:
-    - 3D rendering engine (delegated to Inspector/Babylon.js)
-    - Asset bundle conversion (handled by asset-bundle-converter)
-    - Content validation (handled by content-validator)
-    - Blockchain interactions beyond read operations (no on-chain deployments)
-    - Scene runtime execution (handled by Explorer clients)
+    - 3D rendering engine implementation (delegated to Inspector's Babylon.js integration)
+    - Asset bundle conversion and LOD generation (handled by asset-bundle-converter service)
+    - Content validation and entity signing (handled by content-validator and SDK commands)
+    - Blockchain transactions and on-chain deployments (only reads blockchain state via viem)
+    - Scene runtime execution and ECS processing (handled by Explorer clients and @dcl/js-runtime)
+    - Asset pack content hosting (handled by S3 CDN)
+    - npm package publishing (automated by CI/CD workflows)
+    - Code signing and notarization (handled by CI/CD with external services)
+    - Protocol Buffers compilation (requires external protoc binary, managed via Makefile)
 
   owned_entities:
     - name: Scene Project
@@ -173,15 +213,15 @@ dependencies:
 
   external:
     - name: GitHub CDN
-      purpose: Distribution of asset packs content (builder-items.decentraland.org)
+      purpose: Distribution of asset packs content (builder-items.decentraland.org and builder-items.decentraland.zone)
       type: cdn
 
     - name: npm Registry
-      purpose: Distribution of @dcl/asset-packs and @dcl/inspector packages
+      purpose: Distribution of @dcl/asset-packs and @dcl/inspector packages for library usage
       type: api
 
     - name: GitHub Releases
-      purpose: Distribution of Creator Hub desktop app installers and auto-updates via electron-updater
+      purpose: Distribution of Creator Hub desktop app installers (.dmg, .exe) and auto-updates via electron-updater
       type: other
 
     - name: Ethereum RPC
@@ -189,15 +229,31 @@ dependencies:
       type: blockchain
 
     - name: The Graph (Subgraphs)
-      purpose: Query marketplace, ENS, rentals, and land manager data via GraphQL
+      purpose: Query marketplace, ENS, rentals, and land manager data via GraphQL subgraphs
       type: api
 
     - name: Segment
-      purpose: Analytics tracking for user behavior and feature usage
-      type: other
+      purpose: Analytics tracking for user behavior and feature usage in both Creator Hub and Inspector
+      type: api
 
     - name: Sentry
-      purpose: Error tracking and crash reporting for Electron app
+      purpose: Error tracking and crash reporting for Electron main process and renderer process
+      type: api
+
+    - name: Protocol Buffers Compiler (protoc)
+      purpose: Generate TypeScript definitions from .proto files for RPC data layer communication (version 21.12)
+      type: other
+
+    - name: AWS S3
+      purpose: Temporary artifact storage for PR builds, branch previews, and production asset hosting
+      type: storage
+
+    - name: DevTools Frontend (Git Submodule)
+      purpose: Bundled standalone Chrome DevTools frontend for Unity CDP debugging, loaded via file:// protocol when --open-devtools-with-port argument is provided
+      type: other
+
+    - name: Code Signing Services
+      purpose: Apple notarization service (macOS) and SSL.com eSigner (Windows) for executable signing
       type: other
 
 events:
@@ -213,47 +269,47 @@ configuration:
 
     - name: VITE_SEGMENT_CREATORS_HUB_API_KEY
       description: Segment analytics API key for Creator Hub events
-      affects: Analytics tracking
+      affects: Analytics tracking in Creator Hub application
 
     - name: VITE_SEGMENT_INSPECTOR_API_KEY
       description: Segment analytics API key for Inspector events
-      affects: Analytics tracking
+      affects: Analytics tracking in Inspector application
 
     - name: VITE_INSPECTOR_PORT
-      description: Local inspector dev server port for development mode
-      affects: Development environment only
+      description: Local inspector dev server port for development mode (default 8000)
+      affects: Development environment - where Inspector is served locally
 
     - name: VITE_ASSET_PACKS_CONTENT_URL
-      description: URL for asset packs content server (production or local)
-      affects: Asset loading source
+      description: URL for asset packs content server (production builder-items.decentraland.org or local)
+      affects: Asset loading source - CDN or local content server
 
     - name: VITE_ASSET_PACKS_JS_PORT
-      description: SDK7 dev server port for local asset-packs development
-      affects: Development environment only
+      description: SDK7 dev server port for local asset-packs development (default 8001)
+      affects: Development environment - Smart Items runtime dev server
 
     - name: VITE_ASSET_PACKS_JS_PATH
       description: Absolute path to bin/index.js for Smart Items runtime in development
-      affects: Development environment only
+      affects: Development environment - local asset-packs JavaScript bundle location
 
     - name: VITE_ENABLE_DEV_APP_UPDATE
-      description: Enable auto-update in development builds
-      affects: Auto-update behavior
+      description: Enable electron-updater auto-update in development builds
+      affects: Auto-update behavior in development environment
 
     - name: VITE_WORLDS_SERVER
-      description: Override worlds content server URL (for testing)
-      affects: World deployment target
+      description: Override worlds content server URL for testing world deployments
+      affects: World deployment target - allows testing against staging servers
 
     - name: VITE_TEST_SERVER
-      description: Override test server URL (for catalyst deployment testing)
-      affects: Catalyst deployment target
+      description: Override test server URL for catalyst deployment testing
+      affects: Catalyst deployment target - allows testing against specific catalyst servers
 
     - name: VITE_ALLOWED_EXTERNAL_ORIGINS
-      description: Comma-separated list of allowed external origins for opening links
-      affects: Security - external link navigation
+      description: Comma-separated list of allowed external origins for opening links in external browser
+      affects: Security - external link navigation and URL validation
 
     - name: VITE_SENTRY_DSN
-      description: Sentry DSN for error tracking
-      affects: Error reporting
+      description: Sentry DSN for error tracking and crash reporting
+      affects: Error reporting and monitoring for both Electron and renderer processes
 
 adrs:
   - id: ADR-280

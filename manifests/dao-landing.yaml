@@ -1,0 +1,152 @@
+schema_version: "1.1"
+
+service:
+  name: dao-landing
+  display_name: Decentraland DAO Landing
+  description: Landing page for the Decentraland DAO, showcasing governance proposals, projects, vesting schedules, voting power distribution, and newsletter subscription. Provides an overview of DAO activities and entry point for community participation.
+  owner: dapps
+  repository: https://github.com/decentraland/dao-landing
+  language: typescript
+  layer: feature-servers
+  role:
+    - client
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Proposal
+      definition: Community governance proposal submitted to the Decentraland DAO for voting
+
+    - term: Project
+      definition: Grant-funded initiative tracked from proposal through completion
+
+    - term: Vesting
+      definition: Scheduled token release for grant recipients or contributors
+
+    - term: VP Distribution
+      definition: Voting power distribution breakdown showing sources (MANA, LAND, wearables, delegation, etc.)
+
+    - term: Newsletter Subscription
+      definition: User signup for DAO governance and project updates via email
+
+  concept_relationships:
+    internal:
+      - from: Proposal
+        to: Project
+        relationship: transitions_to
+        description: Approved grant proposals become tracked projects
+
+      - from: Vesting
+        to: Project
+        relationship: belongs_to
+        description: Vesting schedules are associated with grant projects
+
+    cross_service:
+      - local_concept: Proposal
+        remote_service: governance
+        remote_concept: Proposal
+        mapping_type: equivalent
+        description: Proposals are fetched from governance service API
+
+      - local_concept: VP Distribution
+        remote_service: governance
+        remote_concept: Snapshot Voting Power
+        mapping_type: projects_as
+        description: Voting power data sourced from governance snapshot system
+
+  invariants: []
+
+  responsibilities:
+    - Display featured and recent DAO proposals
+    - Showcase active and completed projects
+    - Visualize vesting schedules and token release timelines
+    - Show voting power distribution for addresses
+    - Handle newsletter subscription for DAO updates
+    - Provide entry point to full governance interface
+    - Display DAO statistics and metrics
+
+  out_of_scope:
+    - Proposal creation and voting (handled by governance UI)
+    - Project management (handled by governance backend)
+    - Newsletter delivery (handled by governance backend)
+    - Voting power calculation (handled by governance snapshot system)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: governance
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch proposals, projects, vesting data, and voting power distribution
+      critical: true
+
+    - name: catalyst
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch user profile information
+      critical: false
+
+    - name: credits-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Credits and payment integration
+      critical: false
+
+    - name: auth
+      relationship: sync
+      protocol: HTTP
+      purpose: User authentication redirects
+      critical: false
+
+  external:
+    - name: Segment
+      purpose: Analytics and user behavior tracking
+      type: api
+
+    - name: Ethereum RPC
+      purpose: Blockchain interaction for voting power and vesting queries
+      type: blockchain
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: CHAIN_ID
+      description: Ethereum chain ID for blockchain interactions (11155111 for Sepolia testnet)
+      affects: Blockchain network selection
+
+    - name: PEER_URL
+      description: Catalyst peer URL for profile data
+      affects: Profile data source
+
+    - name: ENVIRONMENT
+      description: Deployment environment identifier
+      affects: Environment-specific configuration
+
+    - name: AUTH_URL
+      description: Authentication service URL
+      affects: User authentication flow
+
+    - name: LANDING_URL
+      description: DAO landing page URL
+      affects: Site routing and links
+
+    - name: SEGMENT_API_KEY
+      description: Segment analytics API key
+      affects: Analytics tracking
+
+    - name: CREDITS_SERVER_URL
+      description: Credits server base URL
+      affects: Credits integration
+
+adrs: []

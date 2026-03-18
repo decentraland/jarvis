@@ -1,0 +1,110 @@
+schema_version: "1.1"
+
+service:
+  name: account
+  display_name: Decentraland Account
+  description: Web application where users can manage their Decentraland account, including wallet connections, email notification preferences, and credits settings. Provides a unified interface for account-level configuration.
+  owner: dapps
+  repository: https://github.com/decentraland/account
+  language: typescript
+  layer: feature-servers
+  role:
+    - client
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Wallet Connection
+      definition: Linking Ethereum wallets to a Decentraland account for identity and asset management
+
+    - term: Email Notifications
+      definition: User preferences for receiving email notifications from Decentraland services
+
+    - term: Credits Settings
+      definition: Configuration for virtual credits and payment methods in the Decentraland ecosystem
+
+  concept_relationships:
+    internal: []
+    cross_service: []
+
+  invariants: []
+
+  responsibilities:
+    - Provide user interface for managing wallet connections
+    - Enable users to configure email notification preferences
+    - Allow users to manage credits and payment settings
+    - Handle user authentication and sign-in flow
+    - Display unified account information from multiple services
+
+  out_of_scope:
+    - Backend storage of user preferences (handled by other services)
+    - Wallet operations execution (handled by browser wallet)
+    - Email delivery (handled by notification services)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: marketplace-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch marketplace data and user assets
+      critical: true
+
+    - name: transactions-api
+      relationship: sync
+      protocol: HTTP
+      purpose: Retrieve transaction history and status
+      critical: true
+
+  external:
+    - name: Ethereum Wallet
+      purpose: User authentication and transaction signing
+      type: other
+
+    - name: MoonPay
+      purpose: Fiat-to-crypto payment provider
+      type: api
+
+    - name: Segment
+      purpose: Analytics and user behavior tracking
+      type: api
+
+    - name: Polygon RPC
+      purpose: Blockchain interaction for Polygon network
+      type: blockchain
+
+    - name: Ethereum RPC
+      purpose: Blockchain interaction for Ethereum mainnet
+      type: blockchain
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: GEN_STATIC_LOCAL
+      description: Generate static files locally (development mode)
+      affects: Build process
+
+    - name: REACT_APP_WEBSITE_VERSION
+      description: Version identifier for the application
+      affects: Version tracking and cache busting
+
+    - name: VITE_DCL_DEFAULT_ENV
+      description: Default environment (dev, stg, prod)
+      affects: API endpoints and configuration selection
+
+    - name: VITE_BASE_URL
+      description: Base URL for the application
+      affects: Routing and asset loading
+
+adrs: []

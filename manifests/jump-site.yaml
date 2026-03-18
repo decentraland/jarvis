@@ -1,0 +1,134 @@
+schema_version: "1.1"
+
+service:
+  name: "jump-site"
+  display_name: "Jump In Web (Deep Links)"
+  description: "A web application that serves as an entry point to the Decentraland virtual world. It allows users to launch the Decentraland Explorer desktop client or download it if not installed, providing preview cards for locations and worlds."
+  owner: "decentraland-foundation"
+  repository: "https://github.com/decentraland/jump-site"
+  language: "typescript"
+  layer: "client"
+  role:
+    - "client"
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: "World Preview"
+      definition: "A preview card displaying metadata for custom Decentraland worlds (.eth domains), including title, description, and location image."
+      examples:
+        - "worldname.eth with title, description, and preview image"
+      not_to_be_confused_with: ""
+    - term: "Genesis City Location"
+      definition: "A coordinate-based location in Decentraland's main realm, identified by x,y coordinates."
+      examples:
+        - "Position 0,0 in Genesis City"
+      not_to_be_confused_with: ""
+    - term: "Deep Link"
+      definition: "A custom protocol URL (decentraland://) that launches the Decentraland Explorer desktop client to a specific location or world."
+      examples:
+        - "decentraland://?position=0,0&realm=main"
+      not_to_be_confused_with: ""
+
+  concept_relationships:
+    internal:
+      - from: "World Preview"
+        to: "Deep Link"
+        relationship: "generates"
+        description: "Each world preview generates a deep link that launches the desktop client to that specific world"
+      - from: "Genesis City Location"
+        to: "Deep Link"
+        relationship: "generates"
+        description: "Each Genesis City location generates a deep link that launches the desktop client to those coordinates"
+
+    cross_service:
+      - local_concept: "World Preview"
+        remote_service: "worlds-content-server"
+        remote_concept: "World"
+        mapping_type: "references"
+        description: "World previews fetch metadata from worlds-content-server's /about endpoint for .eth domains"
+      - local_concept: "Genesis City Location"
+        remote_service: "places"
+        remote_concept: "Place"
+        mapping_type: "references"
+        description: "Genesis City locations fetch place data from the places service API"
+      - local_concept: "Genesis City Location"
+        remote_service: "catalyst"
+        remote_concept: "Scene Entity"
+        mapping_type: "references"
+        description: "Genesis City locations fetch scene and deployer information from catalyst's lambdas and content endpoints"
+
+  invariants:
+    - rule: "World names must be valid ENS names (ending with .eth)"
+      enforced_at: "api_validation"
+      severity: "hard"
+    - rule: "Position coordinates must be in the format 'x,y'"
+      enforced_at: "api_validation"
+      severity: "hard"
+
+  responsibilities:
+    - "Provide a web-based entry point to launch the Decentraland Explorer desktop client"
+    - "Display preview cards for Decentraland locations (Genesis City coordinates) and custom worlds (.eth domains)"
+    - "Generate and handle deep links using the decentraland:// protocol"
+    - "Detect whether the desktop client is installed and offer download options if not"
+    - "Fetch and display location metadata including images, titles, and descriptions"
+    - "Support URL parameters for position (?position=x,y) and realm (?realm=worldname.eth)"
+
+  out_of_scope:
+    - "Running the actual Decentraland Explorer client (only launches it)"
+    - "Managing world or scene content (only displays previews)"
+    - "Hosting or processing 3D assets"
+    - "User authentication or profile management"
+    - "Direct peer-to-peer communications"
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: "places"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch place data for Genesis City locations by coordinates or world names"
+      critical: true
+    - name: "worlds-content-server"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch world metadata and about information for .eth domain worlds"
+      critical: true
+    - name: "catalyst"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch scene entities, deployment data, and user profiles for Genesis City locations"
+      critical: true
+
+  external:
+    - name: "Decentraland Explorer Desktop Client"
+      purpose: "Launched via deep links (decentraland:// protocol) to enter the virtual world"
+      type: "client"
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: "VITE_REACT_APP_DCL_DEFAULT_ENV"
+      description: "Determines which environment configuration to use (dev or prd)"
+      affects: "Application environment and API endpoint URLs"
+    - name: "VITE_SEGMENT_DEV_API_KEY"
+      description: "Segment analytics API key for development environment"
+      affects: "Analytics tracking in development"
+    - name: "VITE_SEGMENT_PRD_API_KEY"
+      description: "Segment analytics API key for production environment"
+      affects: "Analytics tracking in production"
+
+adrs: []

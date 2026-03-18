@@ -1,0 +1,300 @@
+schema_version: "1.1"
+
+service:
+  name: governance
+  display_name: Decentraland DAO Governance
+  description: Backend service and frontend application for Decentraland's DAO governance hub. Manages proposal lifecycle (creation, voting, enactment), integrates with Snapshot for voting, Discourse for forums, Discord for community notifications, and tracks voting power across multiple blockchain assets (MANA, LAND, ESTATE, NAMES, Wearables).
+  owner: dao
+  repository: https://github.com/decentraland/governance
+  language: typescript
+  layer: feature-servers
+  role:
+    - gateway
+  data_domain:
+    - proposals
+    - votes
+    - badges
+    - grants
+    - tenders
+    - projects
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Proposal
+      definition: Governance action submitted to the DAO for community voting, with types including polls, grants, catalysts, bans, hiring, pitches, tenders, and governance changes
+
+    - term: Voting Power
+      definition: Weight of a user's vote calculated from MANA tokens, LAND parcels, ESTATE size, NAMES, Wearables, and delegated voting power
+
+    - term: Snapshot
+      definition: Off-chain voting platform used to record proposal votes without gas fees
+
+    - term: Proposal Status
+      definition: Lifecycle state (pending, active, finished, passed, rejected, enacted) tracking proposal progression
+
+    - term: Committee
+      definition: Ethereum addresses authorized to enact passed proposals
+
+    - term: Badge
+      definition: NFT representing achievements or roles (legislator, land owner, top voter) issued via Otterspace on Polygon
+
+    - term: Tender
+      definition: Open request for bids from vendors to deliver services or products to the DAO
+
+    - term: Grant
+      definition: Funding proposal for community projects with budget tiers and milestone tracking
+
+    - term: Vesting Schedule
+      definition: Token release timeline for grant recipients with periodic unlock events
+
+  concept_relationships:
+    internal:
+      - from: Proposal
+        to: Snapshot
+        relationship: references
+        description: Each proposal creates a corresponding Snapshot vote for off-chain voting
+
+      - from: Proposal
+        to: Discourse
+        relationship: references
+        description: Proposals are published as forum threads on Discourse for community discussion
+
+      - from: Badge
+        to: Voting Power
+        relationship: depends_on
+        description: Badges are awarded based on voting power and participation metrics
+
+      - from: Grant
+        to: Vesting Schedule
+        relationship: has_one
+        description: Approved grants create vesting schedules for token distribution
+
+      - from: Tender
+        to: Proposal
+        relationship: is_a
+        description: Tenders are a type of proposal for requesting bids
+
+    cross_service:
+      - local_concept: Voting Power
+        remote_service: snapshot
+        remote_concept: VP Distribution
+        mapping_type: equivalent
+        description: Voting power is calculated by Snapshot using configured strategies
+
+      - local_concept: Badge
+        remote_service: otterspace
+        remote_concept: NFT Badge
+        mapping_type: equivalent
+        description: Badges are minted as NFTs via Otterspace contracts on Polygon
+
+  invariants:
+    - rule: Proposals must transition through statuses in order (pending → active → finished → passed/rejected → enacted)
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Only committee addresses can enact passed proposals
+      enforced_at: api_validation
+      severity: hard
+
+    - rule: Voting power must be snapshotted at proposal creation time
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Proposals require minimum submission threshold based on type
+      enforced_at: api_validation
+      severity: hard
+
+  responsibilities:
+    - Manage proposal lifecycle from creation through enactment
+    - Calculate voting power from MANA, LAND, ESTATE, NAMES, Wearables, delegation
+    - Integrate with Snapshot for off-chain voting
+    - Publish proposals to Discourse forum for discussion
+    - Send Discord notifications for proposal events
+    - Award badges for participation milestones
+    - Track grant execution and vesting schedules
+    - Manage tender and bid submission process
+    - Provide voting power distribution API
+    - Generate newsletter subscriptions for DAO updates
+    - Send push notifications for whale votes and major events
+    - Track project milestones and funding disbursement
+    - Expose Prometheus metrics for monitoring
+    - Provide OpenAPI documentation
+
+  out_of_scope:
+    - On-chain proposal execution (handled by smart contracts)
+    - Token transfers and vesting contract deployment (handled by separate systems)
+    - Forum moderation and management (handled by Discourse)
+    - Badge NFT minting (delegated to Otterspace contracts)
+
+  owned_entities:
+    - name: Proposal
+      description: DAO governance proposal with voting and discussion
+      persistence: postgres
+      identity_field: proposal_id
+
+    - name: Vote
+      description: User vote on a proposal with voting power weight
+      persistence: postgres
+      identity_field: vote_id
+
+    - name: Badge
+      description: Achievement badge awarded to participants
+      persistence: postgres
+      identity_field: badge_id
+
+    - name: Project
+      description: Funded initiative tracked from proposal to completion
+      persistence: postgres
+      identity_field: project_id
+
+    - name: Update
+      description: Project progress update with milestone information
+      persistence: postgres
+      identity_field: update_id
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: Snapshot
+      purpose: Off-chain voting platform for proposal votes
+      type: api
+
+    - name: Discourse
+      purpose: Forum integration for proposal discussions
+      type: api
+
+    - name: Discord
+      purpose: Community notifications for proposals and votes
+      type: api
+
+    - name: Otterspace
+      purpose: Badge NFT issuance on Polygon
+      type: api
+
+    - name: The Graph
+      purpose: Query badge data via Otterspace subgraph
+      type: api
+
+    - name: Catalyst
+      purpose: User profile and avatar data
+      type: api
+
+    - name: NFT.Storage
+      purpose: Store badge metadata on IPFS
+      type: storage
+
+    - name: Blocknative
+      purpose: Gas fee estimation for Polygon airdrops
+      type: api
+
+    - name: Push Protocol
+      purpose: Decentralized push notifications
+      type: api
+
+    - name: Beehiiv
+      purpose: Newsletter subscription management
+      type: api
+
+    - name: Rollbar
+      purpose: Error tracking and monitoring
+      type: api
+
+    - name: Alchemy
+      purpose: Delegation webhook events
+      type: api
+
+    - name: Ethereum RPC
+      purpose: Blockchain queries for voting power calculation
+      type: blockchain
+
+    - name: Polygon RPC
+      purpose: Blockchain interaction for badge minting
+      type: blockchain
+
+events:
+  publishes: []
+  consumes:
+    - name: Alchemy Delegations Webhook
+      source_service: alchemy
+      description: Delegation change events
+      channel: HTTPS webhook
+
+configuration:
+  key_env_vars:
+    - name: CONNECTION_STRING
+      description: PostgreSQL connection string
+      affects: Database connectivity
+
+    - name: DB_ENCRYPTION_KEY
+      description: Encryption key for sensitive database fields
+      affects: Data security
+
+    - name: COMMITTEE_ADDRESSES
+      description: Ethereum addresses authorized to enact proposals (comma-separated)
+      affects: Proposal enactment authorization
+
+    - name: GATSBY_SNAPSHOT_SPACE
+      description: Snapshot space for publishing proposals
+      affects: Voting platform integration
+
+    - name: SNAPSHOT_PRIVATE_KEY
+      description: Private key for publishing to Snapshot
+      affects: Snapshot authentication
+
+    - name: DISCOURSE_API_KEY
+      description: Discourse API key for forum integration
+      affects: Forum integration
+
+    - name: DISCORD_TOKEN
+      description: Discord bot token for notifications
+      affects: Discord integration
+
+    - name: OTTERSPACE_DAO_RAFT_ID
+      description: Otterspace raft ID for badge issuance
+      affects: Badge minting
+
+    - name: POLYGON_BADGES_CONTRACT_ADDRESS
+      description: Otterspace badges contract address on Polygon
+      affects: Badge NFT minting
+
+    - name: RAFT_OWNER_PK
+      description: Private key for raft owner operations
+      affects: Badge admin operations
+
+    - name: NFT_STORAGE_API_KEY
+      description: NFT.Storage API key for IPFS uploads
+      affects: Badge metadata storage
+
+    - name: BLOCKNATIVE_API_KEY
+      description: Blocknative API key for gas estimation
+      affects: Airdrop cost calculation
+
+    - name: RPC_PROVIDER_URL
+      description: Ethereum RPC provider for block queries
+      affects: Blockchain data fetching
+
+    - name: GATSBY_VOTING_POWER_TO_PASS_*
+      description: Minimum voting power required to pass each proposal type
+      affects: Proposal acceptance thresholds
+
+    - name: GATSBY_SUBMISSION_THRESHOLD_*
+      description: Minimum voting power required to submit each proposal type
+      affects: Proposal submission authorization
+
+    - name: PUSH_CHANNEL_OWNER_PK
+      description: Private key for Push Protocol channel operations
+      affects: Push notifications
+
+    - name: DCL_NOTIFICATIONS_SERVICE_API_TOKEN
+      description: API token for Decentraland notifications service
+      affects: Notifications integration
+
+adrs: []

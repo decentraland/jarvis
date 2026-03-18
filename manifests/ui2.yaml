@@ -1,0 +1,107 @@
+schema_version: "1.1"
+
+service:
+  name: "ui2"
+  display_name: "Decentraland UI v2"
+  description: "A modern React component library providing Decentraland's updated design system and UI components. Built on top of Material UI (MUI) with custom theming using Emotion, it provides a comprehensive set of components, icons, and utilities used across Decentraland's newer web applications. Supports light and dark themes with improved performance and bundle size optimization."
+  owner: "decentraland-foundation"
+  repository: "https://github.com/decentraland/ui2"
+  language: "typescript"
+  layer: "library"
+  role:
+    - "library"
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: "Component Library v2"
+      definition: "The modern successor to Decentraland UI, built on Material UI instead of Semantic UI, providing improved performance and developer experience."
+      examples:
+        - "Button component from @mui/material"
+        - "Card component with Material Design"
+      not_to_be_confused_with: "UI v1 (legacy Semantic UI-based library)"
+    - term: "Material UI (MUI)"
+      definition: "The underlying React component framework that Decentraland UI v2 is built upon, implementing Google's Material Design system."
+      examples: []
+      not_to_be_confused_with: "Semantic UI (used in UI v1)"
+    - term: "Emotion"
+      definition: "A CSS-in-JS library used for styling components with performance optimizations and runtime styling capabilities."
+      examples: []
+      not_to_be_confused_with: ""
+    - term: "Theme Provider"
+      definition: "A React context provider that wraps the application and provides theme configuration (colors, typography, spacing) to all components."
+      examples:
+        - "ThemeProvider with dark theme"
+        - "ThemeProvider with light theme"
+      not_to_be_confused_with: ""
+
+  concept_relationships:
+    internal:
+      - from: "Component Library v2"
+        to: "Material UI (MUI)"
+        relationship: "extends"
+        description: "Decentraland UI v2 components extend Material UI components with Decentraland-specific theming and styling"
+      - from: "Component Library v2"
+        to: "Emotion"
+        relationship: "uses"
+        description: "Components are styled using Emotion CSS-in-JS for dynamic theming and runtime styling"
+      - from: "Theme Provider"
+        to: "Component Library v2"
+        relationship: "configures"
+        description: "Theme Provider wraps the application to provide consistent theming to all UI components"
+
+    cross_service: []
+
+  invariants: []
+
+  responsibilities:
+    - "Provide modern React UI components for Decentraland web applications"
+    - "Maintain updated design system based on Material Design principles"
+    - "Support light and dark themes via Theme Provider"
+    - "Export components with TypeScript type definitions"
+    - "Provide Material UI icons through @mui/icons-material"
+    - "Support tree-shaking for optimal bundle sizes"
+    - "Document components via Storybook at ui2.decentraland.org"
+    - "Support emotion-based CSS-in-JS styling for dynamic themes"
+    - "Generate Storybook stories automatically from MUI components"
+
+  out_of_scope:
+    - "Application-specific business logic (only provides UI components)"
+    - "State management (handled by consuming applications)"
+    - "API integrations (handled by consuming applications)"
+    - "Authentication or authorization logic"
+    - "Data fetching or persistence"
+    - "Backward compatibility with UI v1 (Semantic UI)"
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: "Material UI (MUI)"
+      purpose: "Base component library providing Material Design React components"
+      type: "other"
+    - name: "Emotion"
+      purpose: "CSS-in-JS library for styling components with runtime theme support"
+      type: "other"
+    - name: "MUI Icons"
+      purpose: "Material Design icon library for UI components"
+      type: "other"
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+adrs: []

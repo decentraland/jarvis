@@ -1,0 +1,99 @@
+schema_version: "1.1"
+
+service:
+  name: "ui"
+  display_name: "Decentraland UI (Legacy)"
+  description: "A React component library providing Decentraland's design system and UI components. Built on top of Semantic UI React with custom theming, it includes buttons, modals, cards, navigation, and other reusable components used across Decentraland's web applications. Supports light and dark themes."
+  owner: "decentraland-foundation"
+  repository: "https://github.com/decentraland/ui"
+  language: "typescript"
+  layer: "library"
+  role:
+    - "library"
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: "Component Library"
+      definition: "A collection of reusable React components following Decentraland's design system, built on Semantic UI React."
+      examples:
+        - "Button component"
+        - "Modal component"
+        - "Card component"
+      not_to_be_confused_with: ""
+    - term: "Theme"
+      definition: "A set of CSS variables defining colors, shadows, and styling for the UI components. Includes base theme, light theme, and dark theme."
+      examples:
+        - "Light theme with white backgrounds"
+        - "Dark theme with dark backgrounds"
+      not_to_be_confused_with: ""
+    - term: "Semantic UI React"
+      definition: "The underlying React component framework that Decentraland UI is built upon, providing base components that are then themed."
+      examples: []
+      not_to_be_confused_with: ""
+
+  concept_relationships:
+    internal:
+      - from: "Component Library"
+        to: "Theme"
+        relationship: "uses"
+        description: "Components are styled using theme CSS variables for consistent appearance"
+      - from: "Component Library"
+        to: "Semantic UI React"
+        relationship: "extends"
+        description: "Decentraland UI components extend Semantic UI React components with custom styling"
+
+    cross_service: []
+
+  invariants: []
+
+  responsibilities:
+    - "Provide reusable React UI components for Decentraland web applications"
+    - "Maintain consistent design system across all Decentraland dApps"
+    - "Support multiple themes (light, dark, custom)"
+    - "Export components for use in React applications"
+    - "Provide CSS-only usage option via CDN for non-React applications"
+    - "Document components via Storybook at ui.decentraland.org"
+    - "Support bundle size optimization through individual component imports"
+    - "Provide TypeScript type definitions for all components"
+    - "This library is deprecated and will be replaced by ui2"
+
+  out_of_scope:
+    - "Application-specific business logic (only provides UI components)"
+    - "State management (handled by consuming applications)"
+    - "API integrations (handled by consuming applications)"
+    - "Authentication or authorization logic"
+    - "Data fetching or persistence"
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: "Semantic UI React"
+      purpose: "Base component library that Decentraland UI extends and themes"
+      type: "other"
+    - name: "Semantic UI CSS"
+      purpose: "Base CSS framework for Semantic UI components"
+      type: "other"
+    - name: "Balloon CSS"
+      purpose: "Tooltip styling library"
+      type: "other"
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+adrs: []

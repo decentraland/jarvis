@@ -1,0 +1,65 @@
+schema_version: "1.1"
+
+service:
+  name: dapps-template
+  display_name: Decentraland dApps Template
+  description: Starter template repository for creating new Decentraland dApp user interfaces. Provides pre-configured build tools, testing setup, linting, environment management, and UI component integration following Decentraland best practices.
+  owner: dapps
+  repository: https://github.com/decentraland/dapps-template
+  language: typescript
+  layer: feature-servers
+  role:
+    - library
+  data_domain: []
+  ai-agent-context: https://github.com/decentraland/dapps-template/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: Template Repository
+      definition: Scaffolding repository used as starting point for new projects, not a deployed service
+
+    - term: Environment Configuration
+      definition: Multi-environment setup using @dcl/ui-env for dev/stg/prod configurations
+
+  concept_relationships:
+    internal: []
+    cross_service: []
+
+  invariants: []
+
+  responsibilities:
+    - Provide standardized project structure for new dApps
+    - Include pre-configured Vite build setup
+    - Provide Jest testing framework configuration
+    - Include ESLint and Prettier code quality tools
+    - Set up Husky pre-commit hooks
+    - Configure environment management with @dcl/ui-env
+    - Include decentraland-ui2 component library integration
+    - Provide example scripts for common tasks (build, test, lint)
+
+  out_of_scope:
+    - Business logic implementation (template only)
+    - Service deployment (template for creating deployable services)
+    - Actual data processing (scaffolding only)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external: []
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars: []
+
+adrs: []

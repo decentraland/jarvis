@@ -1,0 +1,152 @@
+schema_version: "1.1"
+
+service:
+  name: decentraland-dapps
+  display_name: Decentraland dApps Library
+  description: Shared React/Redux library providing common modules, components, and utilities for Decentraland web applications. Includes wallet management, transaction handling, authorization, translations, analytics, storage, modals, toasts, and UI containers with i18n support.
+  owner: dapps
+  repository: https://github.com/decentraland/decentraland-dapps
+  language: typescript
+  layer: feature-servers
+  role:
+    - library
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Redux Module
+      definition: Self-contained Redux state management unit with actions, reducers, sagas, and selectors
+
+    - term: Container Component
+      definition: React component connected to Redux store providing ready-to-use UI elements (Navbar, Footer, SignInPage, Modal, TransactionLink)
+
+    - term: Wallet Provider
+      definition: React context provider managing web3 wallet connections (MetaMask, Ledger, WalletConnect, email/phone wallets)
+
+    - term: Transaction Middleware
+      definition: Redux middleware tracking pending transactions and managing transaction history
+
+    - term: Storage Middleware
+      definition: Redux middleware persisting state to localStorage with migration support
+
+    - term: Authorization
+      definition: Token approval management for both allowance and approval-for-all patterns
+
+    - term: Translation Provider
+      definition: i18n provider supporting 6 languages with locale persistence
+
+    - term: Credits Module
+      definition: Module for managing Decentraland marketplace credits with real-time SSE updates
+
+  concept_relationships:
+    internal:
+      - from: Wallet Provider
+        to: Redux Module
+        relationship: depends_on
+        description: Wallet provider requires wallet redux module for state management
+
+      - from: Transaction Middleware
+        to: Storage Middleware
+        relationship: depends_on
+        description: Transaction middleware requires storage to persist transaction history
+
+      - from: Authorization
+        to: Wallet Provider
+        relationship: depends_on
+        description: Authorization module requires wallet connection to manage token approvals
+
+      - from: Container Component
+        to: Redux Module
+        relationship: depends_on
+        description: Container components connect to redux modules for state and actions
+
+    cross_service: []
+
+  invariants:
+    - rule: All modules using peerDependencies must have a single React instance
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Transaction history must persist across sessions via storage middleware
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Wallet provider must be parent of ConnectedRouter when using react-router
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Provide wallet connection and management (MetaMask, Ledger, WalletConnect, Magic Link)
+    - Track and persist blockchain transactions with lifecycle management
+    - Manage token authorizations (allowance and approval-for-all)
+    - Handle i18n translations for 6 languages (en, es, fr, ja, ko, zh)
+    - Integrate Segment analytics tracking
+    - Persist Redux state to localStorage with migrations
+    - Provide loading state tracking for async actions
+    - Manage modal state and rendering
+    - Display toast notifications
+    - Fetch and manage user profiles
+    - Handle credits with real-time SSE updates
+    - Provide pre-built UI containers (Navbar, Footer, SignInPage, Modal, TransactionLink)
+    - Integrate Intercom support widget
+    - Provide Ethereum and entity deployment utilities
+    - Send meta-transactions for gasless operations
+
+  out_of_scope:
+    - Business logic implementation (library provides building blocks)
+    - Backend API implementations (provides client utilities)
+    - Smart contract development (provides interaction utilities)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: Segment
+      purpose: Analytics tracking integration
+      type: api
+
+    - name: Intercom
+      purpose: Customer support widget
+      type: api
+
+    - name: Ethereum RPC
+      purpose: Blockchain interaction via ethers.js
+      type: blockchain
+
+    - name: Catalyst
+      purpose: User profile and content fetching via dcl-catalyst-client
+      type: api
+
+    - name: Transak
+      purpose: Fiat-to-crypto onramp integration
+      type: api
+
+    - name: Wert
+      purpose: Fiat-to-crypto onramp integration
+      type: api
+
+    - name: Pusher
+      purpose: Real-time events integration
+      type: api
+
+    - name: Magic Link
+      purpose: Email/phone-based wallet authentication
+      type: api
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars: []
+
+adrs: []

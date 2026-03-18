@@ -1,0 +1,226 @@
+schema_version: "1.1"
+
+service:
+  name: "profile"
+  display_name: "Decentraland Profile UI"
+  description: "The web interface for Decentraland user profiles, enabling users to view and manage their avatar, display name, connected accounts, owned wearables, emotes, and names. Integrates with social services for friend management and provides referral program features."
+  owner: "decentraland-foundation"
+  repository: "https://github.com/decentraland/profile"
+  language: "typescript"
+  layer: "client"
+  role:
+    - "client"
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: "Profile"
+      definition: "A user's public identity in Decentraland, consisting of avatar configuration, display name, connected social accounts, and owned digital assets (wearables, emotes, names)."
+      examples: []
+      not_to_be_confused_with: ""
+    - term: "Avatar"
+      definition: "The 3D representation of a user in Decentraland, customizable with wearables and emotes."
+      examples: []
+      not_to_be_confused_with: ""
+    - term: "Wearable"
+      definition: "A virtual clothing or accessory item that can be equipped on an avatar (hats, shoes, outfits, accessories)."
+      examples: []
+      not_to_be_confused_with: "Emote"
+    - term: "Emote"
+      definition: "An animation that avatars can perform to express emotions or actions (dance, wave, clap)."
+      examples: []
+      not_to_be_confused_with: "Wearable"
+    - term: "Decentraland Name"
+      definition: "A unique username (ENS name) registered on Ethereum that serves as a user's display name in Decentraland."
+      examples:
+        - "myname.dcl.eth"
+      not_to_be_confused_with: "Avatar display name"
+    - term: "Referral Program"
+      definition: "A system that rewards users for inviting new users to Decentraland, tracked and managed through the referral server."
+      examples: []
+      not_to_be_confused_with: ""
+
+  concept_relationships:
+    internal:
+      - from: "Profile"
+        to: "Avatar"
+        relationship: "has_one"
+        description: "Each profile has a single avatar configuration"
+      - from: "Profile"
+        to: "Wearable"
+        relationship: "has_many"
+        description: "A profile owns multiple wearable items that can be equipped on the avatar"
+      - from: "Profile"
+        to: "Emote"
+        relationship: "has_many"
+        description: "A profile owns multiple emote animations"
+      - from: "Profile"
+        to: "Decentraland Name"
+        relationship: "has_one"
+        description: "A profile may have one registered Decentraland name (ENS)"
+
+    cross_service:
+      - local_concept: "Profile"
+        remote_service: "catalyst"
+        remote_concept: "Avatar Profile"
+        mapping_type: "equivalent"
+        description: "Profile data is fetched and updated via catalyst's peer lambdas endpoint"
+      - local_concept: "Friend"
+        remote_service: "social-service-ea"
+        remote_concept: "Friendship"
+        mapping_type: "equivalent"
+        description: "Friend management is handled through social-service-ea's gRPC API"
+      - local_concept: "Wearable"
+        remote_service: "marketplace-server"
+        remote_concept: "NFT"
+        mapping_type: "references"
+        description: "Wearable ownership and metadata are queried from marketplace-server API"
+      - local_concept: "Referral Progress"
+        remote_service: "social-api"
+        remote_concept: "Referral"
+        mapping_type: "references"
+        description: "Referral program progress is tracked and managed via social-api referral endpoints"
+
+  invariants: []
+
+  responsibilities:
+    - "Display user profile information including avatar, display name, and bio"
+    - "Enable users to edit their avatar configuration (wearables, emotes, colors)"
+    - "Display owned wearables and emotes with filtering and search"
+    - "Manage friend relationships (add, remove, view friends, mutual friends, pending requests)"
+    - "Display and manage Decentraland names (ENS names)"
+    - "Provide referral program interface with progress tracking"
+    - "Allow users to set referral email for rewards"
+    - "Display user's owned NFTs and collectibles"
+    - "Integrate Web3 wallet connection for authentication"
+    - "Support social features through RPC connection to social service"
+    - "Display user's world information"
+
+  out_of_scope:
+    - "Storing or hosting avatar data (handled by catalyst)"
+    - "Processing friend requests or social graph logic (handled by social-service-ea)"
+    - "Managing wearable or emote ownership (blockchain-based, indexed by marketplace-server)"
+    - "Creating or minting NFTs (handled by marketplace and blockchain)"
+    - "Processing referral rewards (handled by referral server)"
+    - "ENS name registration (handled by blockchain and ENS contracts)"
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: "catalyst"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch and update user avatar profiles via peer lambdas endpoint"
+      critical: true
+    - name: "social-service-ea"
+      relationship: "sync"
+      protocol: "gRPC"
+      purpose: "Manage friend relationships, friendship requests, and social interactions via gRPC/WebSocket RPC"
+      critical: true
+    - name: "marketplace-server"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Query owned NFTs, wearables, and emotes for the user"
+      critical: true
+    - name: "worlds-content-server"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch user's world information and world metadata"
+      critical: false
+    - name: "credits-server"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Query user's credit balance and credit-related information"
+      critical: false
+    - name: "social-api"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Manage referral program progress and referral email submission"
+      critical: false
+
+  external:
+    - name: "The Graph (Marketplace Subgraph)"
+      purpose: "Query blockchain data for NFT ownership and marketplace transactions"
+      type: "api"
+    - name: "Segment"
+      purpose: "Analytics tracking for user behavior and feature usage"
+      type: "api"
+    - name: "Sentry"
+      purpose: "Error tracking and monitoring"
+      type: "api"
+    - name: "Wearable Preview Service"
+      purpose: "Generate and display 3D previews of wearables and emotes"
+      type: "api"
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: "VITE_REACT_APP_DCL_DEFAULT_ENV"
+      description: "Determines which environment configuration to use (dev, stg, prod)"
+      affects: "Application environment and configuration selection"
+    - name: "PEER_URL"
+      description: "Catalyst peer URL for fetching and updating user profiles"
+      affects: "Profile data retrieval and updates"
+    - name: "SOCIAL_RPC_URL"
+      description: "WebSocket URL for social service gRPC connection"
+      affects: "Friend management and social features via RPC"
+    - name: "MARKETPLACE_SERVER_URL"
+      description: "URL for marketplace backend API"
+      affects: "NFT and wearable data queries"
+    - name: "MARKETPLACE_GRAPH_URL"
+      description: "The Graph subgraph URL for marketplace blockchain data"
+      affects: "Blockchain-based NFT ownership queries"
+    - name: "WORLDS_CONTENT_SERVER_URL"
+      description: "URL for worlds content server"
+      affects: "World information retrieval"
+    - name: "CREDITS_SERVER_URL"
+      description: "URL for credits server"
+      affects: "Credit balance queries"
+    - name: "REFERRAL_SERVER_URL"
+      description: "URL for referral API (social-api)"
+      affects: "Referral program progress and email submission"
+    - name: "WEARABLE_PREVIEW_URL"
+      description: "URL for wearable preview service"
+      affects: "3D wearable and emote preview generation"
+    - name: "SEGMENT_API_KEY"
+      description: "Segment analytics API key"
+      affects: "Analytics tracking"
+    - name: "SENTRY_DSN"
+      description: "Sentry DSN for error tracking"
+      affects: "Error monitoring and reporting"
+    - name: "EXPLORER_URL"
+      description: "URL for Decentraland Explorer (play)"
+      affects: "Links to enter the virtual world"
+    - name: "MARKETPLACE_URL"
+      description: "URL for marketplace frontend"
+      affects: "Links to marketplace"
+    - name: "BUILDER_URL"
+      description: "URL for builder application"
+      affects: "Links to builder tool"
+    - name: "DOCS_URL"
+      description: "URL for Decentraland documentation"
+      affects: "Help and documentation links"
+    - name: "SYNAPSE_URL"
+      description: "URL for Synapse social platform"
+      affects: "Social platform integration"
+    - name: "INVITE_REFERRER_URL"
+      description: "URL for invite referrer page"
+      affects: "Referral invitation links"
+    - name: "AUTH_URL"
+      description: "Authentication service URL"
+      affects: "User authentication flows"
+
+adrs: []

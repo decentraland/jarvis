@@ -1,0 +1,178 @@
+schema_version: "1.1"
+
+service:
+  name: "landing"
+  display_name: "Decentraland Homepage"
+  description: "The main landing page and homepage for Decentraland, built with Gatsby. It serves as the primary entry point for new and returning users, providing information about the platform, events, downloads, and community resources."
+  owner: "decentraland-foundation"
+  repository: "https://github.com/decentraland/landing"
+  language: "typescript"
+  layer: "client"
+  role:
+    - "client"
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: "Landing Page"
+      definition: "The main homepage of Decentraland that introduces the platform to new visitors and provides navigation to key areas like downloads, events, marketplace, and documentation."
+      examples: []
+      not_to_be_confused_with: ""
+    - term: "Contentful CMS"
+      definition: "A headless content management system used to manage and deliver dynamic content for the homepage, including text, images, and metadata."
+      examples: []
+      not_to_be_confused_with: ""
+    - term: "Static Site Generation"
+      definition: "Gatsby's build process that generates static HTML pages at build time, providing fast page loads and SEO optimization."
+      examples: []
+      not_to_be_confused_with: ""
+
+  concept_relationships:
+    internal:
+      - from: "Landing Page"
+        to: "Static Site Generation"
+        relationship: "uses"
+        description: "The landing page is built using Gatsby's static site generation to create optimized HTML pages"
+      - from: "Landing Page"
+        to: "Contentful CMS"
+        relationship: "depends_on"
+        description: "Dynamic content for the landing page is managed and fetched from Contentful CMS"
+
+    cross_service:
+      - local_concept: "Landing Page"
+        remote_service: "events"
+        remote_concept: "Event"
+        mapping_type: "references"
+        description: "The landing page displays upcoming Decentraland events fetched from the events service API"
+
+  invariants: []
+
+  responsibilities:
+    - "Serve as the main entry point and homepage for Decentraland"
+    - "Provide information about Decentraland, its features, and community"
+    - "Display upcoming events fetched from the events service"
+    - "Offer download links for the desktop client and creator tools"
+    - "Provide navigation to key platform areas (marketplace, create, docs, DAO)"
+    - "Manage SEO metadata and Open Graph tags for social sharing"
+    - "Deliver content managed through Contentful CMS"
+    - "Provide responsive, accessible web experience for all visitors"
+
+  out_of_scope:
+    - "User authentication or profile management (links to auth service)"
+    - "Event creation or management (only displays events)"
+    - "Hosting desktop client or creator tools (only provides download links)"
+    - "Running blockchain transactions or wallet integrations"
+    - "Real-time user interactions or communications"
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: "events"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch upcoming events to display on the homepage"
+      critical: false
+    - name: "rewards"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Manage reward campaigns and wearable dispensers for event-based promotions"
+      critical: false
+
+  external:
+    - name: "Contentful CMS"
+      purpose: "Content management system for homepage content, images, and metadata"
+      type: "api"
+    - name: "Algolia"
+      purpose: "Search functionality for site content"
+      type: "api"
+    - name: "Segment"
+      purpose: "Analytics tracking and user behavior monitoring"
+      type: "api"
+    - name: "Sentry"
+      purpose: "Error tracking and monitoring"
+      type: "api"
+    - name: "Rollbar"
+      purpose: "Error reporting and logging"
+      type: "api"
+    - name: "Cloudflare Workers"
+      purpose: "Edge computing for dynamic content and caching"
+      type: "cdn"
+    - name: "GitHub API"
+      purpose: "Fetch latest desktop client and creator hub releases for download links"
+      type: "api"
+    - name: "CDN Data (cdn-data.decentraland.org)"
+      purpose: "Serves download statistics and counts for desktop client"
+      type: "cdn"
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: "CONTENTFUL_SPACE_ID"
+      description: "Contentful space ID for fetching CMS content (used by gatsby-config)"
+      affects: "Content management and dynamic content retrieval"
+    - name: "GATSBY_CONTENTFUL_SPACE_ID"
+      description: "Contentful space ID for client-side fetching"
+      affects: "Content management and dynamic content retrieval in browser"
+    - name: "CONTENTFUL_ENVIRONMENT_ID"
+      description: "Contentful environment ID (e.g., master, staging)"
+      affects: "Which Contentful environment to fetch content from"
+    - name: "CONTENTFUL_ACCESS_TOKEN"
+      description: "Access token for Contentful API authentication"
+      affects: "Authorization for fetching CMS content"
+    - name: "CONTENTFUL_MANAGEMENT_TOKEN"
+      description: "Management token for Contentful API (used for type generation)"
+      affects: "TypeScript type generation from Contentful schema"
+    - name: "EVENTS_API_URL"
+      description: "URL for the events service API"
+      affects: "Fetching event data for display on homepage"
+    - name: "GATSBY_EVENTS_API_URL"
+      description: "URL for the events service API (client-side access)"
+      affects: "Client-side fetching of event data"
+    - name: "REWARDS_API"
+      description: "URL for the rewards service API"
+      affects: "Managing reward campaigns and wearable dispensers"
+    - name: "GATSBY_REWARDS_API"
+      description: "URL for the rewards service API (client-side access)"
+      affects: "Client-side reward claiming and verification"
+    - name: "GATSBY_SEGMENT_KEY"
+      description: "Segment analytics API key"
+      affects: "Analytics tracking and user behavior monitoring"
+    - name: "GATSBY_SENTRY_SRC"
+      description: "Sentry SDK source URL for error tracking"
+      affects: "Error monitoring and reporting"
+    - name: "GATSBY_ROLLBAR_TOKEN"
+      description: "Rollbar token for error logging"
+      affects: "Error reporting and logging"
+    - name: "GATSBY_ALGOLIA_APP_KEY"
+      description: "Algolia application key for search functionality"
+      affects: "Site search capabilities"
+    - name: "GATSBY_SSO_URL"
+      description: "Single Sign-On service URL for authentication"
+      affects: "User authentication and login flows"
+    - name: "GATSBY_DESKTOP_WINDOWS_TARGET"
+      description: "Download URL for Windows desktop client"
+      affects: "Windows client download link"
+    - name: "GATSBY_DESKTOP_MACOS_TARGET"
+      description: "Download URL for macOS desktop client"
+      affects: "macOS client download link"
+    - name: "GATSBY_DOWNLOAD_COUNTS_URL"
+      description: "CDN URL for download statistics JSON data"
+      affects: "Display of total desktop client downloads"
+    - name: "GATSBY_PROFILE_URL"
+      description: "URL for the profile/peer service"
+      affects: "Profile data lookups and user information"
+
+adrs: []

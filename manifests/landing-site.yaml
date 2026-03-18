@@ -1,0 +1,148 @@
+schema_version: "1.1"
+
+service:
+  name: "landing-site"
+  display_name: "Landing Site (Modern)"
+  description: "A modern React-based landing page for Decentraland built with Vite. It serves as an alternative entry point providing information about the platform, creator tools, missions, and community resources, with integrated Web3 wallet support."
+  owner: "decentraland-foundation"
+  repository: "https://github.com/decentraland/landing-site"
+  language: "typescript"
+  layer: "client"
+  role:
+    - "client"
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: "Landing Site"
+      definition: "A modern, Vite-based web application that serves as an entry point to Decentraland, showcasing missions, creator tools, FAQs, and community features with wallet integration."
+      examples: []
+      not_to_be_confused_with: "Landing (Gatsby-based homepage)"
+    - term: "Contentful Integration"
+      definition: "Dynamic content management through Contentful CMS, using specific content IDs for different landing page sections (hero, missions, FAQ, etc.)."
+      examples:
+        - "CONTENTFUL_LANDING_HERO_MAIN_ID for main hero section"
+        - "CONTENTFUL_LANDING_MISSIONS_V2_ID for missions section"
+      not_to_be_confused_with: ""
+    - term: "Web3 Wallet Integration"
+      definition: "Integration with Web3 wallets using WalletConnect and Magic SDK for user authentication and blockchain interactions."
+      examples: []
+      not_to_be_confused_with: ""
+
+  concept_relationships:
+    internal:
+      - from: "Landing Site"
+        to: "Contentful Integration"
+        relationship: "depends_on"
+        description: "Landing site fetches structured content from Contentful CMS for each page section"
+      - from: "Landing Site"
+        to: "Web3 Wallet Integration"
+        relationship: "uses"
+        description: "Landing site integrates wallet connection functionality for user authentication"
+
+    cross_service:
+      - local_concept: "User Profile"
+        remote_service: "catalyst"
+        remote_concept: "Avatar Profile"
+        mapping_type: "references"
+        description: "Landing site fetches user avatar profiles from catalyst's peer lambdas endpoint"
+
+  invariants: []
+
+  responsibilities:
+    - "Provide a modern, responsive landing page for Decentraland"
+    - "Display missions, creator tools information, and FAQs managed through Contentful CMS"
+    - "Integrate Web3 wallet connection (WalletConnect, Magic SDK)"
+    - "Fetch and display user avatar profiles from catalyst"
+    - "Track and display Explorer desktop client download statistics"
+    - "Provide navigation to key platform areas (auth, download, onboarding)"
+    - "Support multiple environments (dev, staging, production)"
+    - "Deliver content through Redux Toolkit Query for efficient data management"
+
+  out_of_scope:
+    - "User authentication logic (delegates to auth service)"
+    - "Content creation or management (managed through Contentful)"
+    - "Hosting or distributing desktop client files"
+    - "Profile creation or editing (only displays profiles)"
+    - "Blockchain transactions or smart contract interactions"
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: "catalyst"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch user avatar profiles from peer lambdas endpoint"
+      critical: false
+
+  external:
+    - name: "Contentful CMS"
+      purpose: "Content management system for landing page sections, missions, FAQs, and other dynamic content"
+      type: "api"
+    - name: "WalletConnect"
+      purpose: "Web3 wallet connection protocol for user authentication"
+      type: "api"
+    - name: "Magic SDK"
+      purpose: "Passwordless authentication and wallet creation service"
+      type: "api"
+    - name: "CDN (cdn-data.decentraland.org)"
+      purpose: "Hosts Explorer download statistics JSON file"
+      type: "cdn"
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: "VITE_REACT_APP_DCL_DEFAULT_ENV"
+      description: "Determines which environment configuration to use (dev, stg, prd)"
+      affects: "Application environment and configuration selection"
+    - name: "CONTENTFUL_SPACE_ID"
+      description: "Contentful space ID for fetching CMS content"
+      affects: "Content management and retrieval"
+    - name: "CONTENTFUL_ENVIRONMENT"
+      description: "Contentful environment (e.g., master, staging)"
+      affects: "Which Contentful environment to fetch content from"
+    - name: "CONTENTFUL_LANDING_HERO_MAIN_ID"
+      description: "Contentful entry ID for main hero section"
+      affects: "Main hero section content"
+    - name: "CONTENTFUL_LANDING_MISSIONS_V2_ID"
+      description: "Contentful entry ID for missions section"
+      affects: "Missions section content"
+    - name: "CONTENTFUL_LANDING_FAQ_ID"
+      description: "Contentful entry ID for FAQ section"
+      affects: "FAQ section content"
+    - name: "CONTENTFUL_LANDING_CREATORS_HERO_ID"
+      description: "Contentful entry ID for creators hero section"
+      affects: "Creators page hero section content"
+    - name: "MAGIC_API_KEY"
+      description: "Magic SDK API key for passwordless authentication"
+      affects: "User authentication and wallet creation via Magic"
+    - name: "WALLET_CONNECT_PROJECT_ID"
+      description: "WalletConnect project ID for Web3 wallet connections"
+      affects: "Web3 wallet integration functionality"
+    - name: "PEER_URL"
+      description: "Catalyst peer URL for fetching user profiles"
+      affects: "User profile data retrieval"
+    - name: "DOWNLOAD_COUNTS_URL"
+      description: "URL to JSON file containing Explorer download statistics"
+      affects: "Download count display on landing page"
+    - name: "ONBOARDING_URL"
+      description: "URL for new user onboarding flow"
+      affects: "New user redirect and onboarding process"
+    - name: "AUTH_URL"
+      description: "Authentication service URL"
+      affects: "User authentication flows"
+
+adrs: []

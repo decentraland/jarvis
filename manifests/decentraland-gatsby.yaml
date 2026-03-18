@@ -1,0 +1,176 @@
+schema_version: "1.1"
+
+service:
+  name: decentraland-gatsby
+  display_name: Decentraland Gatsby
+  description: Gatsby-based framework providing common components, plugins, and utilities for building Decentraland web applications. Includes server-side rendering, database migrations, authentication middleware, background jobs, metrics collection, email templates, and internationalization support.
+  owner: dapps
+  repository: https://github.com/decentraland/decentraland-gatsby
+  language: typescript
+  layer: feature-servers
+  role:
+    - library
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Gatsby SSR
+      definition: Server-side rendering framework for React applications with static generation and hydration
+
+    - term: Entity
+      definition: Server-side domain entity with model, routes, middleware, jobs, and metrics
+
+    - term: Background Job
+      definition: Periodic task running server-side without exposing HTTP endpoints (e.g., cleanup, data sync)
+
+    - term: Migration
+      definition: Database schema version change managed through node-pg-migrate
+
+    - term: Intl Plugin
+      definition: Gatsby plugin for internationalization with JSON locale files
+
+    - term: Metrics Collector
+      definition: Prometheus-compatible metrics exposed at /metrics endpoint
+
+    - term: Auth Middleware
+      definition: Decentraland crypto middleware for validating signed requests
+
+  concept_relationships:
+    internal:
+      - from: Entity
+        to: Background Job
+        relationship: has_many
+        description: Entities can have periodic background jobs for maintenance tasks
+
+      - from: Entity
+        to: Metrics Collector
+        relationship: has_one
+        description: Each entity can expose metrics for monitoring
+
+      - from: Migration
+        to: Entity
+        relationship: depends_on
+        description: Migrations define database schema for entity models
+
+    cross_service: []
+
+  invariants:
+    - rule: All routes must be registered in entity routes.ts files
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Migrations must be reversible with down migration
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Metrics endpoint must be protected by PROMETHEUS_BEARER_TOKEN
+      enforced_at: middleware
+      severity: hard
+
+  responsibilities:
+    - Provide Gatsby-based SSR framework for Decentraland dApps
+    - Supply reusable React components for common UI patterns
+    - Handle internationalization with locale file management
+    - Manage database migrations with PostgreSQL
+    - Provide authentication middleware using Decentraland crypto
+    - Support background job scheduling with cron
+    - Collect and expose Prometheus metrics
+    - Generate email templates with Juice CSS inlining
+    - Provide Express.js server integration
+    - Handle image rendering and optimization with Sharp
+    - Support markdown rendering with syntax highlighting
+    - Provide web push notification utilities
+    - Integrate Segment analytics
+    - Support feature flags via @dcl/feature-flags
+    - Provide HTTP proxy middleware
+    - Handle DDOS protection middleware
+
+  out_of_scope:
+    - Business logic implementation (framework provides structure)
+    - Specific API implementations (provides routing framework)
+    - Frontend-specific state management (leaves to consumer apps)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: PostgreSQL
+      purpose: Database for entity storage and migrations
+      type: storage
+
+    - name: AWS SES
+      purpose: Email sending service
+      type: api
+
+    - name: Segment
+      purpose: Analytics tracking integration
+      type: api
+
+    - name: Ethereum RPC
+      purpose: Blockchain interaction via ethers.js
+      type: blockchain
+
+    - name: Sentry
+      purpose: Error tracking and monitoring
+      type: api
+
+    - name: Rollbar
+      purpose: Error tracking alternative
+      type: api
+
+    - name: Prometheus
+      purpose: Metrics collection endpoint consumer
+      type: api
+
+    - name: Infura
+      purpose: Ethereum RPC provider
+      type: blockchain
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: ADMIN_ADDRESSES
+      description: Ethereum addresses (comma-separated) that return true for isAdmin check
+      affects: Admin authorization
+
+    - name: INFURA_KEYS
+      description: Infura API keys (comma-separated) for creating blockchain providers
+      affects: Blockchain connectivity
+
+    - name: CONNECTION_STRING
+      description: PostgreSQL connection string
+      affects: Database connectivity
+
+    - name: PROMETHEUS_BEARER_TOKEN
+      description: Bearer token protecting /metrics endpoint
+      affects: Metrics endpoint authentication
+
+    - name: IMAGE
+      description: Build metadata exposed at /status endpoint
+      affects: Status reporting
+
+    - name: GATSBY_CATALYST_API
+      description: Default endpoint for Catalyst API client
+      affects: Catalyst integration
+
+    - name: GATSBY_LAND_API
+      description: Default endpoint for Land API client
+      affects: Land data fetching
+
+    - name: GATSBY_CHAIN_ID
+      description: Supported blockchain chain IDs (comma-separated, e.g., 1,137)
+      affects: Network validation and wallet connection prompts
+
+adrs: []

@@ -1,790 +1,1044 @@
 schema_version: '1.0'
 nodes:
-- name: archipelago-workers
-  display_name: Archipelago Workers
-  layer: entry-points
-  repository: https://github.com/decentraland/archipelago-workers
-- name: architecture
-  display_name: Decentraland Architecture Diagram
-  layer: Other
-  repository: https://github.com/decentraland/architecture
-- name: asset-bundle-converter
-  display_name: Asset Bundle Converter
-  layer: content
-  repository: https://github.com/decentraland/asset-bundle-converter
-- name: asset-bundle-registry
-  display_name: Asset Bundle Registry
-  layer: content
-  repository: https://github.com/decentraland/asset-bundle-registry
-- name: atlas-server
-  display_name: Atlas Server
-  layer: feature-servers
-  repository: https://github.com/decentraland/atlas-server
-- name: auth-server
-  display_name: Auth Server
-  layer: feature-servers
-  repository: https://github.com/decentraland/auth-server
-- name: badges
-  display_name: Badges
-  layer: feature-servers
-  repository: https://github.com/decentraland/badges
-- name: block-indexer
-  display_name: Block Indexer Library
-  layer: Shared Libraries
-  repository: https://github.com/decentraland/block-indexer
-- name: builder
-  display_name: Decentraland Builder
-  layer: client
-  repository: https://github.com/decentraland/builder
-- name: builder-client
-  display_name: Builder Client
-  layer: Shared Libraries
-  repository: https://github.com/decentraland/builder-client
-- name: builder-server
-  display_name: Builder Server
-  layer: feature
-  repository: https://github.com/decentraland/builder-server
-- name: camera-reel-service
-  display_name: Camera Reel Service
-  layer: feature-servers
-  repository: https://github.com/decentraland/camera-reel-service
-- name: catalyst
-  display_name: Catalyst
-  layer: content
-  repository: https://github.com/decentraland/catalyst
-- name: catalyst-contracts
-  display_name: Catalyst Contracts Library
-  layer: Shared Libraries
-  repository: https://github.com/decentraland/catalyst-contracts
-- name: catalyst-storage
-  display_name: '@dcl/catalyst-storage'
-  layer: shared-library
-  repository: https://github.com/decentraland/catalyst-storage
-- name: comms-gatekeeper
-  display_name: Comms Gatekeeper
-  layer: real-time
-  repository: https://github.com/decentraland/comms-gatekeeper
-- name: comms-message-sfu
-  display_name: Comms Message SFU
-  layer: real-time
-  repository: https://github.com/decentraland/comms-message-sfu
-- name: content-validator
-  display_name: Content Validator Library
-  layer: Shared Libraries
-  repository: https://github.com/decentraland/content-validator
-- name: core-components
-  display_name: Core Components Library
-  layer: Shared Libraries
-  repository: https://github.com/decentraland/core-components
-- name: creator-hub
-  display_name: Decentraland Creator Hub
-  layer: client
-  repository: https://github.com/decentraland/creator-hub
-- name: credits-server
-  display_name: Credits Server
-  layer: feature-servers
-  repository: https://github.com/decentraland/credits-server
-- name: decentraland-crypto-middleware
-  display_name: Decentraland Crypto Middleware
-  layer: shared-library
-  repository: https://github.com/decentraland/decentraland-crypto-middleware
-- name: deployments-to-sqs
-  display_name: Deployments to SQS
-  layer: feature-servers
-  repository: https://github.com/decentraland/deployments-to-sqs
-- name: events
-  display_name: Community Events
-  layer: Feature Servers Layer
-  repository: https://github.com/decentraland/events
-- name: events-notifier
-  display_name: Events Notifier
-  layer: feature-servers
-  repository: https://github.com/decentraland/events-notifier
-- name: exploration-games
-  display_name: Exploration Games
-  layer: feature-servers
-  repository: https://github.com/decentraland/exploration-games
-- name: gltf-validator-ts
-  display_name: GLTF Validator (TypeScript)
-  layer: library
-  repository: https://github.com/decentraland/gltf-validator-ts
-- name: hashing
-  display_name: '@dcl/hashing'
-  layer: Shared Libraries
-  repository: https://github.com/decentraland/hashing
-- name: js-sdk-toolchain
-  display_name: Decentraland SDK Toolchain
-  layer: library
-  repository: https://github.com/decentraland/js-sdk-toolchain
-- name: lamb2
-  display_name: Lambdas v2
-  layer: content
-  repository: https://github.com/decentraland/lamb2
-- name: linker-server
-  display_name: Linker Server
-  layer: feature-servers
-  repository: https://github.com/decentraland/linker-server
-- name: marketplace-server
-  display_name: Marketplace Server
-  layer: feature-servers
-  repository: https://github.com/decentraland/marketplace-server
-- name: notifications-workers
-  display_name: Notifications Workers
-  layer: feature-servers
-  repository: https://github.com/decentraland/notifications-workers
-- name: platform-crypto-middleware
-  display_name: Platform Authentication Middleware
-  layer: Shared Libraries
-  repository: https://github.com/decentraland/platform-crypto-middleware
-- name: police-server
-  display_name: Police Server
-  layer: real-time
-  repository: https://github.com/decentraland/police-server
-- name: profile-images
-  display_name: Profile Images
-  layer: feature-servers
-  repository: https://github.com/decentraland/profile-images
-- name: prometheus-nats-exporter
-  display_name: Prometheus NATS Exporter
-  layer: Other
-  repository: https://github.com/decentraland/prometheus-nats-exporter
-- name: protocol
-  display_name: Protocol Definitions
-  layer: Shared Libraries
-  repository: https://github.com/decentraland/protocol
-- name: realm-provider
-  display_name: Realm Provider
-  layer: feature-servers
-  repository: https://github.com/decentraland/realm-provider
-- name: reels
-  display_name: Reels Frontend
-  layer: entry-points
-  repository: https://github.com/decentraland/reels
-- name: referral
-  display_name: Reward Services
-  layer: Feature Servers Layer
-  repository: https://github.com/decentraland/referral
-- name: schemas
-  display_name: Decentraland Schemas
-  layer: shared-library
-  repository: https://github.com/decentraland/schemas
-- name: snapshots-fetcher
-  display_name: '@dcl/snapshots-fetcher'
-  layer: shared-library
-  repository: https://github.com/decentraland/snapshots-fetcher
-- name: social-service-ea
-  display_name: Social Service EA
-  layer: feature-servers
-  repository: https://github.com/decentraland/social-service-ea
-- name: unity-explorer
-  display_name: Unity Explorer
-  layer: client
-  repository: https://github.com/decentraland/unity-explorer
-- name: urn-resolver
-  display_name: '@dcl/urn-resolver'
-  layer: shared-library
-  repository: https://github.com/decentraland/urn-resolver
-- name: wearable-preview
-  display_name: Wearable Preview
-  layer: client
-  repository: https://github.com/decentraland/wearable-preview
-- name: world-storage-service
-  display_name: World Storage Service
-  layer: feature-servers
-  repository: https://github.com/decentraland/world-storage-service
-- name: worlds-content-server
-  display_name: Worlds Content Server
-  layer: content
-  repository: https://github.com/decentraland/worlds-content-server
+  - name: account
+    display_name: Decentraland Account
+    layer: feature-servers
+    repository: https://github.com/decentraland/account
+  - name: archipelago-workers
+    display_name: Archipelago Workers
+    layer: entry-points
+    repository: https://github.com/decentraland/archipelago-workers
+  - name: architecture
+    display_name: Decentraland Architecture Diagram
+    layer: Other
+    repository: https://github.com/decentraland/architecture
+  - name: asset-bundle-converter
+    display_name: Asset Bundle Converter
+    layer: content
+    repository: https://github.com/decentraland/asset-bundle-converter
+  - name: asset-bundle-registry
+    display_name: Asset Bundle Registry
+    layer: content
+    repository: https://github.com/decentraland/asset-bundle-registry
+  - name: atlas-server
+    display_name: Atlas Server
+    layer: feature-servers
+    repository: https://github.com/decentraland/atlas-server
+  - name: auth
+    display_name: Decentraland Auth UI
+    layer: feature-servers
+    repository: https://github.com/decentraland/auth
+  - name: auth-server
+    display_name: Auth Server
+    layer: feature-servers
+    repository: https://github.com/decentraland/auth-server
+  - name: badges
+    display_name: Badges
+    layer: feature-servers
+    repository: https://github.com/decentraland/badges
+  - name: block-indexer
+    display_name: Block Indexer Library
+    layer: Shared Libraries
+    repository: https://github.com/decentraland/block-indexer
+  - name: blog-site
+    display_name: Decentraland Blog UI
+    layer: feature-servers
+    repository: https://github.com/decentraland/blog-site
+  - name: builder
+    display_name: Decentraland Builder
+    layer: client
+    repository: https://github.com/decentraland/builder
+  - name: builder-client
+    display_name: Builder Client
+    layer: Shared Libraries
+    repository: https://github.com/decentraland/builder-client
+  - name: builder-server
+    display_name: Builder Server
+    layer: feature
+    repository: https://github.com/decentraland/builder-server
+  - name: camera-reel-service
+    display_name: Camera Reel Service
+    layer: feature-servers
+    repository: https://github.com/decentraland/camera-reel-service
+  - name: catalyst
+    display_name: Catalyst
+    layer: content
+    repository: https://github.com/decentraland/catalyst
+  - name: catalyst-contracts
+    display_name: Catalyst Contracts Library
+    layer: Shared Libraries
+    repository: https://github.com/decentraland/catalyst-contracts
+  - name: catalyst-storage
+    display_name: '@dcl/catalyst-storage'
+    layer: shared-library
+    repository: https://github.com/decentraland/catalyst-storage
+  - name: comms-gatekeeper
+    display_name: Comms Gatekeeper
+    layer: real-time
+    repository: https://github.com/decentraland/comms-gatekeeper
+  - name: comms-message-sfu
+    display_name: Comms Message SFU
+    layer: real-time
+    repository: https://github.com/decentraland/comms-message-sfu
+  - name: content-validator
+    display_name: Content Validator Library
+    layer: Shared Libraries
+    repository: https://github.com/decentraland/content-validator
+  - name: core-components
+    display_name: Core Components Library
+    layer: Shared Libraries
+    repository: https://github.com/decentraland/core-components
+  - name: creator-hub
+    display_name: Decentraland Creator Hub
+    layer: client
+    repository: https://github.com/decentraland/creator-hub
+  - name: credits-server
+    display_name: Credits Server
+    layer: feature-servers
+    repository: https://github.com/decentraland/credits-server
+  - name: dao-landing
+    display_name: Decentraland DAO Landing
+    layer: feature-servers
+    repository: https://github.com/decentraland/dao-landing
+  - name: dapps-template
+    display_name: Decentraland dApps Template
+    layer: feature-servers
+    repository: https://github.com/decentraland/dapps-template
+  - name: decentraland-crypto-middleware
+    display_name: Decentraland Crypto Middleware
+    layer: shared-library
+    repository: https://github.com/decentraland/decentraland-crypto-middleware
+  - name: decentraland-dapps
+    display_name: Decentraland dApps Library
+    layer: feature-servers
+    repository: https://github.com/decentraland/decentraland-dapps
+  - name: decentraland-gatsby
+    display_name: Decentraland Gatsby
+    layer: feature-servers
+    repository: https://github.com/decentraland/decentraland-gatsby
+  - name: deployments-to-sqs
+    display_name: Deployments to SQS
+    layer: feature-servers
+    repository: https://github.com/decentraland/deployments-to-sqs
+  - name: events
+    display_name: Community Events
+    layer: Feature Servers Layer
+    repository: https://github.com/decentraland/events
+  - name: events-notifier
+    display_name: Events Notifier
+    layer: feature-servers
+    repository: https://github.com/decentraland/events-notifier
+  - name: exploration-games
+    display_name: Exploration Games
+    layer: feature-servers
+    repository: https://github.com/decentraland/exploration-games
+  - name: gltf-validator-ts
+    display_name: GLTF Validator (TypeScript)
+    layer: library
+    repository: https://github.com/decentraland/gltf-validator-ts
+  - name: governance
+    display_name: Decentraland DAO Governance
+    layer: feature-servers
+    repository: https://github.com/decentraland/governance
+  - name: governance-ui
+    display_name: Decentraland DAO Governance UI
+    layer: feature-servers
+    repository: https://github.com/decentraland/governance-ui
+  - name: hashing
+    display_name: '@dcl/hashing'
+    layer: Shared Libraries
+    repository: https://github.com/decentraland/hashing
+  - name: js-sdk-toolchain
+    display_name: Decentraland SDK Toolchain
+    layer: library
+    repository: https://github.com/decentraland/js-sdk-toolchain
+  - name: jump-site
+    display_name: Jump In Web (Deep Links)
+    layer: client
+    repository: https://github.com/decentraland/jump-site
+  - name: lamb2
+    display_name: Lambdas v2
+    layer: content
+    repository: https://github.com/decentraland/lamb2
+  - name: landing
+    display_name: Decentraland Homepage
+    layer: client
+    repository: https://github.com/decentraland/landing
+  - name: landing-site
+    display_name: Landing Site (Modern)
+    layer: client
+    repository: https://github.com/decentraland/landing-site
+  - name: linker-server
+    display_name: Linker Server
+    layer: feature-servers
+    repository: https://github.com/decentraland/linker-server
+  - name: marketplace
+    display_name: Decentraland Marketplace (Frontend)
+    layer: client
+    repository: https://github.com/decentraland/marketplace
+  - name: marketplace-server
+    display_name: Marketplace Server
+    layer: feature-servers
+    repository: https://github.com/decentraland/marketplace-server
+  - name: notifications-workers
+    display_name: Notifications Workers
+    layer: feature-servers
+    repository: https://github.com/decentraland/notifications-workers
+  - name: places
+    display_name: Decentraland Places Service
+    layer: feature
+    repository: https://github.com/decentraland/places
+  - name: platform-crypto-middleware
+    display_name: Platform Authentication Middleware
+    layer: Shared Libraries
+    repository: https://github.com/decentraland/platform-crypto-middleware
+  - name: police-server
+    display_name: Police Server
+    layer: real-time
+    repository: https://github.com/decentraland/police-server
+  - name: profile
+    display_name: Decentraland Profile UI
+    layer: client
+    repository: https://github.com/decentraland/profile
+  - name: profile-images
+    display_name: Profile Images
+    layer: feature-servers
+    repository: https://github.com/decentraland/profile-images
+  - name: prometheus-nats-exporter
+    display_name: Prometheus NATS Exporter
+    layer: Other
+    repository: https://github.com/decentraland/prometheus-nats-exporter
+  - name: protocol
+    display_name: Protocol Definitions
+    layer: Shared Libraries
+    repository: https://github.com/decentraland/protocol
+  - name: realm-provider
+    display_name: Realm Provider
+    layer: feature-servers
+    repository: https://github.com/decentraland/realm-provider
+  - name: reels
+    display_name: Reels Frontend
+    layer: entry-points
+    repository: https://github.com/decentraland/reels
+  - name: referral
+    display_name: Reward Services
+    layer: Feature Servers Layer
+    repository: https://github.com/decentraland/referral
+  - name: schemas
+    display_name: Decentraland Schemas
+    layer: shared-library
+    repository: https://github.com/decentraland/schemas
+  - name: snapshots-fetcher
+    display_name: '@dcl/snapshots-fetcher'
+    layer: shared-library
+    repository: https://github.com/decentraland/snapshots-fetcher
+  - name: social
+    display_name: Decentraland Social dApp
+    layer: client
+    repository: https://github.com/decentraland/social
+  - name: social-service-ea
+    display_name: Social Service EA
+    layer: feature-servers
+    repository: https://github.com/decentraland/social-service-ea
+  - name: ui
+    display_name: Decentraland UI (Legacy)
+    layer: library
+    repository: https://github.com/decentraland/ui
+  - name: ui2
+    display_name: Decentraland UI v2
+    layer: library
+    repository: https://github.com/decentraland/ui2
+  - name: unity-explorer
+    display_name: Unity Explorer
+    layer: client
+    repository: https://github.com/decentraland/unity-explorer
+  - name: urn-resolver
+    display_name: '@dcl/urn-resolver'
+    layer: shared-library
+    repository: https://github.com/decentraland/urn-resolver
+  - name: wearable-preview
+    display_name: Wearable Preview
+    layer: client
+    repository: https://github.com/decentraland/wearable-preview
+  - name: world-storage-service
+    display_name: World Storage Service
+    layer: feature-servers
+    repository: https://github.com/decentraland/world-storage-service
+  - name: worlds-content-server
+    display_name: Worlds Content Server
+    layer: content
+    repository: https://github.com/decentraland/worlds-content-server
 edges:
-- from: archipelago-workers
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Content server for fetching scene entities and hot scenes data (used
-    by stats service)
-- from: asset-bundle-converter
-  to: asset-bundle-registry
-  relationship: async
-  protocol: SNS/SQS
-  description: Notifies when conversions complete via SNS events
-- from: asset-bundle-converter
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Fetches original entity content for conversion
-- from: asset-bundle-converter
-  to: deployments-to-sqs
-  relationship: async
-  protocol: SNS/SQS
-  description: Receives deployment events to trigger conversions
-- from: asset-bundle-registry
-  to: asset-bundle-converter
-  relationship: async
-  protocol: SNS/SQS
-  description: Receives AssetBundleConversionFinished events to update optimization
-    status
-- from: asset-bundle-registry
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Fetches entity metadata and validates deployments, periodically syncs
-    profiles
-- from: asset-bundle-registry
-  to: deployments-to-sqs
-  relationship: async
-  protocol: SNS/SQS
-  description: Receives deployment events to track new entity deployments
-- from: asset-bundle-registry
-  to: worlds-content-server
-  relationship: both
-  protocol: HTTP
-  description: Receives world deployment events via SNS/SQS and fetches world metadata
-- from: atlas-server
-  to: signatures-server
-  relationship: sync
-  protocol: HTTP
-  description: Rentals signature validation
-- from: badges
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Fetches user profiles and entity data for badge verification
-- from: badges
-  to: deployments-to-sqs
-  relationship: async
-  protocol: SNS/SQS
-  description: Receives deployment events from Catalyst for deployment-related badges
-- from: badges
-  to: events-notifier
-  relationship: async
-  protocol: SNS/SQS
-  description: Receives events from explorer and blockchain to trigger badge evaluation
-- from: badges
-  to: notifications-workers
-  relationship: async
-  protocol: SNS/SQS
-  description: Delivers badge-granted notifications to users
-- from: builder
-  to: builder-server
-  relationship: sync
-  protocol: HTTP
-  description: Store and retrieve projects, items, collections, asset packs, and deployment
-    records
-- from: builder
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Deploy scenes to Genesis City LAND parcels, fetch profile data, retrieve
-    content entities
-- from: builder
-  to: credits-server
-  relationship: sync
-  protocol: HTTP
-  description: Query and manage user credits for publishing fees
-- from: builder
-  to: marketplace-server
-  relationship: sync
-  protocol: HTTP
-  description: Retrieve marketplace items on sale, query order and transaction data
-- from: builder
-  to: worlds-content-server
-  relationship: sync
-  protocol: HTTP
-  description: Deploy scenes to personal Worlds, manage World settings and permissions,
-    fetch World metadata
-- from: builder-client
-  to: builder-server
-  relationship: sync
-  protocol: HTTP
-  description: Primary backend for all item, collection, third-party, NFT, and content
-    operations
-- from: builder-server
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Content server for deployed scenes and wearables, fetch entity data
-- from: catalyst
-  to: archipelago-workers
-  relationship: both
-  protocol: WebSocket
-  description: Peer clustering and island management for communications
-- from: comms-gatekeeper
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Fetches scene metadata from content server and validates DCL name ownership
-    via Lambdas
-- from: comms-gatekeeper
-  to: notifications-workers
-  relationship: sync
-  protocol: HTTP
-  description: Sends notifications to scene admins for streaming and moderation events
-- from: comms-gatekeeper
-  to: places-api
-  relationship: sync
-  protocol: HTTP
-  description: Enriches scene and world information with place metadata and status
-- from: comms-gatekeeper
-  to: social-service-ea
-  relationship: sync
-  protocol: HTTP
-  description: Retrieves user privacy settings for voice chat and communication
-- from: comms-gatekeeper
-  to: worlds-content-server
-  relationship: sync
-  protocol: HTTP
-  description: Fetches world permissions, scene data, and validates world access controls
-- from: comms-message-sfu
-  to: comms-gatekeeper
-  relationship: sync
-  protocol: HTTP
-  description: Provides LiveKit tokens for SFU replica authentication
-- from: comms-message-sfu
-  to: social-service-ea
-  relationship: sync
-  protocol: HTTP
-  description: Accesses social-service-ea PostgreSQL database directly to validate
-    community membership and resolve active members
-- from: creator-hub
-  to: asset-bundle-registry
-  relationship: sync
-  protocol: HTTP
-  description: Fetch asset bundle URLs for scene preview and deployment status
-- from: creator-hub
-  to: atlas-server
-  relationship: sync
-  protocol: HTTP
-  description: Fetch map tiles and land parcel data for scene placement visualization
-- from: creator-hub
-  to: auth-server
-  relationship: sync
-  protocol: HTTP
-  description: User authentication and identity validation via SSO
-- from: creator-hub
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Deploy scenes to Genesis City parcels, fetch available catalyst servers
-    via dcl-catalyst-client
-- from: creator-hub
-  to: social-service-ea
-  relationship: sync
-  protocol: HTTP
-  description: Fetch user communities for world access permissions and community-based
-    deployment authorization
-- from: creator-hub
-  to: worlds-content-server
-  relationship: sync
-  protocol: HTTP
-  description: Deploy scenes to named worlds, manage world settings and permissions,
-    fetch world metadata and scenes
-- from: credits-server
-  to: archipelago-workers
-  relationship: sync
-  protocol: HTTP
-  description: Queries peer presence for scene visit verification
-- from: credits-server
-  to: events
-  relationship: sync
-  protocol: HTTP
-  description: Fetches Decentraland events for event-attendance goals
-- from: decentraland-crypto-middleware
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Validates EIP-1654 smart contract wallet signatures via /lambdas/crypto/validate-signature
-    endpoint
-- from: deployments-to-sqs
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Polls for new deployments
-- from: events
-  to: badges
-  relationship: async
-  protocol: SNS/SQS
-  description: Trigger badge-related events via SNS/SQS for event attendance achievements
-- from: events
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Fetch world information, place resolution, and validate Genesis City
-    coordinates
-- from: events
-  to: events-notifier
-  relationship: async
-  protocol: SNS/SQS
-  description: Schedule and trigger notifications for upcoming, started, and ended
-    events
-- from: events
-  to: notifications-workers
-  relationship: async
-  protocol: SNS/SQS
-  description: Process and send event notification messages via SNS/SQS
-- from: events
-  to: social-service-ea
-  relationship: sync
-  protocol: HTTP
-  description: Validate community membership for community-associated events
-- from: events
-  to: worlds-content-server
-  relationship: sync
-  protocol: HTTP
-  description: Retrieve world information for world-based events
-- from: exploration-games
-  to: reward-server
-  relationship: sync
-  protocol: HTTP
-  description: Distribute rewards for game completion and achievements
-- from: lamb2
-  to: archipelago-workers
-  relationship: sync
-  protocol: HTTP
-  description: Status and realm information
-- from: lamb2
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Fetches entity data from content server
-- from: linker-server
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Proxies content deployments
-- from: marketplace-server
-  to: signatures-server
-  relationship: sync
-  protocol: HTTP
-  description: Third-party signature validation service
-- from: notifications-workers
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Fetches user profiles and avatars via lambdas client
-- from: notifications-workers
-  to: events-notifier
-  relationship: async
-  protocol: SNS/SQS
-  description: Receives notification events
-- from: profile-images
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Polls for profile deployments
-- from: prometheus-nats-exporter
-  to: NATS Server
-  relationship: sync
-  protocol: HTTP
-  description: Collect metrics from NATS messaging server
-- from: realm-provider
-  to: archipelago-workers
-  relationship: both
-  protocol: HTTP
-  description: MAIN realm status and configuration (stats and ws-connector services)
-- from: realm-provider
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Queries Catalyst nodes for scene entities and realm information
-- from: reels
-  to: camera-reel-service
-  relationship: sync
-  protocol: HTTP
-  description: Fetch snapshot metadata, image URLs, and user gallery listings
-- from: reels
-  to: urn-resolver
-  relationship: sync
-  protocol: HTTP
-  description: Resolve wearable URNs to displayable metadata for visible people in
-    snapshots
-- from: referral
-  to: archipelago-workers
-  relationship: sync
-  protocol: HTTP
-  description: Validate user realm connectivity and position requirements
-- from: referral
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Fetch wearable metadata and NFT collection information
-- from: snapshots-fetcher
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Fetch entity snapshots, pointer-changes stream, and download entity
-    content files
-- from: social-service-ea
-  to: archipelago-workers
-  relationship: sync
-  protocol: HTTP
-  description: User presence and online status from stats service
-- from: social-service-ea
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: User profiles and avatar data via Lambdas
-- from: social-service-ea
-  to: comms-gatekeeper
-  relationship: sync
-  protocol: HTTP
-  description: Voice chat token generation and room management
-- from: social-service-ea
-  to: notifications-workers
-  relationship: sync
-  protocol: HTTP
-  description: Email notifications for social events
-- from: social-service-ea
-  to: places-api
-  relationship: sync
-  protocol: HTTP
-  description: Scene and world place information
-- from: social-service-ea
-  to: rewards-server
-  relationship: sync
-  protocol: HTTP
-  description: Send rewards for referral campaigns
-- from: unity-explorer
-  to: archipelago-workers
-  relationship: both
-  protocol: WebSocket
-  description: Connect to archipelago for peer clustering, island assignment, and
-    peer status tracking
-- from: unity-explorer
-  to: asset-bundle-registry
-  relationship: sync
-  protocol: HTTP
-  description: Retrieve pre-processed asset bundles, profiles, and entity metadata
-    for optimized content loading
-- from: unity-explorer
-  to: auth-server
-  relationship: sync
-  protocol: HTTP
-  description: Authenticate users and obtain session tokens via Dapp Web3 authentication
-- from: unity-explorer
-  to: badges
-  relationship: sync
-  protocol: HTTP
-  description: Fetch user badges and achievements
-- from: unity-explorer
-  to: camera-reel-service
-  relationship: sync
-  protocol: HTTP
-  description: Upload screenshots and fetch camera reel data for social sharing
-- from: unity-explorer
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Fetch scene entities, content, profiles, and lambdas for Decentraland
-    Genesis City
-- from: unity-explorer
-  to: comms-gatekeeper
-  relationship: sync
-  protocol: HTTP
-  description: Obtain scene and room adapter configuration for LiveKit communications
-- from: unity-explorer
-  to: credits-server
-  relationship: sync
-  protocol: HTTP
-  description: Fetch marketplace credits and transaction data
-- from: unity-explorer
-  to: events-notifier
-  relationship: sync
-  protocol: HTTP
-  description: Retrieve Decentraland events data for events calendar
-- from: unity-explorer
-  to: marketplace-server
-  relationship: sync
-  protocol: HTTP
-  description: Access NFT marketplace data and user inventory
-- from: unity-explorer
-  to: notifications-workers
-  relationship: sync
-  protocol: HTTP
-  description: Fetch user notifications and alerts
-- from: unity-explorer
-  to: realm-provider
-  relationship: sync
-  protocol: HTTP
-  description: Discover available realms and obtain Genesis City realm configuration
-- from: unity-explorer
-  to: social-service-ea
-  relationship: both
-  protocol: WebSocket
-  description: Manage friends, communities, social interactions, and user profiles
-    via WebSocket RPC
-- from: unity-explorer
-  to: worlds-content-server
-  relationship: sync
-  protocol: HTTP
-  description: Fetch world entities, permissions, and content for Decentraland Worlds
-- from: wearable-preview
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Fetch wearable/emote entities, avatar profiles, and content files by
-    URN or wallet address
-- from: wearable-preview
-  to: marketplace-server
-  relationship: sync
-  protocol: HTTP
-  description: Retrieve item and NFT metadata by contract address and item/token ID
-- from: world-storage-service
-  to: worlds-content-server
-  relationship: sync
-  protocol: HTTP
-  description: Validates world ownership and deployer permissions
-- from: worlds-content-server
-  to: comms-gatekeeper
-  relationship: sync
-  protocol: HTTP
-  description: Checks if users are banned from specific scenes in worlds
-- from: worlds-content-server
-  to: notifications-workers
-  relationship: sync
-  protocol: HTTP
-  description: Sends notifications to users (optional)
-- from: worlds-content-server
-  to: social-service-ea
-  relationship: sync
-  protocol: HTTP
-  description: Validates community membership for world access control
+  - from: account
+    to: marketplace-server
+    relationship: sync
+    protocol: HTTP
+    description: Fetch marketplace data and user assets
+  - from: account
+    to: transactions-api
+    relationship: sync
+    protocol: HTTP
+    description: Retrieve transaction history and status
+  - from: archipelago-workers
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Content server for fetching scene entities and hot scenes data (used by stats service)
+  - from: asset-bundle-converter
+    to: asset-bundle-registry
+    relationship: async
+    protocol: SNS/SQS
+    description: Notifies when conversions complete via SNS events
+  - from: asset-bundle-converter
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetches original entity content for conversion
+  - from: asset-bundle-converter
+    to: deployments-to-sqs
+    relationship: async
+    protocol: SNS/SQS
+    description: Receives deployment events to trigger conversions
+  - from: asset-bundle-registry
+    to: asset-bundle-converter
+    relationship: async
+    protocol: SNS/SQS
+    description: Receives AssetBundleConversionFinished events to update optimization status
+  - from: asset-bundle-registry
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetches entity metadata and validates deployments, periodically syncs profiles
+  - from: asset-bundle-registry
+    to: deployments-to-sqs
+    relationship: async
+    protocol: SNS/SQS
+    description: Receives deployment events to track new entity deployments
+  - from: asset-bundle-registry
+    to: worlds-content-server
+    relationship: both
+    protocol: HTTP
+    description: Receives world deployment events via SNS/SQS and fetches world metadata
+  - from: atlas-server
+    to: signatures-server
+    relationship: sync
+    protocol: HTTP
+    description: Rentals signature validation
+  - from: auth
+    to: auth-server
+    relationship: both
+    protocol: WebSocket
+    description: Receive authentication requests and relay wallet execution results
+  - from: auth
+    to: auth-server
+    relationship: sync
+    protocol: HTTP
+    description: HTTP polling alternative for authentication requests
+  - from: auth
+    to: builder-server
+    relationship: sync
+    protocol: HTTP
+    description: Fetch wearable and asset data for avatar setup
+  - from: auth
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetch and update user profiles and avatars
+  - from: auth
+    to: events-notifier
+    relationship: sync
+    protocol: HTTP
+    description: Track user onboarding events
+  - from: auth
+    to: social-service-ea
+    relationship: sync
+    protocol: HTTP
+    description: Referral system integration
+  - from: auth
+    to: transactions-api
+    relationship: sync
+    protocol: HTTP
+    description: Meta-transaction support for gasless transactions
+  - from: badges
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetches user profiles and entity data for badge verification
+  - from: badges
+    to: deployments-to-sqs
+    relationship: async
+    protocol: SNS/SQS
+    description: Receives deployment events from Catalyst for deployment-related badges
+  - from: badges
+    to: events-notifier
+    relationship: async
+    protocol: SNS/SQS
+    description: Receives events from explorer and blockchain to trigger badge evaluation
+  - from: badges
+    to: notifications-workers
+    relationship: async
+    protocol: SNS/SQS
+    description: Delivers badge-granted notifications to users
+  - from: blog-site
+    to: auth
+    relationship: sync
+    protocol: HTTP
+    description: Login flow and authentication redirects
+  - from: blog-site
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetch user profile information
+  - from: builder
+    to: builder-server
+    relationship: sync
+    protocol: HTTP
+    description: Store and retrieve projects, items, collections, asset packs, and deployment records
+  - from: builder
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Deploy scenes to Genesis City LAND parcels, fetch profile data, retrieve content entities
+  - from: builder
+    to: credits-server
+    relationship: sync
+    protocol: HTTP
+    description: Query and manage user credits for publishing fees
+  - from: builder
+    to: marketplace-server
+    relationship: sync
+    protocol: HTTP
+    description: Retrieve marketplace items on sale, query order and transaction data
+  - from: builder
+    to: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+    description: Deploy scenes to personal Worlds, manage World settings and permissions, fetch World metadata
+  - from: builder-client
+    to: builder-server
+    relationship: sync
+    protocol: HTTP
+    description: Primary backend for all item, collection, third-party, NFT, and content operations
+  - from: builder-server
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Content server for deployed scenes and wearables, fetch entity data
+  - from: catalyst
+    to: archipelago-workers
+    relationship: both
+    protocol: WebSocket
+    description: Peer clustering and island management for communications
+  - from: comms-gatekeeper
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetches scene metadata from content server and validates DCL name ownership via Lambdas
+  - from: comms-gatekeeper
+    to: notifications-workers
+    relationship: sync
+    protocol: HTTP
+    description: Sends notifications to scene admins for streaming and moderation events
+  - from: comms-gatekeeper
+    to: places-api
+    relationship: sync
+    protocol: HTTP
+    description: Enriches scene and world information with place metadata and status
+  - from: comms-gatekeeper
+    to: social-service-ea
+    relationship: sync
+    protocol: HTTP
+    description: Retrieves user privacy settings for voice chat and communication
+  - from: comms-gatekeeper
+    to: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+    description: Fetches world permissions, scene data, and validates world access controls
+  - from: comms-message-sfu
+    to: social-service-ea
+    relationship: sync
+    protocol: HTTP
+    description: Accesses social-service-ea PostgreSQL database directly to validate community membership and resolve active members
+  - from: creator-hub
+    to: asset-bundle-registry
+    relationship: sync
+    protocol: HTTP
+    description: Fetch asset bundle URLs for scene preview and deployment status
+  - from: creator-hub
+    to: atlas-server
+    relationship: sync
+    protocol: HTTP
+    description: Fetch map tiles and land parcel data for scene placement visualization
+  - from: creator-hub
+    to: auth-server
+    relationship: sync
+    protocol: HTTP
+    description: User authentication and identity validation via SSO
+  - from: creator-hub
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Deploy scenes to Genesis City parcels, fetch available catalyst servers via dcl-catalyst-client
+  - from: creator-hub
+    to: social-service-ea
+    relationship: sync
+    protocol: HTTP
+    description: Fetch user communities for world access permissions and community-based deployment authorization
+  - from: creator-hub
+    to: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+    description: Deploy scenes to named worlds, manage world settings and permissions, fetch world metadata and scenes
+  - from: credits-server
+    to: archipelago-workers
+    relationship: sync
+    protocol: HTTP
+    description: Queries peer presence for scene visit verification
+  - from: credits-server
+    to: events
+    relationship: sync
+    protocol: HTTP
+    description: Fetches Decentraland events for event-attendance goals
+  - from: dao-landing
+    to: auth
+    relationship: sync
+    protocol: HTTP
+    description: User authentication redirects
+  - from: dao-landing
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetch user profile information
+  - from: dao-landing
+    to: credits-server
+    relationship: sync
+    protocol: HTTP
+    description: Credits and payment integration
+  - from: dao-landing
+    to: governance
+    relationship: sync
+    protocol: HTTP
+    description: Fetch proposals, projects, vesting data, and voting power distribution
+  - from: decentraland-crypto-middleware
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Validates EIP-1654 smart contract wallet signatures via /lambdas/crypto/validate-signature endpoint
+  - from: deployments-to-sqs
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Polls for new deployments
+  - from: events
+    to: badges
+    relationship: async
+    protocol: SNS/SQS
+    description: Trigger badge-related events via SNS/SQS for event attendance achievements
+  - from: events
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetch world information, place resolution, and validate Genesis City coordinates
+  - from: events
+    to: events-notifier
+    relationship: async
+    protocol: SNS/SQS
+    description: Schedule and trigger notifications for upcoming, started, and ended events
+  - from: events
+    to: notifications-workers
+    relationship: async
+    protocol: SNS/SQS
+    description: Process and send event notification messages via SNS/SQS
+  - from: events
+    to: social-service-ea
+    relationship: sync
+    protocol: HTTP
+    description: Validate community membership for community-associated events
+  - from: events
+    to: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+    description: Retrieve world information for world-based events
+  - from: exploration-games
+    to: reward-server
+    relationship: sync
+    protocol: HTTP
+    description: Distribute rewards for game completion and achievements
+  - from: governance-ui
+    to: governance
+    relationship: sync
+    protocol: HTTP
+    description: All proposal, vote, and grant data operations
+  - from: jump-site
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetch scene entities, deployment data, and user profiles for Genesis City locations
+  - from: jump-site
+    to: places
+    relationship: sync
+    protocol: HTTP
+    description: Fetch place data for Genesis City locations by coordinates or world names
+  - from: jump-site
+    to: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+    description: Fetch world metadata and about information for .eth domain worlds
+  - from: lamb2
+    to: archipelago-workers
+    relationship: sync
+    protocol: HTTP
+    description: Status and realm information
+  - from: lamb2
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetches entity data from content server
+  - from: landing
+    to: events
+    relationship: sync
+    protocol: HTTP
+    description: Fetch upcoming events to display on the homepage
+  - from: landing
+    to: rewards
+    relationship: sync
+    protocol: HTTP
+    description: Manage reward campaigns and wearable dispensers for event-based promotions
+  - from: landing-site
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetch user avatar profiles from peer lambdas endpoint
+  - from: linker-server
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Proxies content deployments
+  - from: marketplace
+    to: atlas-server
+    relationship: sync
+    protocol: HTTP
+    description: Fetch LAND parcel coordinates, estate information, and map data
+  - from: marketplace
+    to: builder
+    relationship: sync
+    protocol: HTTP
+    description: Access builder API for scene and wearable information
+  - from: marketplace
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetch user profiles, avatar data, wearable metadata, and content entities
+  - from: marketplace
+    to: credits-server
+    relationship: sync
+    protocol: HTTP
+    description: Manage Decentraland credits and credit-based purchases
+  - from: marketplace
+    to: marketplace-server
+    relationship: sync
+    protocol: HTTP
+    description: Fetch NFT data, orders, bids, sales, rentals, collections, and contracts indexed from blockchain
+  - from: marketplace
+    to: signatures-api
+    relationship: sync
+    protocol: HTTP
+    description: Manage cryptographic signatures for authenticated requests
+  - from: marketplace
+    to: transactions-api
+    relationship: sync
+    protocol: HTTP
+    description: Track transaction history and status
+  - from: marketplace-server
+    to: signatures-server
+    relationship: sync
+    protocol: HTTP
+    description: Third-party signature validation service
+  - from: notifications-workers
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetches user profiles and avatars via lambdas client
+  - from: notifications-workers
+    to: events-notifier
+    relationship: async
+    protocol: SNS/SQS
+    description: Receives notification events
+  - from: places
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetch scene entity metadata and deployment information when processing SQS messages
+  - from: places
+    to: deployments-to-sqs
+    relationship: async
+    protocol: SNS/SQS
+    description: Receive deployment notifications for scenes and worlds via SQS messages
+  - from: places
+    to: realm-provider
+    relationship: sync
+    protocol: HTTP
+    description: Fetch real-time hot scenes data with active user counts from Catalyst realms
+  - from: places
+    to: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+    description: Fetch world metadata and deployment information when processing SQS messages
+  - from: profile
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetch and update user avatar profiles via peer lambdas endpoint
+  - from: profile
+    to: credits-server
+    relationship: sync
+    protocol: HTTP
+    description: Query user's credit balance and credit-related information
+  - from: profile
+    to: marketplace-server
+    relationship: sync
+    protocol: HTTP
+    description: Query owned NFTs, wearables, and emotes for the user
+  - from: profile
+    to: social-api
+    relationship: sync
+    protocol: HTTP
+    description: Manage referral program progress and referral email submission
+  - from: profile
+    to: social-service-ea
+    relationship: sync
+    protocol: gRPC
+    description: Manage friend relationships, friendship requests, and social interactions via gRPC/WebSocket RPC
+  - from: profile
+    to: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+    description: Fetch user's world information and world metadata
+  - from: profile-images
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Polls for profile deployments
+  - from: prometheus-nats-exporter
+    to: NATS Server
+    relationship: sync
+    protocol: HTTP
+    description: Collect metrics from NATS messaging server
+  - from: realm-provider
+    to: archipelago-workers
+    relationship: both
+    protocol: HTTP
+    description: MAIN realm status and configuration (stats and ws-connector services)
+  - from: realm-provider
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Queries Catalyst nodes for scene entities and realm information
+  - from: reels
+    to: camera-reel-service
+    relationship: sync
+    protocol: HTTP
+    description: Fetch snapshot metadata, image URLs, and user gallery listings
+  - from: reels
+    to: urn-resolver
+    relationship: sync
+    protocol: HTTP
+    description: Resolve wearable URNs to displayable metadata for visible people in snapshots
+  - from: referral
+    to: archipelago-workers
+    relationship: sync
+    protocol: HTTP
+    description: Validate user realm connectivity and position requirements
+  - from: referral
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetch wearable metadata and NFT collection information
+  - from: snapshots-fetcher
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetch entity snapshots, pointer-changes stream, and download entity content files
+  - from: social
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetch user profile and avatar data via peer lambdas
+  - from: social
+    to: credits-server
+    relationship: sync
+    protocol: HTTP
+    description: Query user credit balances and credit-related information
+  - from: social
+    to: events
+    relationship: sync
+    protocol: HTTP
+    description: Fetch community events and activities
+  - from: social
+    to: social-service-ea
+    relationship: sync
+    protocol: HTTP
+    description: Fetch and manage community data, memberships, and join requests via REST API
+  - from: social-service-ea
+    to: archipelago-workers
+    relationship: sync
+    protocol: HTTP
+    description: User presence and online status from stats service
+  - from: social-service-ea
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: User profiles and avatar data via Lambdas
+  - from: social-service-ea
+    to: comms-gatekeeper
+    relationship: sync
+    protocol: HTTP
+    description: Voice chat token generation and room management
+  - from: social-service-ea
+    to: notifications-workers
+    relationship: sync
+    protocol: HTTP
+    description: Email notifications for social events
+  - from: social-service-ea
+    to: places-api
+    relationship: sync
+    protocol: HTTP
+    description: Scene and world place information
+  - from: social-service-ea
+    to: rewards-server
+    relationship: sync
+    protocol: HTTP
+    description: Send rewards for referral campaigns
+  - from: unity-explorer
+    to: archipelago-workers
+    relationship: both
+    protocol: WebSocket
+    description: Connect to archipelago for peer clustering, island assignment, and peer status tracking
+  - from: unity-explorer
+    to: asset-bundle-registry
+    relationship: sync
+    protocol: HTTP
+    description: Retrieve pre-processed asset bundles, profiles, and entity metadata for optimized content loading
+  - from: unity-explorer
+    to: auth-server
+    relationship: sync
+    protocol: HTTP
+    description: Authenticate users and obtain session tokens via Dapp Web3 authentication
+  - from: unity-explorer
+    to: badges
+    relationship: sync
+    protocol: HTTP
+    description: Fetch user badges and achievements
+  - from: unity-explorer
+    to: camera-reel-service
+    relationship: sync
+    protocol: HTTP
+    description: Upload screenshots and fetch camera reel data for social sharing
+  - from: unity-explorer
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetch scene entities, content, profiles, and lambdas for Decentraland Genesis City
+  - from: unity-explorer
+    to: comms-gatekeeper
+    relationship: sync
+    protocol: HTTP
+    description: Obtain scene and room adapter configuration for LiveKit communications
+  - from: unity-explorer
+    to: credits-server
+    relationship: sync
+    protocol: HTTP
+    description: Fetch marketplace credits and transaction data
+  - from: unity-explorer
+    to: events-notifier
+    relationship: sync
+    protocol: HTTP
+    description: Retrieve Decentraland events data for events calendar
+  - from: unity-explorer
+    to: marketplace-server
+    relationship: sync
+    protocol: HTTP
+    description: Access NFT marketplace data and user inventory
+  - from: unity-explorer
+    to: notifications-workers
+    relationship: sync
+    protocol: HTTP
+    description: Fetch user notifications and alerts
+  - from: unity-explorer
+    to: realm-provider
+    relationship: sync
+    protocol: HTTP
+    description: Discover available realms and obtain Genesis City realm configuration
+  - from: unity-explorer
+    to: social-service-ea
+    relationship: both
+    protocol: WebSocket
+    description: Manage friends, communities, social interactions, and user profiles via WebSocket RPC
+  - from: unity-explorer
+    to: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+    description: Fetch world entities, permissions, and content for Decentraland Worlds
+  - from: wearable-preview
+    to: catalyst
+    relationship: sync
+    protocol: HTTP
+    description: Fetch wearable/emote entities, avatar profiles, and content files by URN or wallet address
+  - from: wearable-preview
+    to: marketplace-server
+    relationship: sync
+    protocol: HTTP
+    description: Retrieve item and NFT metadata by contract address and item/token ID
+  - from: world-storage-service
+    to: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+    description: Validates world ownership and deployer permissions
+  - from: worlds-content-server
+    to: comms-gatekeeper
+    relationship: sync
+    protocol: HTTP
+    description: Checks if users are banned from specific scenes in worlds
+  - from: worlds-content-server
+    to: notifications-workers
+    relationship: sync
+    protocol: HTTP
+    description: Sends notifications to users (optional)
+  - from: worlds-content-server
+    to: social-service-ea
+    relationship: sync
+    protocol: HTTP
+    description: Validates community membership for world access control
 event_flows:
-- publisher: archipelago-workers
-  event_name: island_changed
-  channel: engine.peer.${peerId}.island_changed
-  consumers: []
-- publisher: archipelago-workers
-  event_name: island_status
-  channel: engine.islands
-  consumers: []
-- publisher: archipelago-workers
-  event_name: service_discovery
-  channel: engine.discovery
-  consumers: []
-- publisher: asset-bundle-converter
-  event_name: AssetBundleConversionFinished
-  channel: AWS SNS
-  consumers:
-  - asset-bundle-registry
-- publisher: asset-bundle-converter
-  event_name: AssetBundleConversionManuallyQueued
-  channel: AWS SNS
-  consumers: []
-- publisher: badges
-  event_name: badge-granted
-  channel: AWS SNS
-  consumers: []
-- publisher: camera-reel-service
-  event_name: image_uploaded
-  channel: AWS SNS
-  consumers: []
-- publisher: catalyst
-  event_name: entity_deployed
-  channel: internal (consumed by deployments-to-sqs)
-  consumers: []
-- publisher: catalyst
-  event_name: entity_deployed
-  channel: internal
-  consumers:
-  - deployments-to-sqs
-- publisher: comms-gatekeeper
-  event_name: streaming_access_granted
-  channel: AWS SNS
-  consumers: []
-- publisher: deployments-to-sqs
-  event_name: entity_deployed
-  channel: deployments-sns-${env}
-  consumers: []
-- publisher: events
-  event_name: event.approved
-  channel: AWS SNS
-  consumers: []
-- publisher: events
-  event_name: event.attendance.added
-  channel: AWS SNS
-  consumers: []
-- publisher: events
-  event_name: event.created
-  channel: AWS SNS
-  consumers: []
-- publisher: events
-  event_name: event.rejected
-  channel: AWS SNS
-  consumers: []
-- publisher: events
-  event_name: event.updated
-  channel: AWS SNS
-  consumers: []
-- publisher: events
-  event_name: notification.event.ended
-  channel: AWS SNS
-  consumers: []
-- publisher: events
-  event_name: notification.event.started
-  channel: AWS SNS
-  consumers: []
-- publisher: events
-  event_name: notification.event.upcoming
-  channel: AWS SNS
-  consumers: []
-- publisher: events-notifier
-  event_name: bid_accepted
-  channel: AWS SNS
-  consumers: []
-- publisher: events-notifier
-  event_name: item_sold
-  channel: AWS SNS
-  consumers: []
-- publisher: events-notifier
-  event_name: rental_started
-  channel: AWS SNS
-  consumers: []
-- publisher: events-notifier
-  event_name: royalties_earned
-  channel: AWS SNS
-  consumers: []
-- publisher: marketplace-server
-  event_name: trade_created
-  channel: AWS SNS
-  consumers: []
-- publisher: referral
-  event_name: reward.assigned
-  channel: AWS SNS
-  consumers: []
-- publisher: referral
-  event_name: reward.claimed
-  channel: AWS SNS
-  consumers: []
-- publisher: referral
-  event_name: transaction.failed
-  channel: AWS SNS
-  consumers: []
-- publisher: referral
-  event_name: transaction.success
-  channel: AWS SNS
-  consumers: []
-- publisher: social-service-ea
-  event_name: friendship_created
-  channel: NATS
-  consumers: []
-- publisher: wearable-preview
-  event_name: PreviewMessageType.CONTROLLER_RESPONSE
-  channel: postMessage
-  consumers: []
-- publisher: wearable-preview
-  event_name: PreviewMessageType.EMOTE_EVENT
-  channel: postMessage
-  consumers: []
-- publisher: wearable-preview
-  event_name: PreviewMessageType.ERROR
-  channel: postMessage
-  consumers: []
-- publisher: wearable-preview
-  event_name: PreviewMessageType.LOAD
-  channel: postMessage
-  consumers: []
-- publisher: worlds-content-server
-  event_name: world_deployed
-  channel: Internal (consumed by asset-bundle-registry)
-  consumers: []
+  - publisher: archipelago-workers
+    event_name: island_changed
+    channel: engine.peer.${peerId}.island_changed
+    consumers: []
+  - publisher: archipelago-workers
+    event_name: island_status
+    channel: engine.islands
+    consumers: []
+  - publisher: archipelago-workers
+    event_name: service_discovery
+    channel: engine.discovery
+    consumers: []
+  - publisher: asset-bundle-converter
+    event_name: AssetBundleConversionFinished
+    channel: AWS SNS
+    consumers: []
+  - publisher: asset-bundle-converter
+    event_name: AssetBundleConversionManuallyQueued
+    channel: AWS SNS
+    consumers: []
+  - publisher: badges
+    event_name: badge-granted
+    channel: AWS SNS
+    consumers: []
+  - publisher: camera-reel-service
+    event_name: image_uploaded
+    channel: AWS SNS
+    consumers: []
+  - publisher: catalyst
+    event_name: entity_deployed
+    channel: internal (consumed by deployments-to-sqs)
+    consumers: []
+  - publisher: comms-gatekeeper
+    event_name: streaming_access_granted
+    channel: AWS SNS
+    consumers: []
+  - publisher: deployments-to-sqs
+    event_name: entity_deployed
+    channel: deployments-sns-${env}
+    consumers: []
+  - publisher: events
+    event_name: event.approved
+    channel: AWS SNS
+    consumers: []
+  - publisher: events
+    event_name: event.attendance.added
+    channel: AWS SNS
+    consumers: []
+  - publisher: events
+    event_name: event.created
+    channel: AWS SNS
+    consumers: []
+  - publisher: events
+    event_name: event.rejected
+    channel: AWS SNS
+    consumers: []
+  - publisher: events
+    event_name: event.updated
+    channel: AWS SNS
+    consumers: []
+  - publisher: events
+    event_name: notification.event.ended
+    channel: AWS SNS
+    consumers: []
+  - publisher: events
+    event_name: notification.event.started
+    channel: AWS SNS
+    consumers: []
+  - publisher: events
+    event_name: notification.event.upcoming
+    channel: AWS SNS
+    consumers: []
+  - publisher: events-notifier
+    event_name: bid_accepted
+    channel: AWS SNS
+    consumers: []
+  - publisher: events-notifier
+    event_name: item_sold
+    channel: AWS SNS
+    consumers: []
+  - publisher: events-notifier
+    event_name: rental_started
+    channel: AWS SNS
+    consumers: []
+  - publisher: events-notifier
+    event_name: royalties_earned
+    channel: AWS SNS
+    consumers: []
+  - publisher: marketplace-server
+    event_name: trade_created
+    channel: AWS SNS
+    consumers: []
+  - publisher: referral
+    event_name: reward.assigned
+    channel: AWS SNS
+    consumers: []
+  - publisher: referral
+    event_name: reward.claimed
+    channel: AWS SNS
+    consumers: []
+  - publisher: referral
+    event_name: transaction.failed
+    channel: AWS SNS
+    consumers: []
+  - publisher: referral
+    event_name: transaction.success
+    channel: AWS SNS
+    consumers: []
+  - publisher: social-service-ea
+    event_name: friendship_created
+    channel: NATS
+    consumers: []
+  - publisher: wearable-preview
+    event_name: PreviewMessageType.CONTROLLER_RESPONSE
+    channel: postMessage
+    consumers: []
+  - publisher: wearable-preview
+    event_name: PreviewMessageType.EMOTE_EVENT
+    channel: postMessage
+    consumers: []
+  - publisher: wearable-preview
+    event_name: PreviewMessageType.ERROR
+    channel: postMessage
+    consumers: []
+  - publisher: wearable-preview
+    event_name: PreviewMessageType.LOAD
+    channel: postMessage
+    consumers: []
+  - publisher: worlds-content-server
+    event_name: world_deployed
+    channel: Internal (consumed by asset-bundle-registry)
+    consumers: []

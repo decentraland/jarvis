@@ -1,0 +1,219 @@
+schema_version: "1.1"
+
+service:
+  name: governance-ui
+  display_name: Decentraland DAO Governance UI
+  description: Frontend web application for Decentraland's DAO governance hub. Provides user interface for creating proposals, voting, viewing results, managing grants, participating in tenders, and tracking DAO activities. Integrates with governance backend API, Snapshot, Discourse, and Discord.
+  owner: dao
+  repository: https://github.com/decentraland/governance-ui
+  language: typescript
+  layer: feature-servers
+  role:
+    - client
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Proposal Form
+      definition: Multi-step UI for creating different proposal types (poll, grant, catalyst, ban, hiring, pitch, tender, governance)
+
+    - term: Voting Interface
+      definition: UI for casting votes with voting power breakdown display
+
+    - term: Proposal Timeline
+      definition: Visual representation of proposal lifecycle stages and milestones
+
+    - term: Grant Dashboard
+      definition: Interface for tracking funded projects, milestones, and vesting schedules
+
+    - term: Tender Board
+      definition: UI for viewing open requests and submitting bids
+
+    - term: VP Breakdown
+      definition: Visual breakdown showing sources of user's voting power (MANA, LAND, ESTATE, delegation, etc.)
+
+    - term: Markdown Editor
+      definition: Rich text editor with preview for proposal descriptions and updates
+
+  concept_relationships:
+    internal:
+      - from: Proposal Form
+        to: Voting Interface
+        relationship: transitions_to
+        description: Created proposals become available for voting in the voting interface
+
+      - from: Grant Dashboard
+        to: Proposal Form
+        relationship: references
+        description: Grant tracking links back to original grant proposals
+
+    cross_service:
+      - local_concept: Voting Interface
+        remote_service: governance
+        remote_concept: Proposal
+        mapping_type: projects_as
+        description: UI voting actions interact with governance backend API
+
+      - local_concept: VP Breakdown
+        remote_service: snapshot
+        remote_concept: Voting Power Distribution
+        mapping_type: equivalent
+        description: Voting power data sourced from Snapshot
+
+      - local_concept: Proposal Form
+        remote_service: discourse
+        remote_concept: Forum Thread
+        mapping_type: projects_as
+        description: Proposals create corresponding forum threads
+
+  invariants: []
+
+  responsibilities:
+    - Display list of proposals with filtering and sorting
+    - Provide multi-step forms for creating all proposal types
+    - Show proposal details with voting results and charts
+    - Enable users to cast votes through Snapshot integration
+    - Display voting power breakdown by source
+    - Show grant project tracking with milestones and updates
+    - Provide tender viewing and bid submission interface
+    - Display user profile with voting history and badges
+    - Show DAO statistics and analytics dashboards
+    - Integrate Discord profile verification
+    - Support markdown editing with preview for proposals
+    - Display real-time voting results with charts
+    - Show vesting schedules and token release timelines
+    - Provide links to buy MANA, LAND, and NAMES
+    - Handle wallet connection and authentication
+
+  out_of_scope:
+    - Proposal storage and lifecycle management (handled by governance backend)
+    - Voting power calculation (handled by Snapshot)
+    - Forum thread creation and management (handled by Discourse)
+    - Badge issuance (handled by governance backend)
+    - Transaction execution and on-chain operations
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: governance
+      relationship: sync
+      protocol: HTTP
+      purpose: All proposal, vote, and grant data operations
+      critical: true
+
+  external:
+    - name: Snapshot
+      purpose: Off-chain voting platform integration
+      type: api
+
+    - name: Discourse
+      purpose: Forum integration for proposal discussions
+      type: api
+
+    - name: Discord
+      purpose: Profile verification links
+      type: api
+
+    - name: Catalyst
+      purpose: User profile and avatar data
+      type: api
+
+    - name: Push Protocol
+      purpose: Push notifications for DAO events
+      type: api
+
+    - name: Ethereum Wallet
+      purpose: User authentication and vote signing
+      type: other
+
+    - name: Single Sign On Service
+      purpose: Decentraland SSO authentication
+      type: api
+
+    - name: DCL Data API
+      purpose: DAO statistics and analytics data
+      type: api
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: DEFAULT_CHAIN_ID
+      description: Ethereum chain ID for wallet connection (11155111 for Sepolia testnet)
+      affects: Blockchain network selection
+
+    - name: VITE_GOVERNANCE_URL
+      description: Base URL for the governance UI application
+      affects: Application routing
+
+    - name: VITE_GOVERNANCE_API
+      description: Governance backend API endpoint
+      affects: All API requests
+
+    - name: VITE_BUY_MANA_URL
+      description: External link for purchasing MANA tokens
+      affects: User onboarding links
+
+    - name: VITE_BUY_LAND_URL
+      description: External link for purchasing LAND
+      affects: User onboarding links
+
+    - name: VITE_BUY_NAME_URL
+      description: External link for purchasing NAMES
+      affects: User onboarding links
+
+    - name: VITE_VESTING_DASHBOARD_URL
+      description: URL for vesting dashboard
+      affects: Vesting schedule links
+
+    - name: VITE_SNAPSHOT_API
+      description: Snapshot API endpoint
+      affects: Voting integration
+
+    - name: VITE_SNAPSHOT_URL
+      description: Snapshot UI URL
+      affects: External Snapshot links
+
+    - name: VITE_SNAPSHOT_SPACE
+      description: Snapshot space identifier
+      affects: Voting space selection
+
+    - name: VITE_SNAPSHOT_DELEGATE_CONTRACT_ADDRESS
+      description: Snapshot delegation contract address
+      affects: Delegation features
+
+    - name: VITE_DISCOURSE_API
+      description: Discourse forum API endpoint
+      affects: Forum integration
+
+    - name: VITE_DISCORD_PROFILE_VERIFICATION_URL
+      description: Discord profile verification invite link
+      affects: Discord verification flow
+
+    - name: VITE_SUBMISSION_THRESHOLD_*
+      description: Minimum voting power required to submit each proposal type
+      affects: Proposal form validation
+
+    - name: VITE_SSO_URL
+      description: Single Sign On service URL
+      affects: Authentication flow
+
+    - name: VITE_DCL_DATA_API
+      description: DCL Data API endpoint for analytics
+      affects: Statistics and charts
+
+    - name: VITE_PUSH_CHANNEL_ID
+      description: Push Protocol channel ID for notifications
+      affects: Push notifications
+
+adrs: []

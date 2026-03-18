@@ -1,0 +1,161 @@
+schema_version: "1.1"
+
+service:
+  name: auth
+  display_name: Decentraland Auth UI
+  description: Browser-based authentication dApp that enables wallet operations for the Decentraland desktop client. Partners with auth-server to execute wallet method calls (transactions, signatures) in the user's browser wallet through Socket.IO and HTTP relay patterns.
+  owner: dapps
+  repository: https://github.com/decentraland/auth
+  language: typescript
+  layer: feature-servers
+  role:
+    - client
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Wallet Method Call
+      definition: Request to execute an Ethereum operation (eth_sendTransaction, personal_sign, dcl_personal_sign) in the user's browser wallet
+
+    - term: Request ID
+      definition: Unique identifier for an authentication request that links desktop client and browser execution
+
+    - term: Verification Code
+      definition: Visual confirmation number displayed on both desktop and browser to verify they are processing the same request
+
+    - term: Avatar Setup
+      definition: Process for creating or updating user avatar with wearables and customization
+
+    - term: Mobile Auth
+      definition: Authentication flow for mobile devices using OAuth and Magic Link
+
+  concept_relationships:
+    internal:
+      - from: Request ID
+        to: Verification Code
+        relationship: has_one
+        description: Each request includes a verification code for visual confirmation
+
+    cross_service:
+      - local_concept: Wallet Method Call
+        remote_service: auth-server
+        remote_concept: Authentication Request
+        mapping_type: equivalent
+        description: Browser executes wallet method calls relayed from auth-server
+
+      - local_concept: Avatar Setup
+        remote_service: catalyst
+        remote_concept: Profile
+        mapping_type: projects_as
+        description: Avatar changes are published to Catalyst as profile updates
+
+  invariants: []
+
+  responsibilities:
+    - Display pending authentication requests from desktop client via auth-server
+    - Execute wallet method calls in user's browser wallet
+    - Show verification codes for request confirmation
+    - Relay execution results back through auth-server to desktop client
+    - Handle avatar setup and customization flow
+    - Manage mobile authentication using OAuth providers
+    - Provide login interface for wallet connection
+    - Handle wearable preview and selection
+
+  out_of_scope:
+    - Request storage and lifecycle management (handled by auth-server)
+    - Profile storage (handled by Catalyst)
+    - Wallet operations themselves (handled by browser wallet extensions)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: auth-server
+      relationship: both
+      protocol: WebSocket
+      purpose: Receive authentication requests and relay wallet execution results
+      critical: true
+
+    - name: auth-server
+      relationship: sync
+      protocol: HTTP
+      purpose: HTTP polling alternative for authentication requests
+      critical: true
+
+    - name: catalyst
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch and update user profiles and avatars
+      critical: true
+
+    - name: builder-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch wearable and asset data for avatar setup
+      critical: false
+
+    - name: events-notifier
+      relationship: sync
+      protocol: HTTP
+      purpose: Track user onboarding events
+      critical: false
+
+    - name: social-service-ea
+      relationship: sync
+      protocol: HTTP
+      purpose: Referral system integration
+      critical: false
+
+    - name: transactions-api
+      relationship: sync
+      protocol: HTTP
+      purpose: Meta-transaction support for gasless transactions
+      critical: false
+
+  external:
+    - name: Ethereum Wallet
+      purpose: Execute wallet operations in browser (MetaMask, WalletConnect, etc.)
+      type: other
+
+    - name: Magic Link
+      purpose: OAuth-based authentication for mobile devices
+      type: api
+
+    - name: Segment
+      purpose: Analytics and user behavior tracking
+      type: api
+
+    - name: Sentry
+      purpose: Error tracking and monitoring
+      type: api
+
+    - name: Intercom
+      purpose: User support chat widget
+      type: api
+
+    - name: Feature Flags Service
+      purpose: Feature toggle management
+      type: api
+
+    - name: Wearable Preview Service
+      purpose: Render previews of wearables and avatar customizations
+      type: api
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: VITE_REACT_APP_DCL_DEFAULT_ENV
+      description: Default environment (dev, stg, prod)
+      affects: API endpoints and configuration selection
+
+adrs: []

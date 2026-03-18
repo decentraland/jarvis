@@ -56,13 +56,12 @@ domain:
       severity: hard
 
   responsibilities:
-    - Create and manage authentication request objects
-    - Generate unique request IDs with expiration timestamps
-    - Generate visual verification codes for request confirmation
-    - Relay wallet method execution results from browser to desktop client
-    - Manage request lifecycle (creation, expiration, consumption, cleanup)
-    - Support both WebSocket and HTTP polling communication patterns
-    - Handle authentication flow with ephemeral wallet generation
+    - Creates and manages request objects that encapsulate wallet method calls (eth_sendTransaction, personal_sign, dcl_personal_sign)
+    - Generates unique request IDs with expiration timestamps and visual verification codes
+    - Relays wallet method execution results from browser dApp back to desktop client
+    - Manages request lifecycle (creation, expiration, consumption, cleanup on socket disconnect)
+    - Supports both WebSocket (Socket.IO) and HTTP polling communication patterns
+    - Handles authentication flow with ephemeral wallet generation for identity creation
 
   out_of_scope:
     - Actual wallet operations execution (handled by browser wallet via auth dApp)
@@ -72,23 +71,38 @@ domain:
   owned_entities:
     - name: Authentication Request
       description: Wallet method call pending execution with lifecycle metadata
-      persistence: redis (or in-memory cache)
+      persistence: postgres
       identity_field: requestId
 
 api:
   openapi_url: https://github.com/decentraland/auth-server/blob/main/docs/openapi.yaml
 
+db:
+  schema_url: ""
+
 dependencies:
   services: []
 
   external:
+    - name: PostgreSQL
+      purpose: Request storage and lifecycle management
+      type: storage
+
     - name: Redis
-      purpose: Caching with memory fallback
+      purpose: Optional caching layer (falls back to in-memory if not configured)
       type: storage
 
     - name: Browser Wallet
       purpose: Executes Ethereum transactions and signatures via auth dApp
       type: other
+
+    - name: SendGrid
+      purpose: Email notifications for onboarding nudges
+      type: api
+
+    - name: Slack
+      purpose: Notifications for onboarding nudge emails sent
+      type: api
 
 events:
   publishes: []
@@ -97,12 +111,24 @@ events:
 configuration:
   key_env_vars:
     - name: HTTP_SERVER_PORT
-      description: Port on which the HTTP server listens
+      description: Port on which the HTTP server listens (default 8080)
       affects: Service availability and routing
 
     - name: HTTP_SERVER_HOST
-      description: Host address for the HTTP server
+      description: Host address for the HTTP server (default 0.0.0.0)
       affects: Service network binding
+
+    - name: CORS_ORIGIN
+      description: Semicolon-separated regex patterns for allowed CORS origins (auth dApp URLs)
+      affects: Cross-origin communication security
+
+    - name: CORS_METHODS
+      description: Allowed HTTP methods for CORS (default *)
+      affects: Cross-origin request handling
+
+    - name: REDIS_HOST
+      description: Redis host URL for caching (optional, falls back to in-memory)
+      affects: Caching performance
 
     - name: DCL_PERSONAL_SIGN_REQUEST_EXPIRATION_IN_SECONDS
       description: Expiration time in seconds for personal sign requests (default 600)
@@ -112,49 +138,9 @@ configuration:
       description: Expiration time in seconds for all other requests (default 300)
       affects: Request timeout
 
-    - name: REDIS_HOST
-      description: Redis host URL for caching (optional, falls back to in-memory)
-      affects: Caching performance
-
-    - name: CORS_ORIGIN
-      description: Semicolon-separated regex patterns for allowed CORS origins (auth dApp URLs)
-      affects: Cross-origin communication security
-
-    - name: CORS_METHODS
-      description: Allowed HTTP methods for CORS
-      affects: Cross-origin request handling
-
-    - name: WKC_METRICS_PUBLIC_PATH
-      description: Public path for Prometheus metrics endpoint (default /metrics)
-      affects: Metrics exposure
-
-    - name: WKC_METRICS_BEARER_TOKEN
-      description: Optional bearer token for metrics endpoint security
-      affects: Metrics endpoint authentication
-
     - name: PG_COMPONENT_PSQL_CONNECTION_STRING
-      description: PostgreSQL connection string for onboarding tracking
-      affects: Database connectivity for onboarding checkpoints
-
-    - name: SENDGRID_API_KEY
-      description: SendGrid API key for email notifications
-      affects: Onboarding email nudge system
-
-    - name: SENDGRID_FROM_EMAIL
-      description: SendGrid sender email address
-      affects: Email sender identity
-
-    - name: SENDGRID_TEMPLATE_ID
-      description: SendGrid dynamic template ID for onboarding emails
-      affects: Email template rendering
-
-    - name: ONBOARDING_API_KEY
-      description: API key for onboarding checkpoint endpoint
-      affects: Authorization for onboarding checkpoint updates
-
-    - name: ONBOARDING_ADMIN_ENABLED
-      description: Enable admin endpoints for onboarding testing (dev/staging only)
-      affects: Admin endpoint availability
+      description: PostgreSQL connection string for onboarding tracking (alternative to individual vars)
+      affects: Database connectivity
 
     - name: PG_COMPONENT_PSQL_USER
       description: PostgreSQL user for authentication
@@ -165,21 +151,47 @@ configuration:
       affects: Database authentication
 
     - name: PG_COMPONENT_PSQL_HOST
-      description: PostgreSQL host
+      description: PostgreSQL host (default localhost)
       affects: Database connectivity
 
     - name: PG_COMPONENT_PSQL_PORT
-      description: PostgreSQL port
+      description: PostgreSQL port (default 5432)
       affects: Database connectivity
 
+    - name: PG_COMPONENT_PSQL_DATABASE
+      description: PostgreSQL database name (default auth)
+      affects: Database selection
+
     - name: PG_COMPONENT_PSQL_SCHEMA
-      description: PostgreSQL schema name
+      description: PostgreSQL schema name (default public)
       affects: Database schema selection
 
+    - name: SENDGRID_API_KEY
+      description: SendGrid API key for email notifications
+      affects: Onboarding email nudge system
+
+    - name: SENDGRID_FROM_EMAIL
+      description: SendGrid sender email address (default hello@decentraland.org)
+      affects: Email sender identity
+
+    - name: SENDGRID_TEMPLATE_ID
+      description: SendGrid dynamic template ID for onboarding emails (uses Handlebars vars)
+      affects: Email template rendering
+
+    - name: ONBOARDING_API_KEY
+      description: API key for onboarding checkpoint endpoint (must match events-notifier)
+      affects: Authorization for onboarding checkpoint updates
+
+    - name: ONBOARDING_ADMIN_ENABLED
+      description: Enable admin endpoints for onboarding testing (dev/staging only, default false)
+      affects: Admin endpoint availability
+
     - name: SLACK_BOT_TOKEN
-      description: Slack bot authentication token for notifications
+      description: Slack bot authentication token for notifications (optional)
       affects: Slack integration
 
     - name: SLACK_NUDGE_CHANNEL
-      description: Slack channel for onboarding nudge notifications
+      description: Slack channel for onboarding nudge notifications (default onboarding-nudges-sent)
       affects: Slack notification routing
+
+adrs: []
