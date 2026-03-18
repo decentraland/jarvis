@@ -1,0 +1,191 @@
+schema_version: "1.1"
+
+service:
+  name: builder-client
+  display_name: Builder Client
+  description: TypeScript/JavaScript library providing a programmatic interface to the Decentraland Builder Server API. Enables developers to create, edit, and manage wearables and emotes without using the Builder UI, making it suitable for automation, bulk operations, and integration into other tools.
+  owner: builder-team
+  repository: https://github.com/decentraland/builder-client
+  language: typescript
+  layer: Shared Libraries
+  role:
+    - library
+    - client
+  data_domain: []
+  ai-agent-context: "https://github.com/decentraland/builder-client/blob/main/docs/ai-agent-context.md"
+
+domain:
+  glossary:
+    - term: AuthIdentity
+      definition: An ephemeral identity containing an address, key pair, expiration date, and AuthChain for signing API requests to the Builder Server.
+      examples:
+        - "Identity created with createIdentity(wallet, 1000) that expires in 1000 seconds"
+    
+    - term: ItemFactory
+      definition: A builder-pattern class for constructing wearable/emote items with representations, content, and metadata using chainable methods.
+      examples:
+        - "new ItemFactory().newItem({id, name, rarity, category}).withRepresentation(...).build()"
+    
+    - term: LocalItem
+      definition: The client-side representation of an item before it's saved to the Builder Server, containing all item metadata and content references.
+    
+    - term: RemoteItem
+      definition: The server-side representation of an item after it's been saved to the Builder Server, including server-assigned IDs and timestamps.
+    
+    - term: Representation
+      definition: A body-shape-specific version of a wearable with its 3D model, textures, and metrics (triangles, materials, meshes, bodies, entities, textures).
+      examples:
+        - "Male representation with model male_eyebrows.glb"
+        - "Female representation with model female_eyebrows.glb"
+    
+    - term: Content
+      definition: Binary data (Blob, Buffer, Uint8Array, or ArrayBuffer) for item files like 3D models and textures that get uploaded to the Builder Server.
+    
+    - term: wearable.json
+      definition: Configuration file describing item metadata, category, representations, and display settings. Used for loading items from ZIP archives.
+    
+    - term: builder.json
+      definition: Configuration file containing Builder platform-specific IDs (item ID, collection ID). Optionally accompanies wearable.json in ZIP archives.
+    
+    - term: Third-Party Items
+      definition: Linked wearables from external NFT contracts that map to Decentraland items, allowing external creators to integrate their NFTs into Decentraland.
+    
+    - term: AuthChain
+      definition: A list of authorization objects used to validate signed messages in authenticated API requests, passed as headers (x-identity-auth-chain-*).
+    
+    - term: LoadedItem
+      definition: Object returned by loadItem() containing item contents as RawContent, the main model file path, and optionally wearable/builder config data.
+
+  concept_relationships:
+    internal:
+      - from: ItemFactory
+        to: LocalItem
+        relationship: produces
+        description: ItemFactory builds LocalItem objects through its build() method
+      
+      - from: LocalItem
+        to: RemoteItem
+        relationship: transitions_to
+        description: LocalItem becomes RemoteItem when saved to Builder Server via upsertItem()
+      
+      - from: Representation
+        to: Content
+        relationship: contains
+        description: Each Representation contains Content for its 3D model and textures
+      
+      - from: AuthIdentity
+        to: AuthChain
+        relationship: has_one
+        description: Every AuthIdentity includes an AuthChain for request signing
+      
+      - from: LoadedItem
+        to: LocalItem
+        relationship: transitions_to
+        description: LoadedItem is transformed into LocalItem by ItemFactory.fromConfig()
+    
+    cross_service:
+      - local_concept: RemoteItem
+        remote_service: builder-server
+        remote_concept: Item
+        mapping_type: equivalent
+        description: RemoteItem is the client representation of server-side Item entities stored in builder-server
+      
+      - local_concept: ThirdParty
+        remote_service: builder-server
+        remote_concept: ThirdParty
+        mapping_type: equivalent
+        description: ThirdParty objects are fetched from builder-server's third-party registry
+      
+      - local_concept: Content
+        remote_service: builder-server
+        remote_concept: StoredContent
+        mapping_type: projects_as
+        description: Client-side Content (binary) maps to server-side StoredContent (hash + storage reference)
+
+  invariants:
+    - rule: All uploaded content referenced in LocalItem.contents must be included in the newContent parameter of upsertItem
+      enforced_at: api_validation
+      severity: hard
+    
+    - rule: Every Representation must have a main model file and a thumbnail
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: AuthIdentity must not be expired when making authenticated requests
+      enforced_at: domain_layer
+      severity: hard
+    
+    - rule: wearable.json must have at least one representation defined
+      enforced_at: api_validation
+      severity: hard
+
+  responsibilities:
+    - Provide authenticated HTTP client for Builder Server API using AuthChain headers
+    - Support item creation and editing through ItemFactory builder pattern
+    - Load items from ZIP archives, model files, wearable.json, and builder.json
+    - Generate content hashes for item files using @dcl/hashing
+    - Upload item content files as form data to Builder Server
+    - Fetch third-party collection and item metadata from Builder Server
+    - Retrieve external NFTs linked to wearables
+    - Manage LAND redirection file creation and hash retrieval
+    - Create ephemeral identities for API authentication from ethers wallets
+
+  out_of_scope:
+    - Hosting or storing item content (handled by Builder Server)
+    - Implementing wearable rendering logic (handled by Unity renderer)
+    - Publishing collections to blockchain (handled by Builder Server)
+    - Scene or world creation (handled by other tools)
+    - Validating wearable metrics against Decentraland limits (handled by Builder Server)
+    - NFT minting or blockchain transactions (handled by smart contracts)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: builder-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Primary backend for all item, collection, third-party, NFT, and content operations
+      critical: true
+
+  external:
+    - name: "@dcl/crypto"
+      purpose: Identity creation, signing, and AuthChain generation for authenticated requests
+      type: library
+    
+    - name: "@dcl/hashing"
+      purpose: Content hash generation for item files
+      type: library
+    
+    - name: "@dcl/schemas"
+      purpose: Type definitions for Decentraland entities (wearables, emotes, collections)
+      type: library
+    
+    - name: ethers
+      purpose: Wallet signing for identity creation
+      type: library
+    
+    - name: jszip
+      purpose: ZIP file handling for loading items from archives
+      type: library
+    
+    - name: cross-fetch
+      purpose: Universal fetch API for Node.js and browser environments
+      type: library
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  
+  key_env_vars: []
+
+adrs: []

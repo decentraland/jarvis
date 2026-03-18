@@ -155,3 +155,31 @@ configuration:
     - name: ONBOARDING_ADMIN_ENABLED
       description: Enable admin endpoints for onboarding testing (dev/staging only)
       affects: Admin endpoint availability
+
+    - name: PG_COMPONENT_PSQL_USER
+      description: PostgreSQL user for authentication
+      affects: Database authentication
+
+    - name: PG_COMPONENT_PSQL_PASSWORD
+      description: PostgreSQL password for authentication
+      affects: Database authentication
+
+    - name: PG_COMPONENT_PSQL_HOST
+      description: PostgreSQL host
+      affects: Database connectivity
+
+    - name: PG_COMPONENT_PSQL_PORT
+      description: PostgreSQL port
+      affects: Database connectivity
+
+    - name: PG_COMPONENT_PSQL_SCHEMA
+      description: PostgreSQL schema name
+      affects: Database schema selection
+
+    - name: SLACK_BOT_TOKEN
+      description: Slack bot authentication token for notifications
+      affects: Slack integration
+
+    - name: SLACK_NUDGE_CHANNEL
+      description: Slack channel for onboarding nudge notifications
+      affects: Slack notification routing

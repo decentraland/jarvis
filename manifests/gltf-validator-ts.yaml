@@ -1,0 +1,110 @@
+schema_version: "1.1"
+
+service:
+  name: gltf-validator-ts
+  display_name: GLTF Validator (TypeScript)
+  description: TypeScript implementation of GLTF/GLB validation compatible with the official Khronos validator. Validates GLTF 2.0 files for specification compliance, extension support, and structural correctness with detailed error reporting.
+  owner: sdk-team
+  repository: https://github.com/decentraland/gltf-validator-ts
+  language: typescript
+  layer: library
+  role:
+    - library
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: GLTF
+      definition: GL Transmission Format - open standard 3D file format for efficient transmission and loading of 3D models and scenes
+      examples:
+        - "GLTF 2.0 JSON file with external textures and buffers"
+
+    - term: GLB
+      definition: Binary GLTF format with embedded resources in a single binary file
+      examples:
+        - "GLB file with model, textures, and animations all embedded"
+
+    - term: Validation Issue
+      definition: Problem detected during validation with code, severity (error/warning/info), message, and JSON pointer location
+      examples:
+        - "TYPE_MISMATCH error at /meshes/0/primitives/0/mode"
+
+    - term: Extension
+      definition: GLTF extension adding features beyond core specification (e.g., KHR_materials_unlit for unlit materials)
+      examples:
+        - "KHR_materials_pbrSpecularGlossiness for alternative material workflow"
+
+    - term: JSON Pointer
+      definition: RFC 6901 string syntax for identifying specific values in JSON structure
+      examples:
+        - "\"/meshes/0/primitives/0\" points to first primitive of first mesh"
+
+  concept_relationships:
+    internal:
+      - from: GLTF
+        to: GLB
+        relationship: is_a
+        description: GLB is a binary container format for GLTF data with embedded resources
+
+      - from: Validation Issue
+        to: JSON Pointer
+        relationship: uses
+        description: Issues include JSON pointer to identify exact location of problem in GLTF structure
+
+      - from: GLTF
+        to: Extension
+        relationship: contains
+        description: GLTF files can use extensions to add features beyond core specification
+
+    cross_service: []
+
+  invariants:
+    - rule: All validation behavior must match official Khronos GLTF Validator (passes all 609+ test cases)
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Severity levels (0=Error, 1=Warning, 2=Info) must match official validator
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Validate GLTF 2.0 files for specification compliance
+    - Validate GLB binary files with embedded resources
+    - Check GLTF extensions (KHR_materials_*, KHR_lights_punctual, etc.)
+    - Report detailed validation issues with codes, severity, messages, and JSON pointers
+    - Support configurable validation (max issues, ignored/only codes, severity overrides)
+    - Load and validate external resources (textures, buffers)
+    - Maintain 100% compatibility with official Khronos validator behavior
+
+  out_of_scope:
+    - GLTF file creation or editing
+    - GLTF rendering or visualization
+    - GLTF conversion or optimization
+    - GLTF 1.0 validation (deprecated, only supports 2.0)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: npm Registry
+      purpose: Package distribution for @dcl/gltf-validator-ts
+      type: api
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+adrs: []
