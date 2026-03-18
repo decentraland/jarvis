@@ -1,0 +1,209 @@
+schema_version: "1.1"
+
+service:
+  name: wearable-preview
+  display_name: Wearable Preview
+  description: TypeScript/React webapp providing iframe-embeddable interactive 3D previews of Decentraland wearables, emotes, and avatars. Uses aang-renderer (Unity WebGPU) as primary renderer and falls back to Babylon.js when WebGPU is not available in the browser.
+  owner: core-engineering
+  repository: https://github.com/decentraland/wearable-preview
+  language: typescript
+  layer: client
+  role:
+    - client
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: PreviewOptions
+      definition: Configuration object derived from URL query parameters that controls what is rendered and how — including item identifiers (URN, contract/item/token), body shape, colors, emote, camera settings, and display flags.
+      examples:
+        - "?urn=urn:decentraland:off-chain:base-avatars:rasta&emote=dance"
+        - "?contract=0x...&item=42&bodyShape=BaseFemale"
+
+    - term: PreviewRenderer
+      definition: Enum indicating which rendering backend is active. UNITY uses the aang-renderer Unity WebGPU build (primary, requires WebGPU); BABYLON is the Babylon.js fallback used when WebGPU is not available in the browser.
+      not_to_be_confused_with: aang-renderer — the Unity build is a bundled dependency, not a live service call
+
+    - term: Controller
+      definition: RPC-style interface exposed to the embedding parent window via postMessage, enabling programmatic screenshot capture, emote control, and metrics queries without reloading the iframe.
+
+    - term: EmoteEvent
+      definition: Animation lifecycle notification (PLAY, PAUSE, LOOP, END, PLAYING) emitted to the parent window as the avatar animation progresses.
+
+    - term: WearableDefinition
+      definition: Resolved wearable metadata including 3D content hashes, category, and representations, fetched from Catalyst by URN.
+
+    - term: EmoteDefinition
+      definition: Resolved emote metadata including animation files and loop settings, fetched from Catalyst by URN.
+
+  concept_relationships:
+    internal:
+      - from: PreviewOptions
+        to: PreviewRenderer
+        relationship: selects
+        description: PreviewOptions determines which renderer is instantiated — aang-renderer (Unity WebGPU) when WebGPU is available, Babylon.js as fallback otherwise
+
+      - from: Controller
+        to: PreviewOptions
+        relationship: updates
+        description: Controller RPC calls (e.g. update options) mutate PreviewOptions at runtime and trigger a re-render without a full page reload
+
+      - from: PreviewRenderer
+        to: WearableDefinition
+        relationship: renders
+        description: Both renderers consume resolved WearableDefinitions to display 3D wearable content on an avatar
+
+    cross_service:
+      - local_concept: WearableDefinition
+        remote_service: catalyst
+        remote_concept: Entity
+        mapping_type: derived_from
+        description: WearableDefinitions are fetched from Catalyst as wearable entities resolved by URN
+
+      - local_concept: PreviewOptions
+        remote_service: marketplace-server
+        remote_concept: NFT item
+        mapping_type: derived_from
+        description: When a contract/item/token ID is provided, wearable metadata is resolved from marketplace-server before rendering
+
+      - local_concept: PreviewRenderer
+        remote_service: aang-renderer
+        remote_concept: JSBridge
+        mapping_type: consumed_by
+        description: The UNITY renderer variant loads the aang-renderer Unity WebGPU build and controls it via JSBridge SendMessage calls
+
+  invariants:
+    - rule: aang-renderer (Unity WebGPU) is used when WebGPU is available in the browser; Babylon.js is the fallback when WebGPU is not available
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Every postMessage event sent to the parent must include a valid PreviewMessageType
+      enforced_at: api_validation
+      severity: hard
+
+    - rule: Controller RPC responses must reference the same request ID as the originating request
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Render interactive 3D wearable and avatar previews embeddable as an iframe
+    - Accept configuration via URL query parameters (60+ supported options)
+    - Expose a postMessage API for runtime option updates without reloading
+    - Expose a Controller RPC interface for screenshot capture, emote control, and metrics
+    - Emit animation lifecycle events (EmoteEvent) to the parent window
+    - Load aang-renderer Unity WebGPU build as alternative renderer when WebGPU is available
+    - Resolve wearable and emote definitions from Catalyst by URN
+    - Resolve wearable metadata from marketplace-server by contract/item/token ID
+
+  out_of_scope:
+    - Wearable ownership validation (handled by marketplace-server / catalyst)
+    - Profile data storage (handled by catalyst)
+    - Full scene rendering (handled by unity-explorer)
+    - Authentication logic (handled by auth-server)
+    - Asset bundle conversion (handled by asset-bundle-converter)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch wearable and emote entity definitions, profile data, and 3D content files by URN
+      critical: true
+
+    - name: marketplace-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Resolve wearable metadata by contract address and item/token ID
+      critical: false
+
+    - name: aang-renderer
+      relationship: sync
+      protocol: other
+      purpose: Unity WebGPU build bundled and served as a static asset; loaded at runtime as the UNITY rendering backend when WebGPU is available
+      critical: false
+
+  external:
+    - name: Sentry
+      purpose: Browser error monitoring and parent-URL-based context tracking
+      type: other
+
+    - name: BabylonJS
+      purpose: Fallback 3D rendering engine used when WebGPU is not available in the browser
+      type: other
+
+events:
+  publishes:
+    - name: PreviewMessageType.LOAD
+      description: Emitted to parent window when the preview finishes loading; includes the active renderer type (BABYLON or UNITY)
+      channel: window.postMessage
+      key_payload_fields:
+        - type
+        - payload.renderer
+
+    - name: PreviewMessageType.ERROR
+      description: Emitted to parent window when an error occurs during rendering or asset loading
+      channel: window.postMessage
+      key_payload_fields:
+        - type
+        - payload.message
+
+    - name: PreviewMessageType.EMOTE_EVENT
+      description: Emitted to parent window on avatar animation lifecycle transitions (PLAY, PAUSE, LOOP, END, PLAYING)
+      channel: window.postMessage
+      key_payload_fields:
+        - type
+        - payload.type
+
+    - name: PreviewMessageType.CONTROLLER_RESPONSE
+      description: RPC response to a CONTROLLER_REQUEST from the parent window
+      channel: window.postMessage
+      key_payload_fields:
+        - type
+        - payload.id
+        - payload.result
+
+  consumes:
+    - name: PreviewMessageType.UPDATE
+      source_service: parent-window
+      description: Received from the embedding parent to update preview options (e.g. emote, zoom, camera) at runtime without reloading the iframe
+      channel: window.postMessage
+
+    - name: PreviewMessageType.CONTROLLER_REQUEST
+      source_service: parent-window
+      description: RPC request from the parent window for screenshot capture, emote control, or metrics queries
+      channel: window.postMessage
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: PEER_URL
+      description: Catalyst peer server base URL for wearable/emote entity and profile data
+      affects: All asset resolution from Catalyst
+
+    - name: MARKETPLACE_SERVER_URL
+      description: Marketplace API base URL for NFT metadata resolution by contract/item/token
+      affects: Contract-based wearable lookups
+
+    - name: NETWORK
+      description: Blockchain network identifier — "matic" for mainnet, "amoy" for testnet
+      affects: NFT contract address resolution and marketplace queries
+
+    - name: ENVIRONMENT
+      description: Deployment tier — "production", "staging", or "development"
+      affects: Default API endpoints and Sentry reporting
+
+    - name: SENTRY_DSN
+      description: Sentry Data Source Name for browser error reporting
+      affects: Error monitoring and alerting
+
+adrs: []

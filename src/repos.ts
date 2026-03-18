@@ -51,4 +51,6 @@ export const workspaces: Record<string, Repo[]> = {
 
 export const standalone: Repo[] = [
   { url: 'https://github.com/decentraland/unity-explorer', lastCommit: '29e00f6532f7d919738c9c3b1562ae461a0ce346' },
+  { url: 'https://github.com/decentraland/aang-renderer', lastCommit: 'ff00c316c4a2f6881d06a36586fc20ce22cf2033' },
+  { url: 'https://github.com/decentraland/wearable-preview', lastCommit: 'aab2c01af3b5070514d93449e68e5d1e6fd715f6' },
 ]

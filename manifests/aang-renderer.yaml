@@ -1,0 +1,159 @@
+schema_version: "1.1"
+
+service:
+  name: aang-renderer
+  display_name: Aang Renderer
+  description: WebGPU-based avatar and wearable preview renderer used across Decentraland's Marketplace, Authentication screen, Profile page, Builder, and Configurator. Shares Toon and Scene shaders with the Explorer client to ensure visual consistency between previews and in-game appearance.
+  owner: core-engineering
+  repository: https://github.com/decentraland/aang-renderer
+  language: csharp
+  layer: client
+  role:
+    - client
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Mode
+      definition: Operational context that determines which parameters are accepted and how the avatar is rendered. Each mode serves a distinct product surface (Marketplace, Authentication, Profile, Builder, Configurator).
+      examples:
+        - marketplace — renders a wearable preview on a profile avatar
+        - builder — renders a fully customised avatar from explicit body/wearable parameters
+        - configurator — renders a username display without full avatar
+
+    - term: URN
+      definition: Uniform Resource Name identifying a specific wearable or emote asset in Decentraland. Used to load and override individual wearable categories on an avatar.
+      examples:
+        - urn:decentraland:off-chain:base-avatars:rasta
+        - urn:decentraland:off-chain:base-avatars:BaseMale
+
+    - term: Profile
+      definition: A user avatar definition identified by wallet address or one of the built-in default profiles (default1–default15). The renderer fetches and applies the profile's wearables and colors.
+
+    - term: Emote
+      definition: An animation played by the avatar (e.g. idle, clap, dance). A default emote can be set via URL parameter and overridden dynamically.
+
+    - term: JSBridge
+      definition: Unity-side message receiver that exposes dynamic configuration methods to the embedding web page via SendMessage calls on the unityInstance object.
+
+    - term: SendMessage
+      definition: JavaScript API for dynamically reconfiguring the renderer after initial load by calling named methods on the JSBridge component (e.g. SetEmote, SetUrns, TakeScreenshot).
+
+  concept_relationships:
+    internal:
+      - from: Mode
+        to: Profile
+        relationship: references
+        description: Most modes accept a profile wallet address or default profile ID to load base avatar data
+
+      - from: Mode
+        to: URN
+        relationship: references
+        description: Marketplace and Builder modes accept URNs to override or extend the avatar's wearables
+
+      - from: JSBridge
+        to: Mode
+        relationship: extends
+        description: JSBridge allows runtime reconfiguration of any property that can be set via URL parameters
+
+    cross_service:
+      - local_concept: Profile
+        remote_service: catalyst
+        remote_concept: Entity
+        mapping_type: derived_from
+        description: Profile data is fetched from a Catalyst server as a profile entity identified by wallet address
+
+      - local_concept: URN
+        remote_service: catalyst
+        remote_concept: Pointer
+        mapping_type: equivalent
+        description: URNs are the pointer identifiers used to resolve wearable entities from Catalyst
+
+      - local_concept: URN
+        remote_service: marketplace-server
+        remote_concept: NFT item
+        mapping_type: references
+        description: The renderer is embedded in the Marketplace to preview wearable NFTs identified by URN, contract, or token
+
+      - local_concept: JSBridge
+        remote_service: wearable-preview
+        remote_concept: UnityPreview
+        mapping_type: consumed_by
+        description: wearable-preview's UnityPreview component loads the aang-renderer Unity WebGPU build and communicates with it via JSBridge SendMessage calls when WebGPU is available in the browser
+
+  invariants:
+    - rule: In Builder mode, each loaded URN must belong to a unique wearable category (no two URNs for the same category slot)
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Every SendMessage call triggers a full avatar reload
+      enforced_at: domain_layer
+      severity: soft
+
+    - rule: background color must be provided as a hex string without a leading # character
+      enforced_at: api_validation
+      severity: hard
+
+  responsibilities:
+    - Render avatar previews for Marketplace wearable listings
+    - Render profile avatars for Authentication and Profile pages
+    - Render fully customisable avatars for the Builder tool
+    - Render username display for the Configurator
+    - Expose a SendMessage API for dynamic runtime reconfiguration
+    - Provide screenshot capture via postMessage to the parent window
+    - Share visual shaders with the Explorer client for consistency
+
+  out_of_scope:
+    - Wearable ownership validation (handled by marketplace-server / catalyst)
+    - Profile data storage (handled by catalyst)
+    - Full scene rendering (handled by unity-explorer)
+    - Authentication logic (handled by auth-server)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch profile entity data and resolve wearable content files by URN
+      critical: true
+
+    - name: marketplace-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Resolve wearable metadata by contract address and token/item ID
+      critical: false
+
+  external:
+    - name: WebGPU
+      purpose: GPU-accelerated rendering backend for avatar and wearable previews
+      type: other
+
+events:
+  publishes:
+    - name: unity-screenshot
+      description: Base64-encoded PNG screenshot posted to the parent window via postMessage after TakeScreenshot is called
+      channel: window.postMessage
+      key_payload_fields:
+        - type
+        - data
+
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: env
+      description: Target API environment. "prod" uses ORG endpoints, "dev" uses ZONE endpoints.
+      affects: All external API calls for profile and wearable data
+
+adrs: []
