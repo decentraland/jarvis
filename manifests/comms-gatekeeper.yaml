@@ -3,7 +3,7 @@ schema_version: "1.1"
 service:
   name: comms-gatekeeper
   display_name: Comms Gatekeeper
-  description: Acts as the guardian of LiveKit tokens within Decentraland's communication architecture. Processes signed fetch requests from clients and generates tokens that grant access to LiveKit rooms dedicated to specific scenes or worlds. Manages scene administration, streaming access, voice chat, and user moderation.
+  description: Acts as the guardian of LiveKit tokens within Decentraland's communication architecture. Processes signed fetch requests from clients and generates tokens that grant access to LiveKit rooms dedicated to specific scenes or worlds. Manages scene administration, streaming access, voice chat, and user moderation. Issues LiveKit tokens as the mandatory credential for any client to enter the Genesis City platform and interact with other players.
   owner: core-engineering
   repository: https://github.com/decentraland/comms-gatekeeper
   language: typescript
@@ -21,7 +21,7 @@ service:
 domain:
   glossary:
     - term: LiveKit Token
-      definition: Secure JWT token granting access to a specific LiveKit room for voice/video communication. Tokens include permissions, expiration, and user identity.
+      definition: Secure JWT token granting access to a specific LiveKit room for voice/video communication. Tokens include permissions, expiration, and user identity. This is the mandatory credential for any client to enter Genesis City and interact with other players — no token, no access.
 
     - term: Scene Administration
       definition: Permission system allowing designated users to manage access control, ban users, and control streaming in specific scenes.
@@ -35,8 +35,14 @@ domain:
     - term: Scene Ban
       definition: Administrative action blocking a user from accessing communication channels in a specific scene.
 
+    - term: Platform Ban
+      definition: A platform-level ban permanently blocks a user from obtaining any LiveKit token from comms-gatekeeper. Because a token is required to enter any Genesis City room, a platform-banned user is effectively excluded from all real-time interaction in Genesis City. Bans are stored in the scene_bans table (scene-scoped) and enforced synchronously at token issuance time — the request is rejected before any LiveKit call is made.
+
     - term: Genesis City Access Control
       definition: Comms Gatekeeper is the access authority for player-to-player interaction in Genesis City. It controls access to both scene-specific LiveKit rooms and island rooms managed by Archipelago. Without a valid token from this service, clients cannot join LiveKit rooms and interact with other players in Genesis City. This role is scoped to Genesis City only — Worlds use worlds-content-server for access control.
+
+    - term: LiveKit Rooms
+      definition: Each scene/world gets a dedicated LiveKit room identified by a room name (e.g., scene:realm:sceneId). The service controls access to both scene-specific LiveKit rooms (tied to a particular scene/parcel) and island rooms (the dynamic clustering rooms managed by Archipelago).
 
   concept_relationships:
     internal:
@@ -59,6 +65,11 @@ domain:
         to: Scene
         relationship: belongs_to
         description: Bans are scoped to specific scenes
+
+      - from: Platform Ban
+        to: LiveKit Token
+        relationship: blocks
+        description: Platform bans prevent token issuance, effectively blocking all Genesis City access
 
     cross_service:
       - local_concept: LiveKit Token
@@ -96,16 +107,22 @@ domain:
       enforced_at: domain_layer
       severity: hard
 
+    - rule: Platform bans are enforced synchronously at token issuance time before any LiveKit call is made
+      enforced_at: domain_layer
+      severity: hard
+
   responsibilities:
-    - Generate secure LiveKit tokens for Genesis City scene and island communication rooms
-    - Manage scene administration permissions
-    - Provide RTMP streaming URLs and keys for content creators
-    - Handle private and community voice chat sessions
-    - Implement request-to-speak functionality for moderated chats
-    - Manage streaming access lifecycle with expiration
-    - Handle user privacy settings and access control
-    - Process LiveKit webhooks for real-time event handling
-    - Control access to player-to-player interaction in Genesis City (scene-specific and island rooms)
+    - Issues LiveKit tokens that are the mandatory credential for any client to enter the Genesis City platform and interact with other players
+    - Enforces platform-level user bans at connection time - banned users are rejected during token issuance and cannot re-enter any Genesis City room
+    - Generates secure LiveKit tokens for scene/world-specific communication rooms
+    - Controls access to both scene-specific LiveKit rooms and island rooms (dynamic clustering rooms managed by Archipelago)
+    - Manages scene administration permissions (add/remove admins, ban users from individual scenes)
+    - Provides RTMP streaming URLs and keys for content creators
+    - Supports private voice chat sessions between users
+    - Implements community voice chat with speaker management and request-to-speak functionality
+    - Manages streaming access lifecycle with expiration and TTL
+    - Handles user privacy settings and access control
+    - Integrates with LiveKit webhooks for real-time event handling (room created/destroyed, participant joined/left)
 
   out_of_scope:
     - Actual voice/video streaming (handled by LiveKit)
@@ -146,7 +163,7 @@ dependencies:
     - name: catalyst
       relationship: sync
       protocol: HTTP
-      purpose: Fetches scene metadata from content server and validates DCL name ownership via Lambdas
+      purpose: Fetches scene metadata from content server via dcl-catalyst-client and validates DCL name ownership via Lambdas
       critical: true
 
     - name: worlds-content-server
@@ -175,11 +192,11 @@ dependencies:
 
   external:
     - name: PostgreSQL
-      purpose: Scene administration, streaming access, voice chat users, bans
+      purpose: Scene administration, streaming access, voice chat users, and ban records
       type: storage
 
     - name: LiveKit
-      purpose: Real-time voice communication infrastructure and token generation
+      purpose: Real-time voice communication infrastructure for token generation and room management
       type: other
 
     - name: AWS SNS
@@ -195,6 +212,52 @@ events:
         - sceneId
         - ethAddress
         - expiresAt
+
+    - name: CommunityStreamingEnded
+      description: Published when a community streaming session ends
+      channel: AWS SNS
+      key_payload_fields:
+        - communityId
+        - totalParticipants
+
+    - name: PARTICIPANT_JOINED_ROOM
+      description: Published when a participant joins a LiveKit room
+      channel: AWS SNS
+      key_payload_fields:
+        - room
+        - address
+
+    - name: PARTICIPANT_LEFT_ROOM
+      description: Published when a participant leaves a LiveKit room
+      channel: AWS SNS
+      key_payload_fields:
+        - room
+        - address
+        - reason
+
+    - name: SCENE_BAN_ADDED
+      description: Published when a user is banned from a scene
+      channel: AWS SNS
+      key_payload_fields:
+        - place_id
+        - banned_address
+        - banned_by
+        - banned_at
+        - scene_id
+        - parcel
+        - realm_name
+
+    - name: SCENE_BAN_REMOVED
+      description: Published when a user is unbanned from a scene
+      channel: AWS SNS
+      key_payload_fields:
+        - place_id
+        - banned_address
+        - unbanned_by
+        - unbanned_at
+        - scene_id
+        - parcel
+        - realm_name
 
   consumes: []
 
@@ -236,6 +299,14 @@ configuration:
       description: Preview/staging LiveKit server host URL
       affects: Token generation for preview environments
 
+    - name: PREVIEW_LIVEKIT_API_KEY
+      description: Preview LiveKit API key
+      affects: Preview token generation
+
+    - name: PREVIEW_LIVEKIT_API_SECRET
+      description: Preview LiveKit API secret
+      affects: Preview token signing
+
     - name: WORLD_CONTENT_URL
       description: URL for worlds-content-server API
       affects: World permissions and scene data retrieval
@@ -276,6 +347,10 @@ configuration:
       description: SNS topic ARN for event publishing
       affects: Event notification delivery
 
+    - name: AWS_SNS_ENDPOINT
+      description: AWS SNS endpoint URL for custom configurations
+      affects: SNS service endpoint
+
     - name: VOICE_CHAT_CONNECTION_INTERRUPTED_TTL
       description: Voice chat connection interrupted TTL in milliseconds
       affects: Session expiration for interrupted connections
@@ -288,6 +363,10 @@ configuration:
       description: Community voice chat timeout when no moderator present (ms)
       affects: Moderation enforcement
 
+    - name: VOICE_CHAT_EXPIRED_BATCH_SIZE
+      description: Batch size for expired voice chat cleanup
+      affects: Voice chat cleanup performance
+
     - name: COMMS_ROOM_PREFIX
       description: Prefix for LiveKit room names
       affects: Room naming convention
@@ -296,9 +375,21 @@ configuration:
       description: Prefix for scene-specific LiveKit room names
       affects: Scene room naming convention
 
+    - name: WORLD_ROOM_PREFIX
+      description: Prefix for world-specific LiveKit room names
+      affects: World room naming convention
+
+    - name: PRIVATE_MESSAGES_ROOM_ID
+      description: Room ID for private messages
+      affects: Private messaging room identification
+
     - name: AUTHORITATIVE_SERVER_ADDRESS
       description: Public address for signed-fetch validation
       affects: ADR-44 authentication validation
+
+    - name: SERVICE_BASE_URL
+      description: Public base URL for the comms-gatekeeper service
+      affects: Service URL construction and callback URLs
 
     - name: HTTP_SERVER_PORT
       description: HTTP server port
@@ -320,30 +411,6 @@ configuration:
       description: Logging level (OFF, DEBUG, INFO, WARN, ERROR)
       affects: Log verbosity
 
-    - name: WORLD_ROOM_PREFIX
-      description: Prefix for world-specific LiveKit room names
-      affects: World room naming convention
-
-    - name: PRIVATE_MESSAGES_ROOM_ID
-      description: Room ID for private messages
-      affects: Private messaging room identification
-
-    - name: PREVIEW_LIVEKIT_API_KEY
-      description: Preview LiveKit API key
-      affects: Preview token generation
-
-    - name: PREVIEW_LIVEKIT_API_SECRET
-      description: Preview LiveKit API secret
-      affects: Preview token signing
-
-    - name: AWS_SNS_ENDPOINT
-      description: AWS SNS endpoint URL for custom configurations
-      affects: SNS service endpoint
-
-    - name: VOICE_CHAT_EXPIRED_BATCH_SIZE
-      description: Batch size for expired voice chat cleanup
-      affects: Voice chat cleanup performance
-
     - name: ANALYTICS_CONTEXT
       description: Analytics context identifier
       affects: Analytics tagging
@@ -360,9 +427,13 @@ configuration:
       description: Whether to reset metrics at 00:00 UTC
       affects: Metrics behavior
 
-    - name: SERVICE_BASE_URL
-      description: Public base URL for the comms-gatekeeper service
-      affects: Service URL construction and callback URLs
+    - name: CONTENT_CLIENT_CACHE_MAX
+      description: Maximum number of entries in content client cache
+      affects: Content client cache size
+
+    - name: CONTENT_CLIENT_CACHE_TTL
+      description: TTL for content client cache entries in milliseconds
+      affects: Content client cache expiration
 
 adrs:
   - id: ADR-44

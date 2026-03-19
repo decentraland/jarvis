@@ -249,7 +249,7 @@ dependencies:
       type: storage
 
     - name: DevTools Frontend (Git Submodule)
-      purpose: Bundled standalone Chrome DevTools frontend for Unity CDP debugging, loaded via file:// protocol when --open-devtools-with-port argument is provided
+      purpose: Bundled standalone Chrome DevTools frontend (from decentraland/devtools-frontend private repo, ~25MB) for Unity CDP debugging. Loaded via file:// protocol when --open-devtools-with-port=<port> argument is provided. Bundled as extraResource to avoid ASAR path length issues. Solves Chromium security restrictions that prevent internal devtools:// protocol from connecting to external WebSocket endpoints.
       type: other
 
     - name: Code Signing Services
@@ -310,6 +310,14 @@ configuration:
     - name: VITE_SENTRY_DSN
       description: Sentry DSN for error tracking and crash reporting
       affects: Error reporting and monitoring for both Electron and renderer processes
+
+    - name: VITE_CLI_DEPLOY_PORT
+      description: Override port for CLI deploy server during scene deployment
+      affects: Scene deployment process communication port
+
+    - name: VITE_DEV_SERVER_URL
+      description: Development server URL for hot-reload in development mode
+      affects: Development environment - where renderer is served in dev mode
 
 adrs:
   - id: ADR-280

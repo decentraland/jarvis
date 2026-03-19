@@ -8,7 +8,7 @@ export const workspaces: Record<string, Repo[]> = {
     { url: 'https://github.com/decentraland/schemas', lastCommit: '59dad142d9c6e94da7e54383b6ab7308fdd368d5' },
     { url: 'https://github.com/decentraland/worlds-content-server', lastCommit: '3fe5a11d79f44fd83ac3702950f505af4cf1d6fc' },
     { url: 'https://github.com/decentraland/realm-provider', lastCommit: '54a5d6e35133ed881fc518bc4f8a8f9368413a04' },
-    { url: 'https://github.com/decentraland/comms-gatekeeper', lastCommit: '5ffc39a77ba183210a69b57bd9bb0a1a88246f93' },
+    { url: 'https://github.com/decentraland/comms-gatekeeper', lastCommit: 'b80c50c77602f30389741bd591623f584eb44fcb' },
     { url: 'https://github.com/decentraland/archipelago-workers', lastCommit: 'f6a935459ce3cfd6b85e606dd6884dab490c8144' },
     { url: 'https://github.com/decentraland/social-service-ea', lastCommit: '3544edc0c58b62c04653d146e0f50532c67bbcd1' },
     { url: 'https://github.com/decentraland/catalyst', lastCommit: '3a02c5bdc39a94df57f579a916860c1ff3b598bc' },
@@ -66,7 +66,7 @@ export const workspaces: Record<string, Repo[]> = {
     { url: 'https://github.com/decentraland/ui2', lastCommit: '0815e57aacd40b361beeedc3a72b4ce36b2eac1b' },
   ],
   'https://github.com/decentraland/creators-tool-workspace': [
-    { url: 'https://github.com/decentraland/creator-hub', lastCommit: '53025416fc4db60b559a400fdfc507b2260ed55d' },
+    { url: 'https://github.com/decentraland/creator-hub', lastCommit: '839ab4ae0dcd66985015a2968b0d09619387071f' },
     { url: 'https://github.com/decentraland/builder', lastCommit: '60243ea91ffe0b3e31be3e5874d645af2c302a77' },
     { url: 'https://github.com/decentraland/builder-client', lastCommit: 'f3a3c5ca5789d3efbafbbd4aa411e90e6a8bfd5b' },
     { url: 'https://github.com/decentraland/builder-server', lastCommit: '45275f22f577e8a377ce35f37a66524c418ed63b' },
@@ -74,6 +74,7 @@ export const workspaces: Record<string, Repo[]> = {
     { url: 'https://github.com/decentraland/urn-resolver', lastCommit: '4a9a47e1a7ed95f34f702d46e76a8923a507987f' },
     { url: 'https://github.com/decentraland/wearable-preview', lastCommit: 'aab2c01af3b5070514d93449e68e5d1e6fd715f6' },
     { url: 'https://github.com/decentraland/gltf-validator-ts', lastCommit: '4761446e242cb696c41a455996b7f56a727ba7e4' },
+    { url: 'https://github.com/decentraland/internal-tools', lastCommit: '7977af2592a829600c9d38c08aee8d8fab540bf3' },
   ],
 }
 

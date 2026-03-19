@@ -1,0 +1,203 @@
+schema_version: "1.1"
+
+service:
+  name: internal-tools
+  display_name: Decentraland Internal Tools
+  description: Internal operations and moderation dashboard for the Decentraland platform. Used by platform moderators, community managers, and operations teams to perform admin tasks — banning users, managing communities, granting credits, and inspecting real-time LiveKit rooms — all gated behind wallet-based authentication and role-specific access controls.
+  owner: operations
+  repository: https://github.com/decentraland/internal-tools
+  language: typescript
+  layer: client
+  role:
+    - client
+  data_domain: []
+  ai-agent-context: https://github.com/decentraland/internal-tools/blob/main/docs/ai-agent-context.md
+
+domain:
+  glossary:
+    - term: AuthIdentity
+      definition: A cryptographic identity created from a connected wallet address using @dcl/crypto. Passed to API clients to sign requests via decentraland-crypto-fetch (ADR-44). Stored in session storage.
+      examples:
+        - "AuthIdentity created from MetaMask wallet"
+        - "Identity used to sign moderation API requests"
+      not_to_be_confused_with: ""
+
+    - term: Protected Routes
+      definition: Routes wrapped by AuthValidator component that require authentication. Unauthenticated users are redirected to /signin?redirect={url}.
+      examples:
+        - "User Moderation page requires authentication"
+        - "Credits page redirects to sign-in if no wallet connected"
+      not_to_be_confused_with: ""
+
+    - term: Moderator Role
+      definition: Comms-gatekeeper enforces a moderator role server-side. The UI assumes the connected wallet has the role if it can successfully call moderation endpoints — there is no client-side role check.
+      examples: []
+      not_to_be_confused_with: ""
+
+    - term: Environment Selector
+      definition: User Moderation and other sensitive views expose a dev/prd toggle. Configs live in src/config/env/dev.json and src/config/env/prd.json. This prevents accidental production operations.
+      examples:
+        - "Toggle between .zone (dev) and .org (prd) endpoints"
+      not_to_be_confused_with: ""
+
+    - term: Signed Fetch
+      definition: decentraland-crypto-fetch wraps fetch to attach identity auth-chain headers (ADR-44). Used for all authenticated API calls.
+      examples: []
+      not_to_be_confused_with: ""
+
+  concept_relationships:
+    internal:
+      - from: AuthIdentity
+        to: Protected Routes
+        relationship: enables
+        description: AuthIdentity is required to access protected routes
+
+      - from: Moderator Role
+        to: User Moderation
+        relationship: requires
+        description: Moderator role is enforced server-side by comms-gatekeeper for moderation endpoints
+
+    cross_service:
+      - local_concept: User Ban
+        remote_service: comms-gatekeeper
+        remote_concept: Platform Ban
+        mapping_type: equivalent
+        description: User bans issued in this tool are stored and enforced by comms-gatekeeper
+
+      - local_concept: Credit Grant
+        remote_service: credits-server
+        remote_concept: Credit
+        mapping_type: creates
+        description: Credit grants issued in this tool are processed and stored by credits-server
+
+  invariants:
+    - rule: All authenticated API calls must use Signed Fetch with AuthIdentity
+      enforced_at: api_validation
+      severity: hard
+
+    - rule: Moderator role must be validated server-side by comms-gatekeeper
+      enforced_at: api_validation
+      severity: hard
+
+    - rule: Environment selector must prevent accidental cross-environment operations
+      enforced_at: domain_layer
+      severity: soft
+
+    - rule: Credits API calls must include Bearer token for authorization
+      enforced_at: api_validation
+      severity: hard
+
+  responsibilities:
+    - Issue platform-wide bans (permanent or timed), lift bans, and issue warnings via comms-gatekeeper moderation API
+    - List and delete communities via Communities API
+    - Grant credits to users, view credit history by season, batch grant operations with daily limit enforcement via Credits API
+    - Inspect real-time peer/participant connections on LiveKit rooms using livekit-client
+    - Remove participants from LiveKit rooms using livekit-server-sdk (requires API key/secret)
+    - Visualize Archipelago island clustering and peer connections via embedded iframe and Archipelago Stats API
+    - Provide embedded access to operational tools (Catalyst Monitor, AB Status, Event Map Generator)
+    - Link to API documentation (Events, Places, Catalyst, Rewards)
+    - Enforce wallet-based authentication via ethers.js and window.ethereum
+    - Provide environment selector (dev/prd) to prevent accidental production operations
+
+  out_of_scope:
+    - Public-facing user registration or profile management (handled by profile app)
+    - Token swaps, DeFi, or on-chain transactions
+    - Smart contract deployment or interaction beyond identity signing
+    - Payment processing
+    - Marketplace or asset operations
+    - Game mechanics or scene content management
+    - Any user-facing functionality — this is an internal-only tool
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: comms-gatekeeper
+      relationship: sync
+      protocol: HTTP
+      purpose: User moderation endpoints — bans, warnings, ban status. Requires moderator role enforced server-side.
+      critical: true
+
+    - name: credits-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Granting and viewing platform credits, season history, daily limit enforcement
+      critical: true
+
+    - name: catalyst
+      relationship: sync
+      protocol: HTTP
+      purpose: Profile and identity resolution via Lambdas API
+      critical: false
+
+    - name: archipelago-workers
+      relationship: sync
+      protocol: HTTP
+      purpose: Island/peer connection data for Islands viewer via Archipelago Stats API
+      critical: false
+
+    - name: worlds-content-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Live world data for Islands viewer
+      critical: false
+
+  external:
+    - name: Ethereum RPC (via window.ethereum)
+      purpose: Wallet connection and identity creation using ethers.js v6
+      type: blockchain
+
+    - name: LiveKit Cloud
+      purpose: Real-time room participant data for debugger and kick tools (WebSocket connection)
+      type: other
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars:
+    - name: VITE_HOST
+      description: LiveKit host URL for debugger and kick tools
+      affects: LiveKit WebSocket connection endpoint
+
+    - name: VITE_API_KEY
+      description: LiveKit API key for server SDK (kick tool)
+      affects: LiveKit server API authentication
+
+    - name: VITE_API_SECRET
+      description: LiveKit API secret for server SDK (kick tool)
+      affects: LiveKit server API authentication
+
+    - name: VITE_CREDITS_GRANTER_API_TOKEN_DEV
+      description: Bearer token for Credits API in development environment
+      affects: Credits API authorization for dev environment
+
+    - name: VITE_CREDITS_GRANTER_API_TOKEN_PRD
+      description: Bearer token for Credits API in production environment
+      affects: Credits API authorization for production environment
+
+    - name: VITE_COMMS_GATEKEEPER_URL
+      description: Comms Gatekeeper base URL (overrides environment config)
+      affects: User moderation API endpoint
+
+    - name: VITE_CREDITS_API_URL
+      description: Credits API base URL (overrides default credits.decentraland.org)
+      affects: Credits API endpoint
+
+    - name: VITE_LIVEKIT_URL
+      description: LiveKit Cloud WebSocket URL (overrides default wss://dcl.livekit.cloud)
+      affects: LiveKit debugger WebSocket connection
+
+adrs:
+  - id: ADR-44
+    title: Signed Fetch Authentication
+    url: https://adr.decentraland.org/adr/ADR-44
+    relevance: Defines authentication mechanism for all API endpoints using decentraland-crypto-fetch with AuthIdentity
