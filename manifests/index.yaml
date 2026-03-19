@@ -13,6 +13,12 @@ services:
   - client
   data_domain: []
   dependencies:
+  - name: auth
+    relationship: sync
+    protocol: HTTP
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
   - name: credits-server
     relationship: sync
     protocol: HTTP
@@ -20,12 +26,6 @@ services:
     relationship: sync
     protocol: HTTP
   - name: transactions-api
-    relationship: sync
-    protocol: HTTP
-  - name: catalyst
-    relationship: sync
-    protocol: HTTP
-  - name: auth
     relationship: sync
     protocol: HTTP
 - name: archipelago-workers
@@ -71,13 +71,13 @@ services:
   data_domain:
   - asset-bundles
   dependencies:
+  - name: asset-bundle-registry
+    relationship: async
+    protocol: SNS/SQS
   - name: catalyst
     relationship: sync
     protocol: HTTP
   - name: deployments-to-sqs
-    relationship: async
-    protocol: SNS/SQS
-  - name: asset-bundle-registry
     relationship: async
     protocol: SNS/SQS
 - name: asset-bundle-registry
@@ -94,17 +94,17 @@ services:
   - entity-registry
   - optimization-status
   dependencies:
-  - name: deployments-to-sqs
+  - name: asset-bundle-converter
     relationship: async
     protocol: SNS/SQS
-  - name: asset-bundle-converter
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: deployments-to-sqs
     relationship: async
     protocol: SNS/SQS
   - name: worlds-content-server
     relationship: both
-    protocol: HTTP
-  - name: catalyst
-    relationship: sync
     protocol: HTTP
 - name: atlas-server
   display_name: Atlas Server
@@ -125,10 +125,11 @@ services:
     protocol: HTTP
 - name: auth
   display_name: Decentraland Auth UI
-  description: Browser-based authentication dApp that enables wallet operations for
-    the Decentraland desktop client. Partners with auth-server to execute wallet method
-    calls (transactions, signatures) in the user's browser wallet through Socket.IO
-    and HTTP relay patterns.
+  description: Centralized authentication and identity service for Decentraland. Handles
+    wallet connection (MetaMask, WalletConnect, Coinbase), social login (Google, Discord,
+    Apple, X), email OTP login, OAuth callbacks, new-user avatar setup, and mobile
+    deep-link authentication flows. After successful authentication redirects users
+    back to the originating Decentraland application.
   layer: feature-servers
   repository: https://github.com/decentraland/auth
   role:
@@ -138,10 +139,10 @@ services:
   - name: auth-server
     relationship: both
     protocol: WebSocket
-  - name: catalyst
+  - name: builder-server
     relationship: sync
     protocol: HTTP
-  - name: builder-server
+  - name: catalyst
     relationship: sync
     protocol: HTTP
   - name: events-notifier
@@ -178,16 +179,16 @@ services:
   data_domain:
   - badges
   dependencies:
-  - name: events-notifier
-    relationship: async
-    protocol: SNS/SQS
-  - name: notifications-workers
-    relationship: async
-    protocol: SNS/SQS
   - name: catalyst
     relationship: sync
     protocol: HTTP
   - name: deployments-to-sqs
+    relationship: async
+    protocol: SNS/SQS
+  - name: events-notifier
+    relationship: async
+    protocol: SNS/SQS
+  - name: notifications-workers
     relationship: async
     protocol: SNS/SQS
 - name: block-indexer
@@ -237,13 +238,13 @@ services:
   - name: catalyst
     relationship: sync
     protocol: HTTP
-  - name: worlds-content-server
+  - name: credits-server
     relationship: sync
     protocol: HTTP
   - name: marketplace-server
     relationship: sync
     protocol: HTTP
-  - name: credits-server
+  - name: worlds-content-server
     relationship: sync
     protocol: HTTP
 - name: builder-client
@@ -355,7 +356,7 @@ services:
   - name: catalyst
     relationship: sync
     protocol: HTTP
-  - name: worlds-content-server
+  - name: notifications-workers
     relationship: sync
     protocol: HTTP
   - name: places-api
@@ -364,7 +365,7 @@ services:
   - name: social-service-ea
     relationship: sync
     protocol: HTTP
-  - name: notifications-workers
+  - name: worlds-content-server
     relationship: sync
     protocol: HTTP
 - name: comms-message-sfu
@@ -418,22 +419,22 @@ services:
   - client
   data_domain: []
   dependencies:
-  - name: worlds-content-server
-    relationship: sync
-    protocol: HTTP
-  - name: social-service-ea
+  - name: asset-bundle-registry
     relationship: sync
     protocol: HTTP
   - name: atlas-server
-    relationship: sync
-    protocol: HTTP
-  - name: asset-bundle-registry
     relationship: sync
     protocol: HTTP
   - name: auth-server
     relationship: sync
     protocol: HTTP
   - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: social-service-ea
+    relationship: sync
+    protocol: HTTP
+  - name: worlds-content-server
     relationship: sync
     protocol: HTTP
 - name: credits-server
@@ -451,10 +452,10 @@ services:
   - seasons
   - goals
   dependencies:
-  - name: events
+  - name: archipelago-workers
     relationship: sync
     protocol: HTTP
-  - name: archipelago-workers
+  - name: events
     relationship: sync
     protocol: HTTP
 - name: dao-landing
@@ -470,7 +471,7 @@ services:
   - client
   data_domain: []
   dependencies:
-  - name: governance
+  - name: auth
     relationship: sync
     protocol: HTTP
   - name: catalyst
@@ -479,7 +480,7 @@ services:
   - name: credits-server
     relationship: sync
     protocol: HTTP
-  - name: auth
+  - name: governance
     relationship: sync
     protocol: HTTP
 - name: dapps-template
@@ -562,24 +563,24 @@ services:
   - schedules
   - event-attendance
   dependencies:
-  - name: catalyst
-    relationship: sync
-    protocol: HTTP
-  - name: social-service-ea
-    relationship: sync
-    protocol: HTTP
-  - name: notifications-workers
-    relationship: async
-    protocol: SNS/SQS
-  - name: events-notifier
-    relationship: async
-    protocol: SNS/SQS
-  - name: worlds-content-server
-    relationship: sync
-    protocol: HTTP
   - name: badges
     relationship: async
     protocol: SNS/SQS
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: events-notifier
+    relationship: async
+    protocol: SNS/SQS
+  - name: notifications-workers
+    relationship: async
+    protocol: SNS/SQS
+  - name: social-service-ea
+    relationship: sync
+    protocol: HTTP
+  - name: worlds-content-server
+    relationship: sync
+    protocol: HTTP
 - name: events-notifier
   display_name: Events Notifier
   description: Monitors blockchain events and publishes notifications to internal
@@ -652,10 +653,10 @@ services:
   - client
   data_domain: []
   dependencies:
-  - name: governance
+  - name: auth
     relationship: sync
     protocol: HTTP
-  - name: auth
+  - name: governance
     relationship: sync
     protocol: HTTP
 - name: hashing
@@ -693,10 +694,7 @@ services:
   - client
   data_domain: []
   dependencies:
-  - name: places
-    relationship: sync
-    protocol: HTTP
-  - name: worlds-content-server
+  - name: auth
     relationship: sync
     protocol: HTTP
   - name: catalyst
@@ -705,7 +703,10 @@ services:
   - name: events
     relationship: sync
     protocol: HTTP
-  - name: auth
+  - name: places
+    relationship: sync
+    protocol: HTTP
+  - name: worlds-content-server
     relationship: sync
     protocol: HTTP
 - name: lamb2
@@ -720,23 +721,29 @@ services:
   - gateway
   data_domain: []
   dependencies:
-  - name: catalyst
+  - name: archipelago-workers
     relationship: sync
     protocol: HTTP
-  - name: archipelago-workers
+  - name: catalyst
     relationship: sync
     protocol: HTTP
 - name: landing
   display_name: Decentraland Homepage
-  description: The main landing page and homepage for Decentraland, built with Gatsby.
-    It serves as the primary entry point for new and returning users, providing information
-    about the platform, events, downloads, and community resources.
-  layer: client
+  description: The main Decentraland homepage at decentraland.org. Gatsby-based static
+    site rendering the primary marketing landing page with CMS-driven content about
+    the platform, creators, and community. Includes download pages for Explorer and
+    Creator Hub, event listings, creator-focused pages, Discord invite, press/help
+    pages, and onboarding flows. Deployed to Cloudflare Pages with edge routing via
+    Cloudflare Worker.
+  layer: entry-points
   repository: https://github.com/decentraland/landing
   role:
   - client
   data_domain: []
   dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
   - name: events
     relationship: sync
     protocol: HTTP
@@ -745,16 +752,21 @@ services:
     protocol: HTTP
 - name: landing-site
   display_name: Landing Site (Modern)
-  description: A modern React-based landing page for Decentraland built with Vite.
-    It serves as an alternative entry point providing information about the platform,
-    creator tools, missions, and community resources, with integrated Web3 wallet
-    support.
-  layer: client
+  description: Modern Vite/React SPA serving as the new Decentraland main landing
+    page, replacing the Gatsby-based landing app. All marketing content (hero, missions,
+    FAQ, banners, social proof, marquee, trending news) is fetched at runtime from
+    Contentful CMS via RTK Query. Features lazy-loaded below-the-fold sections, OS-aware
+    download options, wallet-based authentication (Magic SDK, WalletConnect), and
+    analytics tracking.
+  layer: entry-points
   repository: https://github.com/decentraland/landing-site
   role:
   - client
   data_domain: []
   dependencies:
+  - name: auth
+    relationship: sync
+    protocol: HTTP
   - name: catalyst
     relationship: sync
     protocol: HTTP
@@ -784,25 +796,25 @@ services:
   - client
   data_domain: []
   dependencies:
-  - name: marketplace-server
+  - name: atlas-server
     relationship: sync
     protocol: HTTP
-  - name: atlas-server
+  - name: builder
     relationship: sync
     protocol: HTTP
   - name: catalyst
     relationship: sync
     protocol: HTTP
-  - name: builder
+  - name: credits-server
+    relationship: sync
+    protocol: HTTP
+  - name: marketplace-server
     relationship: sync
     protocol: HTTP
   - name: signatures-api
     relationship: sync
     protocol: HTTP
   - name: transactions-api
-    relationship: sync
-    protocol: HTTP
-  - name: credits-server
     relationship: sync
     protocol: HTTP
 - name: marketplace-server
@@ -834,12 +846,12 @@ services:
   - notifications
   - subscriptions
   dependencies:
-  - name: events-notifier
-    relationship: async
-    protocol: SNS/SQS
   - name: catalyst
     relationship: sync
     protocol: HTTP
+  - name: events-notifier
+    relationship: async
+    protocol: SNS/SQS
 - name: places
   display_name: Decentraland Places Service
   description: A comprehensive API service for discovering, managing, and interacting
@@ -863,15 +875,15 @@ services:
   - name: catalyst
     relationship: sync
     protocol: HTTP
-  - name: worlds-content-server
-    relationship: sync
-    protocol: HTTP
-  - name: realm-provider
-    relationship: sync
-    protocol: HTTP
   - name: deployments-to-sqs
     relationship: async
     protocol: SNS/SQS
+  - name: realm-provider
+    relationship: sync
+    protocol: HTTP
+  - name: worlds-content-server
+    relationship: sync
+    protocol: HTTP
 - name: platform-crypto-middleware
   display_name: Platform Authentication Middleware
   description: Multi-framework HTTP middleware library for authenticating requests
@@ -908,25 +920,25 @@ services:
   - client
   data_domain: []
   dependencies:
+  - name: auth
+    relationship: sync
+    protocol: HTTP
   - name: catalyst
-    relationship: sync
-    protocol: HTTP
-  - name: social-service-ea
-    relationship: both
-    protocol: WebSocket
-  - name: marketplace-server
-    relationship: sync
-    protocol: HTTP
-  - name: worlds-content-server
     relationship: sync
     protocol: HTTP
   - name: credits-server
     relationship: sync
     protocol: HTTP
+  - name: marketplace-server
+    relationship: sync
+    protocol: HTTP
   - name: referral
     relationship: sync
     protocol: HTTP
-  - name: auth
+  - name: social-service-ea
+    relationship: both
+    protocol: WebSocket
+  - name: worlds-content-server
     relationship: sync
     protocol: HTTP
 - name: profile-images
@@ -983,11 +995,11 @@ services:
   data_domain:
   - realms
   dependencies:
-  - name: catalyst
-    relationship: sync
-    protocol: HTTP
   - name: archipelago-workers
     relationship: both
+    protocol: HTTP
+  - name: catalyst
+    relationship: sync
     protocol: HTTP
 - name: reels
   display_name: Reels Frontend
@@ -1002,6 +1014,9 @@ services:
   data_domain: []
   dependencies:
   - name: camera-reel-service
+    relationship: sync
+    protocol: HTTP
+  - name: catalyst
     relationship: sync
     protocol: HTTP
   - name: urn-resolver
@@ -1024,10 +1039,10 @@ services:
   - rewards
   - referrals
   dependencies:
-  - name: catalyst
+  - name: archipelago-workers
     relationship: sync
     protocol: HTTP
-  - name: archipelago-workers
+  - name: catalyst
     relationship: sync
     protocol: HTTP
 - name: schemas
@@ -1069,16 +1084,16 @@ services:
   - client
   data_domain: []
   dependencies:
-  - name: social-service-ea
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: credits-server
     relationship: sync
     protocol: HTTP
   - name: events
     relationship: sync
     protocol: HTTP
-  - name: catalyst
-    relationship: sync
-    protocol: HTTP
-  - name: credits-server
+  - name: social-service-ea
     relationship: sync
     protocol: HTTP
 - name: social-service-ea
@@ -1095,19 +1110,19 @@ services:
   - friendships
   - social-settings
   dependencies:
+  - name: archipelago-workers
+    relationship: sync
+    protocol: HTTP
   - name: catalyst
     relationship: sync
     protocol: HTTP
   - name: comms-gatekeeper
     relationship: sync
     protocol: HTTP
-  - name: archipelago-workers
+  - name: notifications-workers
     relationship: sync
     protocol: HTTP
   - name: places-api
-    relationship: sync
-    protocol: HTTP
-  - name: notifications-workers
     relationship: sync
     protocol: HTTP
   - name: rewards-server
@@ -1150,25 +1165,13 @@ services:
   - client
   data_domain: []
   dependencies:
-  - name: catalyst
-    relationship: sync
-    protocol: HTTP
-  - name: worlds-content-server
-    relationship: sync
-    protocol: HTTP
-  - name: asset-bundle-registry
-    relationship: sync
-    protocol: HTTP
-  - name: realm-provider
-    relationship: sync
-    protocol: HTTP
-  - name: social-service-ea
-    relationship: both
-    protocol: WebSocket
   - name: archipelago-workers
     relationship: both
     protocol: WebSocket
-  - name: comms-gatekeeper
+  - name: asset-bundle-registry
+    relationship: sync
+    protocol: HTTP
+  - name: auth-server
     relationship: sync
     protocol: HTTP
   - name: badges
@@ -1177,7 +1180,16 @@ services:
   - name: camera-reel-service
     relationship: sync
     protocol: HTTP
-  - name: auth-server
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: comms-gatekeeper
+    relationship: sync
+    protocol: HTTP
+  - name: credits-server
+    relationship: sync
+    protocol: HTTP
+  - name: events-notifier
     relationship: sync
     protocol: HTTP
   - name: marketplace-server
@@ -1186,10 +1198,13 @@ services:
   - name: notifications-workers
     relationship: sync
     protocol: HTTP
-  - name: credits-server
+  - name: realm-provider
     relationship: sync
     protocol: HTTP
-  - name: events-notifier
+  - name: social-service-ea
+    relationship: both
+    protocol: WebSocket
+  - name: worlds-content-server
     relationship: sync
     protocol: HTTP
 - name: urn-resolver
@@ -1254,12 +1269,12 @@ services:
   - worlds
   - world-permissions
   dependencies:
-  - name: social-service-ea
-    relationship: sync
-    protocol: HTTP
   - name: comms-gatekeeper
     relationship: sync
     protocol: HTTP
   - name: notifications-workers
+    relationship: sync
+    protocol: HTTP
+  - name: social-service-ea
     relationship: sync
     protocol: HTTP

@@ -162,11 +162,11 @@ nodes:
   repository: https://github.com/decentraland/lamb2
 - name: landing
   display_name: Decentraland Homepage
-  layer: client
+  layer: entry-points
   repository: https://github.com/decentraland/landing
 - name: landing-site
   display_name: Landing Site (Modern)
-  layer: client
+  layer: entry-points
   repository: https://github.com/decentraland/landing-site
 - name: linker-server
   display_name: Linker Server
@@ -346,12 +346,12 @@ edges:
   to: auth-server
   relationship: both
   protocol: WebSocket
-  description: Receive authentication requests and relay wallet execution results
+  description: Real-time login confirmation and identity management via Socket.IO
 - from: auth
   to: auth-server
   relationship: sync
   protocol: HTTP
-  description: HTTP polling alternative for authentication requests
+  description: Identity endpoints and OTP issuance
 - from: auth
   to: builder-server
   relationship: sync
@@ -361,17 +361,17 @@ edges:
   to: catalyst
   relationship: sync
   protocol: HTTP
-  description: Fetch and update user profiles and avatars
+  description: Fetch and deploy user profiles and avatars via dcl-catalyst-client
 - from: auth
   to: events-notifier
   relationship: sync
   protocol: HTTP
-  description: Track user onboarding events
+  description: Track user onboarding checkpoint events
 - from: auth
   to: social-service-ea
   relationship: sync
   protocol: HTTP
-  description: Referral system integration
+  description: Referral system integration (referral-server endpoint)
 - from: auth
   to: transactions-api
   relationship: sync
@@ -644,20 +644,31 @@ edges:
   protocol: HTTP
   description: Fetches entity data from content server
 - from: landing
+  to: catalyst
+  relationship: sync
+  protocol: HTTP
+  description: Fetch hot/popular scenes for the What's Hot section
+- from: landing
   to: events
   relationship: sync
   protocol: HTTP
-  description: Fetch upcoming events to display on the homepage
+  description: Fetch upcoming events to display on the event listing page
 - from: landing
   to: rewards
   relationship: sync
   protocol: HTTP
-  description: Manage reward campaigns and wearable dispensers for event-based promotions
+  description: Manage reward campaigns and wearable dispensers for onboarding rewards
+    with hCaptcha verification
+- from: landing-site
+  to: auth
+  relationship: sync
+  protocol: HTTP
+  description: SSO authentication for wallet connection and onboarding flows
 - from: landing-site
   to: catalyst
   relationship: sync
   protocol: HTTP
-  description: Fetch user avatar profiles from peer lambdas endpoint
+  description: Fetch user avatar profiles from peer endpoint for authenticated contexts
 - from: linker-server
   to: catalyst
   relationship: sync
@@ -798,6 +809,11 @@ edges:
   relationship: sync
   protocol: HTTP
   description: Fetch snapshot metadata, image URLs, and user gallery listings
+- from: reels
+  to: catalyst
+  relationship: sync
+  protocol: HTTP
+  description: Fetch avatar and profile data for users shown in snapshots
 - from: reels
   to: urn-resolver
   relationship: sync

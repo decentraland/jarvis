@@ -3,7 +3,7 @@ schema_version: "1.1"
 service:
   name: auth
   display_name: Decentraland Auth UI
-  description: Browser-based authentication dApp that enables wallet operations for the Decentraland desktop client. Partners with auth-server to execute wallet method calls (transactions, signatures) in the user's browser wallet through Socket.IO and HTTP relay patterns.
+  description: Centralized authentication and identity service for Decentraland. Handles wallet connection (MetaMask, WalletConnect, Coinbase), social login (Google, Discord, Apple, X), email OTP login, OAuth callbacks, new-user avatar setup, and mobile deep-link authentication flows. After successful authentication redirects users back to the originating Decentraland application.
   owner: dapps
   repository: https://github.com/decentraland/auth
   language: typescript
@@ -11,61 +11,95 @@ service:
   role:
     - client
   data_domain: []
-  ai-agent-context: ""
+  ai-agent-context: "https://github.com/decentraland/auth/blob/main/docs/ai-agent-context.md"
 
 domain:
   glossary:
-    - term: Wallet Method Call
-      definition: Request to execute an Ethereum operation (eth_sendTransaction, personal_sign, dcl_personal_sign) in the user's browser wallet
+    - term: redirectTo
+      definition: Query parameter that controls where the user is redirected after successful authentication. The primary flow-control mechanism for the auth service.
 
-    - term: Request ID
-      definition: Unique identifier for an authentication request that links desktop client and browser execution
+    - term: loginMethod
+      definition: Query parameter that can pre-select a specific connection type (email, metamask, google, etc.) to auto-trigger without showing the selector UI.
 
-    - term: Verification Code
-      definition: Visual confirmation number displayed on both desktop and browser to verify they are processing the same request
+    - term: AuthFlow
+      definition: Post-connection sequence that checks profile completeness, determines if avatar setup is needed, and performs the final redirect. Encapsulated in the useAuthFlow hook.
 
     - term: Avatar Setup
-      definition: Process for creating or updating user avatar with wearables and customization
+      definition: Process for new users to customize their avatar in a Unity WearablePreview, set display name and email, accept terms, and deploy profile to Catalyst.
 
     - term: Mobile Auth
-      definition: Authentication flow for mobile devices using OAuth and Magic Link
+      definition: Deep-link authentication flow for mobile devices using provider URL parameter to pre-select connection type and skip selection UI.
+
+    - term: OAuth Callback
+      definition: Return flow from social providers (Google, Discord, Apple, X) handled by Magic SDK. Detects mobile sessions and routes accordingly.
+
+    - term: Onboarding Checkpoints
+      definition: Segment analytics events sent at key steps in the user journey (wallet connected, avatar saved, email set, etc.) for tracking user onboarding progress.
+
+    - term: Clock Sync
+      definition: System clock drift check performed before wallet signing to prevent invalid signatures. Shows ClockSyncModal if drift exceeds acceptable threshold.
+      
+    - term: Verification Code
+      definition: Visual confirmation number displayed on both desktop and browser to verify they are processing the same request (legacy from desktop client integration).
 
   concept_relationships:
     internal:
-      - from: Request ID
-        to: Verification Code
-        relationship: has_one
-        description: Each request includes a verification code for visual confirmation
+      - from: AuthFlow
+        to: Avatar Setup
+        relationship: transitions_to
+        description: After successful wallet/social connection, new users are routed to avatar setup if they don't have a complete profile
+
+      - from: Avatar Setup
+        to: Onboarding Checkpoints
+        relationship: depends_on
+        description: Avatar setup process sends checkpoint events at each step for analytics tracking
+
+      - from: OAuth Callback
+        to: Mobile Auth
+        relationship: transitions_to
+        description: OAuth callbacks from social providers route to mobile-specific pages when mobile session is detected
 
     cross_service:
-      - local_concept: Wallet Method Call
-        remote_service: auth-server
-        remote_concept: Authentication Request
-        mapping_type: equivalent
-        description: Browser executes wallet method calls relayed from auth-server
-
       - local_concept: Avatar Setup
         remote_service: catalyst
         remote_concept: Profile
         mapping_type: projects_as
-        description: Avatar changes are published to Catalyst as profile updates
+        description: Avatar changes are published to Catalyst as profile entity deployments
 
-  invariants: []
+      - local_concept: Onboarding Checkpoints
+        remote_service: events-notifier
+        remote_concept: Event
+        mapping_type: projects_as
+        description: Checkpoint tracking sends events to events-notifier for user onboarding analytics
+
+  invariants:
+    - rule: Clock drift must be within acceptable range before allowing wallet signatures to prevent invalid signature errors
+      enforced_at: domain_layer
+      severity: hard
 
   responsibilities:
-    - Display pending authentication requests from desktop client via auth-server
-    - Execute wallet method calls in user's browser wallet
-    - Show verification codes for request confirmation
-    - Relay execution results back through auth-server to desktop client
-    - Handle avatar setup and customization flow
-    - Manage mobile authentication using OAuth providers
-    - Provide login interface for wallet connection
-    - Handle wearable preview and selection
+    - Handle wallet connection via MetaMask, WalletConnect, Coinbase Wallet, and other providers
+    - Provide social login via OAuth2 (Google, Discord, Apple, X) using Magic SDK
+    - Enable passwordless email OTP login via Thirdweb SDK
+    - Support guest access with unauthenticated play sessions
+    - Guide new users through avatar customization (AvatarSetupPage) with WearablePreview
+    - Deploy user profiles to Catalyst content server
+    - Handle mobile authentication via deep-link flows (MobileAuthPage, MobileCallbackPage)
+    - Process OAuth callbacks from social providers (CallbackPage)
+    - Redirect users back to originating application via redirectTo parameter
+    - Perform clock synchronization checks to prevent signature failures
+    - Track referral sources at user onboarding
+    - Send onboarding checkpoint events to Segment analytics
+    - Gate features using feature flags (FeatureFlagsProvider)
+    - Monitor errors via Sentry and track user behavior via Segment
 
   out_of_scope:
-    - Request storage and lifecycle management (handled by auth-server)
-    - Profile storage (handled by Catalyst)
-    - Wallet operations themselves (handled by browser wallet extensions)
+    - Account management (wallet balances, MANA bridging, notification settings) handled by account dApp
+    - Profile editing after initial setup handled by profile site
+    - Server-side session storage or token issuance handled by auth-server
+    - Governance proposals and voting handled by governance-ui
+    - Marketplace browsing handled by marketplace dApp
+    - In-world Explorer functionality handled by Decentraland Explorer client
 
   owned_entities: []
 
@@ -80,19 +114,19 @@ dependencies:
     - name: auth-server
       relationship: both
       protocol: WebSocket
-      purpose: Receive authentication requests and relay wallet execution results
+      purpose: Real-time login confirmation and identity management via Socket.IO
       critical: true
 
     - name: auth-server
       relationship: sync
       protocol: HTTP
-      purpose: HTTP polling alternative for authentication requests
+      purpose: Identity endpoints and OTP issuance
       critical: true
 
     - name: catalyst
       relationship: sync
       protocol: HTTP
-      purpose: Fetch and update user profiles and avatars
+      purpose: Fetch and deploy user profiles and avatars via dcl-catalyst-client
       critical: true
 
     - name: builder-server
@@ -104,13 +138,13 @@ dependencies:
     - name: events-notifier
       relationship: sync
       protocol: HTTP
-      purpose: Track user onboarding events
+      purpose: Track user onboarding checkpoint events
       critical: false
 
     - name: social-service-ea
       relationship: sync
       protocol: HTTP
-      purpose: Referral system integration
+      purpose: Referral system integration (referral-server endpoint)
       critical: false
 
     - name: transactions-api
@@ -121,31 +155,35 @@ dependencies:
 
   external:
     - name: Ethereum Wallet
-      purpose: Execute wallet operations in browser (MetaMask, WalletConnect, etc.)
+      purpose: Execute wallet operations in browser (MetaMask, WalletConnect, Coinbase, etc.)
       type: other
 
-    - name: Magic Link
-      purpose: OAuth-based authentication for mobile devices
+    - name: Magic SDK
+      purpose: OAuth2 social login (Google, Discord, Apple, X) and email authentication
+      type: api
+
+    - name: Thirdweb SDK
+      purpose: Additional wallet connection options and email OTP login
       type: api
 
     - name: Segment
-      purpose: Analytics and user behavior tracking
+      purpose: Analytics and user behavior tracking for onboarding checkpoints
       type: api
 
     - name: Sentry
-      purpose: Error tracking and monitoring
+      purpose: Error tracking and monitoring for web and mobile
       type: api
 
     - name: Intercom
-      purpose: User support chat widget
+      purpose: User support chat widget integration
       type: api
 
     - name: Feature Flags Service
-      purpose: Feature toggle management
+      purpose: Runtime feature toggle management via FeatureFlagsProvider
       type: api
 
     - name: Wearable Preview Service
-      purpose: Render previews of wearables and avatar customizations
+      purpose: Render interactive previews of wearables and avatar customizations in Unity
       type: api
 
 events:
@@ -160,72 +198,72 @@ configuration:
       description: Default environment (dev, stg, prod) selected at build time
       affects: Configuration selection from config/env/*.json
 
+    - name: ENVIRONMENT
+      description: Runtime environment label (dev, stg, prod)
+      affects: Environment-specific behavior and logging
+
     - name: AUTH_SERVER_URL
-      description: Auth server WebSocket and HTTP endpoint
-      affects: Authentication request relay and wallet method execution
+      description: Auth server WebSocket and HTTP endpoint base URL
+      affects: All authentication requests and identity management
 
-    - name: BUILDER_SERVER_URL
-      description: Builder server API endpoint
-      affects: Wearable and asset data fetching
+    - name: PEER_URL
+      description: Catalyst peer URL for profile operations
+      affects: Profile fetch and deployment via dcl-catalyst-client
 
-    - name: DOWNLOAD_URL
-      description: Desktop client download URL
-      affects: Download link for desktop application
+    - name: SEGMENT_API_KEY
+      description: Segment analytics write key
+      affects: Onboarding checkpoint tracking and user analytics
 
-    - name: EVENTS_NOTIFIER_URL
-      description: Events notifier API endpoint
-      affects: User onboarding event tracking
+    - name: SENTRY_DSN
+      description: Sentry error monitoring DSN for web
+      affects: Error tracking and crash reporting for web sessions
+
+    - name: SENTRY_DSN_MOBILE
+      description: Sentry error monitoring DSN for mobile
+      affects: Error tracking and crash reporting for mobile devices
 
     - name: FEATURE_FLAGS_URL
       description: Feature flags service endpoint
-      affects: Feature toggle management
+      affects: Feature toggle management and configuration
 
     - name: FEATURE_FLAGS_INTERVAL
-      description: Polling interval for feature flags refresh (milliseconds)
-      affects: Feature flag update frequency
+      description: Polling interval for feature flags refresh in milliseconds
+      affects: How frequently feature flag values are updated
+
+    - name: BUILDER_SERVER_URL
+      description: Builder server API endpoint
+      affects: Wearable and asset data fetching for avatar setup
 
     - name: INTERCOM_APP_ID
-      description: Intercom support widget ID
+      description: Intercom support widget application ID
       affects: User support chat integration
+
+    - name: REFERRAL_SERVER_URL
+      description: Referral server API endpoint (social-service-ea)
+      affects: Referral source tracking at onboarding
+
+    - name: WEARABLE_PREVIEW_URL
+      description: Wearable preview service endpoint
+      affects: Avatar customization preview rendering in Unity
+
+    - name: DOWNLOAD_URL
+      description: Desktop client download URL
+      affects: Download link for Decentraland desktop application
 
     - name: META_TRANSACTION_SERVER_URL
       description: Meta-transaction API endpoint (transactions-api)
       affects: Gasless transaction support
 
-    - name: PEER_URL
-      description: Catalyst peer URL
-      affects: Profile and avatar data fetching
-
     - name: PLACES_API_URL
       description: Places API endpoint
-      affects: Location and place data
+      affects: Location and place data integration
 
     - name: PROFILE_CONSISTENCY_CHECK_TIMEOUT
-      description: Timeout in milliseconds for profile consistency checks
-      affects: Avatar update validation timing
+      description: Timeout in milliseconds for profile consistency checks after deployment
+      affects: Avatar update validation timing and retry logic
 
-    - name: REFERRAL_SERVER_URL
-      description: Referral server API endpoint (social-service-ea)
-      affects: Referral system integration
-
-    - name: SEGMENT_API_KEY
-      description: Segment analytics write key
-      affects: Analytics tracking
-
-    - name: SENTRY_DSN
-      description: Sentry error monitoring DSN
-      affects: Error tracking for web
-
-    - name: SENTRY_DSN_MOBILE
-      description: Sentry error monitoring DSN for mobile
-      affects: Error tracking for mobile devices
-
-    - name: WEARABLE_PREVIEW_URL
-      description: Wearable preview service endpoint
-      affects: Avatar customization preview rendering
-
-    - name: ENVIRONMENT
-      description: Environment name (dev, stg, prod)
-      affects: Environment-specific behavior and logging
+    - name: EVENTS_NOTIFIER_URL
+      description: Events notifier API endpoint
+      affects: User onboarding event tracking
 
 adrs: []
