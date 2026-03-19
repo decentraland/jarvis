@@ -2,8 +2,8 @@ schema_version: "1.1"
 
 service:
   name: referral
-  display_name: Reward Services
-  description: Comprehensive reward and campaign management system for the Decentraland ecosystem that enables creation of reward campaigns, distribution of NFTs and tokens, management of referral codes, blockchain transaction handling, and tracking of user referrals with support for multiple blockchain networks (Ethereum, Polygon).
+  display_name: Referral / Reward Services
+  description: Full-stack Gatsby application (served at rewards.decentraland.org) that manages the distribution of wearable and token rewards on the Decentraland blockchain. Provides both a frontend UI for users to claim rewards and view campaign status, and a backend Express server with a PostgreSQL database that handles campaign management, reward stock, API key issuance, and on-chain minting/transfer transactions. It is the authoritative service for all Decentraland reward campaigns.
   owner: core-engineering
   repository: https://github.com/decentraland/referral
   language: typescript
@@ -14,7 +14,7 @@ service:
     - campaigns
     - rewards
     - referrals
-  ai-agent-context: ""
+  ai-agent-context: https://github.com/decentraland/referral/blob/master/docs/ai-agent-context.md
 
 domain:
   glossary:
@@ -156,26 +156,26 @@ domain:
       severity: hard
 
   responsibilities:
-    - Create and manage reward campaigns with configurable distribution parameters and blockchain networks
-    - Maintain finite stock pools of NFTs and wearables with grouping and priority management
-    - Generate and manage API keys with user restrictions for controlled reward distribution
-    - Assign rewards to users based on API key restrictions and campaign availability
-    - Process reward claims and execute blockchain transactions for minting and transfers
-    - Track referral relationships between users and manage referral code generation
-    - Create and manage campaign wallets with split private key security
-    - Validate user position and connection requirements against realm data
-    - Monitor transaction status and handle blockchain confirmation tracking
-    - Generate captchas for anti-bot protection during reward assignments
-    - Publish notification events for reward assignments and claims
-    - Manage campaign user roles and permissions for collaborative campaign management
+    - Campaign management - create and configure reward campaigns with time windows, chain targets, and gas limits
+    - API key system - issue scoped CampaignKey tokens that third parties use to trigger reward distribution via REST API
+    - Reward stock management - track available supply of wearables/tokens per campaign
+    - On-chain distribution - mint (ERC-721) or transfer (ERC-20/ERC-721) rewards on Ethereum L1 and Polygon L2
+    - L1 claim flow - users sign a transaction payload and the backend assembles and broadcasts it to Ethereum
+    - L2 Polygon flow - server-side gasless reward sending via CollectionTransaction and CampaignTransaction task queues
+    - Referral codes - users generate and share invite codes tracked via Code and Referral entities
+    - Captcha verification - optional captcha challenge on reward assignment
+    - Background jobs - minute-cron jobs to confirm rewards, check rewarded events, and process pending transactions
+    - Admin dashboard - campaign list, individual campaign detail, and public reward status page
+    - Notifications - AWS SNS for delayed reward notifications
+    - Frontend UI - Gatsby-based interface for users to claim rewards and view campaign status
 
   out_of_scope:
-    - NFT metadata storage and content hosting (handled by catalyst)
-    - User wallet management and authentication (handled by decentraland-connect)
-    - Real-time user positioning and realm connectivity (handled by archipelago-workers)
-    - Blockchain node infrastructure and transaction broadcasting (uses external RPC providers)
-    - Wearable creation and builder tools (handled by builder services)
-    - Collection creation and contract deployment (handled by external tools)
+    - In-world referral UX and invite link landing pages (UI may be hosted on decentraland.org)
+    - Marketplace trading - buying and selling NFTs (handled by marketplace-server)
+    - Profile display (handled by profile.decentraland.org)
+    - Community features (handled by social-service-ea)
+    - Event management (handled by events service)
+    - Wearable collection creation (handled by Builder at builder.decentraland.org)
 
   owned_entities:
     - name: Campaign
@@ -314,32 +314,72 @@ configuration:
       affects: Database connectivity and all data operations
     
     - name: GATSBY_SITE_URL
-      description: Frontend API endpoint URL for connecting to the backend API
-      affects: Frontend-backend communication
+      description: Backend API base URL
+      affects: Frontend-backend communication and notification link generation
+    
+    - name: GATSBY_SSO_URL
+      description: Decentraland SSO endpoint for wallet-based authentication
+      affects: User authentication
+    
+    - name: GATSBY_PROFILE_URL
+      description: Catalyst profile peer URL for resolving wallet addresses to display names
+      affects: User profile resolution
+    
+    - name: GATSBY_DEFAULT_CAMPAIGN_CHAIN_ID
+      description: Default chain for new campaigns (e.g., Polygon Amoy)
+      affects: Campaign creation defaults
     
     - name: GATSBY_CHAIN_ID
-      description: Comma-separated list of blockchain network IDs (e.g., 1,137 for Ethereum and Polygon)
-      affects: Blockchain network selection and validation
+      description: Allowed chain IDs (comma-separated)
+      affects: Blockchain network validation
+    
+    - name: GATSBY_SEGMENT_KEY
+      description: Segment analytics write key
+      affects: Frontend analytics tracking
+    
+    - name: GATSBY_SENTRY_SRC
+      description: Sentry CDN script URL
+      affects: Error monitoring script loading
+    
+    - name: GATSBY_INTERCOM_APP_ID
+      description: Intercom support widget ID
+      affects: User support chat widget
+    
+    - name: GATSBY_TARGET_URL
+      description: Redirect target after reward claim
+      affects: Post-claim user flow
+    
+    - name: GATSBY_DECENTRALAND_URL
+      description: Decentraland main site URL
+      affects: Links to main Decentraland site
+    
+    - name: GATSBY_LAND_URL
+      description: Decentraland land URL
+      affects: Links to land pages
     
     - name: AWS_PROFILE
       description: AWS profile for S3, Secrets Manager, and SNS access
-      affects: Cloud service connectivity
+      affects: AWS service authentication
     
     - name: AWS_ENDPOINT_URL
       description: Custom endpoint for AWS services (used with LocalStack for development)
       affects: AWS service routing for local development
     
     - name: AWS_WALLET_SECRET_ID
-      description: AWS Secrets Manager secret ID containing half of wallet private keys
+      description: AWS Secrets Manager secret ID containing blockchain wallet private keys
       affects: Campaign wallet security and transaction signing
     
     - name: CAMPAIGN_WALLET_SECRET
       description: Secret for creating local wallets when AWS Secrets Manager is not available
-      affects: Local wallet creation
+      affects: Local development wallet creation
     
     - name: ASSETS_BUCKET_NAME
-      description: S3 bucket name for captcha images and assets
-      affects: Anti-bot captcha functionality and asset storage
+      description: S3 bucket name for captcha images and campaign assets
+      affects: Captcha generation and asset storage
+    
+    - name: ASSETS_URL
+      description: Custom URL for accessing S3 assets (optional)
+      affects: Asset URL generation
     
     - name: AWS_SNS_ARN
       description: SNS topic ARN for publishing notification events
@@ -347,38 +387,86 @@ configuration:
     
     - name: CAMPAIGN_KEY_SECRET
       description: Secret key for signing campaign keys
-      affects: Campaign key security
+      affects: Campaign key cryptographic security
     
     - name: BANK_PRIVATE_KEY
-      description: Deprecated - Signer private key for L1 wearables
-      affects: Legacy wearable signing
+      description: Signer private key for L1 wearables (per chain, e.g., BANK_PRIVATE_KEY_1)
+      affects: L1 wearable transaction signing
     
     - name: INITIAL_BLOCK_NUMBER
       description: Starting block number for blockchain indexing (default 'latest')
-      affects: Blockchain event scanning
+      affects: Blockchain event scanning starting point
     
     - name: BICONOMY_API_URL
-      description: Deprecated - Biconomy API endpoint for gasless transactions
-      affects: Legacy gasless transaction support
+      description: Biconomy API endpoint for gasless transactions
+      affects: Gasless transaction submission
     
     - name: BICONOMY_API_CHAIN_ID
-      description: Deprecated - Biconomy chain ID
-      affects: Legacy gasless transaction network
+      description: Biconomy chain ID
+      affects: Biconomy network routing
     
     - name: BICONOMY_API_KEY
-      description: Deprecated - Biconomy API authentication key
-      affects: Legacy gasless transaction authentication
+      description: Biconomy API authentication key
+      affects: Biconomy API authentication
     
     - name: BICONOMY_API_ID
-      description: Deprecated - Biconomy API ID
-      affects: Legacy gasless transaction identification
+      description: Biconomy API ID
+      affects: Biconomy API identification
     
     - name: NOTIFICATION_SERVICE_URL
-      description: Notification service URL for sending reward notifications
-      affects: Notification delivery
+      description: Deprecated notification service URL
+      affects: Legacy notification delivery
     
     - name: NOTIFICATION_SERVICE_TOKEN
-      description: Authentication token for notification service
-      affects: Notification service security
+      description: Deprecated notification service authentication token
+      affects: Legacy notification service security
+    
+    - name: NOTIFICATIONS_SNS_MAX_BUFFER_SIZE
+      description: Maximum number of SNS notifications to buffer before flushing (default 10)
+      affects: SNS batch size and memory usage
+    
+    - name: NOTIFICATIONS_SNS_FLUSH_DELAY
+      description: Delay in milliseconds between SNS batch flushes (default 5000)
+      affects: Notification delivery latency
+    
+    - name: NOTIFICATIONS_SNS_MAX_RETRIES
+      description: Maximum retry attempts for failed SNS publishes (default 3)
+      affects: SNS failure resilience
+    
+    - name: BLOCK_CONFIRMATIONS
+      description: Number of block confirmations required for transaction finality
+      affects: Transaction confirmation reliability
+    
+    - name: MAX_RETRIES_BEFORE_REJECTING_SENDING_TX
+      description: Maximum retry attempts before rejecting a sending transaction
+      affects: Transaction retry behavior
+    
+    - name: CLAIM_EXPIRATION_TIME
+      description: Time in milliseconds before a claim expires
+      affects: L1 claim expiration logic
+    
+    - name: SITE_URL
+      description: Base URL of the site for generating notification links
+      affects: Notification CTA link generation
+    
+    - name: SUPPORT_ROLE_ADDRESSES
+      description: Wallet addresses with support role permissions
+      affects: Support user access control
+    
+    - name: SENTRY_DSN
+      description: Sentry DSN for error reporting
+      affects: Error tracking
+    
+    - name: SENTRY_SERVER_ENABLED
+      description: Enable Sentry error reporting on the server
+      affects: Server-side error tracking
+    
+    - name: NODE_ENV
+      description: Node environment (development, production)
+      affects: Application behavior and logging
+    
+    - name: DEBUG_AWS_CONFIGURATION
+      description: Enable debug logging for AWS configuration
+      affects: AWS debugging output
 
 adrs: []

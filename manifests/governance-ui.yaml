@@ -3,15 +3,15 @@ schema_version: "1.1"
 service:
   name: governance-ui
   display_name: Decentraland DAO Governance UI
-  description: Frontend web application for Decentraland's DAO governance hub. Provides user interface for creating proposals, voting, viewing results, managing grants, participating in tenders, and tracking DAO activities. Integrates with governance backend API, Snapshot, Discourse, and Discord.
+  description: Full-featured governance dApp (served at governance.decentraland.org) for the Decentraland DAO. Lets community members browse, create, vote on, and track governance proposals, manage funded projects, view DAO transparency data, configure push/email notifications, and manage their governance profile. Frontend counterpart to the governance backend service.
   owner: dao
   repository: https://github.com/decentraland/governance-ui
   language: typescript
-  layer: feature-servers
+  layer: Feature Servers Layer
   role:
     - client
   data_domain: []
-  ai-agent-context: ""
+  ai-agent-context: https://github.com/decentraland/governance-ui/blob/master/docs/ai-agent-context.md
 
 domain:
   glossary:
@@ -70,28 +70,30 @@ domain:
   invariants: []
 
   responsibilities:
-    - Display list of proposals with filtering and sorting
-    - Provide multi-step forms for creating all proposal types
-    - Show proposal details with voting results and charts
-    - Enable users to cast votes through Snapshot integration
-    - Display voting power breakdown by source
-    - Show grant project tracking with milestones and updates
-    - Provide tender viewing and bid submission interface
-    - Display user profile with voting history and badges
-    - Show DAO statistics and analytics dashboards
-    - Integrate Discord profile verification
-    - Support markdown editing with preview for proposals
-    - Display real-time voting results with charts
-    - Show vesting schedules and token release timelines
-    - Provide links to buy MANA, LAND, and NAMES
-    - Handle wallet connection and authentication
+    - Proposal browsing - filterable, searchable, paginated list of all DAO proposals
+    - Proposal detail view - full proposal with voting, Discourse comments, co-authors, sentiment survey, result stance
+    - Proposal submission - type-specific forms for Poll, Draft, Governance, Grant, POI, Ban Name, Catalyst, Linked Wearables, Pitch, Tender, Bid, Hiring, Council Decision Veto
+    - Proposal editing and project updates
+    - Governance profiles - per-address activity, VP, badges, delegations, votes cast
+    - Projects dashboard - funded grant projects with milestones and updates tracking
+    - Transparency page - DAO treasury balances, vesting contracts, monthly spend, committee members
+    - Snapshot integration - VP snapshot voting and delegation contract interactions
+    - Push Protocol notifications and newsletter subscriptions
+    - Discourse forum thread linking per proposal
+    - Legislative tracker component
+    - Markdown editing with preview for proposals
+    - Voting power breakdown by source display
+    - Charts and analytics dashboards
+    - Links to buy MANA, LAND, NAMES, and wearables
+    - Wallet connection and Decentraland SSO authentication
+    - Feature flags and maintenance mode support
 
   out_of_scope:
-    - Proposal storage and lifecycle management (handled by governance backend)
-    - Voting power calculation (handled by Snapshot)
-    - Forum thread creation and management (handled by Discourse)
-    - Badge issuance (handled by governance backend)
-    - Transaction execution and on-chain operations
+    - Proposal backend logic and vote tallying (handled by governance backend)
+    - Snapshot voting infrastructure (handled by Snapshot Hub)
+    - User authentication and wallet connection flows (handled by auth at decentraland.org/auth)
+    - Account settings and MANA management (handled by account at account.decentraland.org)
+    - DAO marketing/intro content (handled by dao-landing at dao.decentraland.org)
 
   owned_entities: []
 
@@ -106,114 +108,229 @@ dependencies:
     - name: governance
       relationship: sync
       protocol: HTTP
-      purpose: All proposal, vote, and grant data operations
+      purpose: All proposal, project, vote, profile, budget, badge, and subscription data via GOVERNANCE_API
+      critical: true
+
+    - name: auth
+      relationship: sync
+      protocol: HTTP
+      purpose: Wallet-based authentication flows
       critical: true
 
   external:
-    - name: Snapshot
-      purpose: Off-chain voting platform integration
+    - name: Snapshot Hub API
+      purpose: Off-chain voting platform - VP data, voting, and delegation contract
+      type: api
+
+    - name: Snapshot GraphQL
+      purpose: Snapshot subgraph for VP and voting queries
       type: api
 
     - name: Discourse
-      purpose: Forum integration for proposal discussions
+      purpose: Forum integration for proposal discussions via DISCOURSE_API
       type: api
 
     - name: Discord
-      purpose: Profile verification links
+      purpose: Profile verification links via DISCORD_PROFILE_VERIFICATION_URL
       type: api
 
-    - name: Catalyst
-      purpose: User profile and avatar data
+    - name: DCL Data API
+      purpose: DAO transparency balances and team data from decentraland-dao.github.io/transparency
       type: api
 
     - name: Push Protocol
-      purpose: Push notifications for DAO events
+      purpose: Push notifications for DAO events via PUSH_CHANNEL_ID
       type: api
 
     - name: Ethereum Wallet
       purpose: User authentication and vote signing
       type: other
 
-    - name: Single Sign On Service
-      purpose: Decentraland SSO authentication
+    - name: Decentraland SSO
+      purpose: Single Sign On for identity sharing via SSO_URL
       type: api
 
-    - name: DCL Data API
-      purpose: DAO statistics and analytics data
+    - name: Feature Flags Service
+      purpose: Feature toggle management via @dcl/feature-flags
       type: api
+
+    - name: Segment
+      purpose: Analytics tracking
+      type: api
+
+    - name: Vesting Dashboard
+      purpose: External vesting dashboard link via VESTING_DASHBOARD_URL
+      type: api
+
+    - name: Snapshot Delegation Contract
+      purpose: On-chain VP delegation contract interactions
+      type: blockchain
+
+    - name: Vesting Contracts
+      purpose: On-chain vesting contract data
+      type: blockchain
 
 events:
   publishes: []
   consumes: []
 
 configuration:
+  feature_flags:
+    - name: GRANT_PROPOSAL_SUBMIT_ENABLED
+      description: Enable/disable grant proposal submission
+      default: "true"
+
+    - name: PITCH_PROPOSAL_SUBMIT_ENABLED
+      description: Enable/disable pitch proposal submission
+      default: "true"
+
   key_env_vars:
+    - name: VITE_REACT_APP_DCL_DEFAULT_ENV
+      description: Active environment (dev or prod) selected at build time - no staging environment
+      affects: Configuration selection from config/env/*.json
+
+    - name: GOVERNANCE_API
+      description: Governance backend API base URL
+      affects: All API requests for proposals, projects, votes, profiles, budgets, badges
+
+    - name: GOVERNANCE_URL
+      description: Public URL of this governance UI application
+      affects: Application routing and canonical links
+
     - name: DEFAULT_CHAIN_ID
-      description: Ethereum chain ID for wallet connection (11155111 for Sepolia testnet)
-      affects: Blockchain network selection
+      description: Ethereum chain ID (1 = mainnet)
+      affects: Blockchain network selection and wallet connection
 
-    - name: VITE_GOVERNANCE_URL
-      description: Base URL for the governance UI application
-      affects: Application routing
+    - name: SNAPSHOT_API
+      description: Snapshot Hub REST API endpoint
+      affects: Voting and VP data fetching
 
-    - name: VITE_GOVERNANCE_API
-      description: Governance backend API endpoint
-      affects: All API requests
+    - name: SNAPSHOT_URL
+      description: Snapshot UI URL for external links
+      affects: Links to Snapshot interface
 
-    - name: VITE_BUY_MANA_URL
+    - name: SNAPSHOT_SPACE
+      description: Snapshot space identifier (e.g., snapshot.dcl.eth)
+      affects: Voting space selection
+
+    - name: SNAPSHOT_QUERY_ENDPOINT
+      description: Snapshot GraphQL subgraph endpoint
+      affects: VP and voting queries
+
+    - name: SNAPSHOT_DELEGATE_CONTRACT_ADDRESS
+      description: On-chain delegation contract address
+      affects: VP delegation features
+
+    - name: SNAPSHOT_DURATION
+      description: Default voting duration for proposals
+      affects: Proposal creation defaults
+
+    - name: SNAPSHOT_STATUS_ENABLED
+      description: Enable Snapshot status integration
+      affects: Voting status display
+
+    - name: DISCOURSE_API
+      description: Discourse forum API endpoint
+      affects: Forum thread fetching and linking
+
+    - name: DISCOURSE_USER
+      description: Discourse bot user for creating proposal threads
+      affects: Forum integration
+
+    - name: DISCOURSE_CONNECT_THREAD
+      description: Discourse thread ID for connect discussions
+      affects: Forum navigation
+
+    - name: DISCORD_PROFILE_VERIFICATION_URL
+      description: Discord invite link for profile verification
+      affects: Discord verification flow
+
+    - name: JOIN_DISCORD_URL
+      description: Discord community invite link
+      affects: Community links
+
+    - name: DCL_DATA_API
+      description: Transparency API endpoint (decentraland-dao.github.io/transparency)
+      affects: DAO treasury and team data
+
+    - name: SSO_URL
+      description: Decentraland SSO service URL (id.decentraland.org)
+      affects: Authentication and identity sharing
+
+    - name: PUSH_CHANNEL_ID
+      description: Push Protocol channel ID for DAO notifications
+      affects: Push notification subscription
+
+    - name: BUY_MANA_URL
       description: External link for purchasing MANA tokens
       affects: User onboarding links
 
-    - name: VITE_BUY_LAND_URL
+    - name: BUY_LAND_URL
       description: External link for purchasing LAND
       affects: User onboarding links
 
-    - name: VITE_BUY_NAME_URL
+    - name: BUY_NAME_URL
       description: External link for purchasing NAMES
       affects: User onboarding links
 
-    - name: VITE_VESTING_DASHBOARD_URL
-      description: URL for vesting dashboard
-      affects: Vesting schedule links
+    - name: BUY_WEARABLES_URL
+      description: External link for purchasing wearables
+      affects: User onboarding links
 
-    - name: VITE_SNAPSHOT_API
-      description: Snapshot API endpoint
-      affects: Voting integration
+    - name: VESTING_DASHBOARD_URL
+      description: External vesting dashboard URL
+      affects: Vesting schedule navigation
 
-    - name: VITE_SNAPSHOT_URL
-      description: Snapshot UI URL
-      affects: External Snapshot links
+    - name: SUBMISSION_THRESHOLD_POLL
+      description: Minimum VP required to submit poll proposals
+      affects: Poll submission validation
 
-    - name: VITE_SNAPSHOT_SPACE
-      description: Snapshot space identifier
-      affects: Voting space selection
+    - name: SUBMISSION_THRESHOLD_DRAFT
+      description: Minimum VP required to submit draft proposals
+      affects: Draft submission validation
 
-    - name: VITE_SNAPSHOT_DELEGATE_CONTRACT_ADDRESS
-      description: Snapshot delegation contract address
-      affects: Delegation features
+    - name: SUBMISSION_THRESHOLD_GOVERNANCE
+      description: Minimum VP required to submit governance proposals
+      affects: Governance submission validation
 
-    - name: VITE_DISCOURSE_API
-      description: Discourse forum API endpoint
-      affects: Forum integration
+    - name: SUBMISSION_THRESHOLD_GRANT
+      description: Minimum VP required to submit grant proposals
+      affects: Grant submission validation
 
-    - name: VITE_DISCORD_PROFILE_VERIFICATION_URL
-      description: Discord profile verification invite link
-      affects: Discord verification flow
+    - name: SUBMISSION_THRESHOLD_HIRING
+      description: Minimum VP required to submit hiring proposals
+      affects: Hiring submission validation
 
-    - name: VITE_SUBMISSION_THRESHOLD_*
-      description: Minimum voting power required to submit each proposal type
-      affects: Proposal form validation
+    - name: SUBMISSION_THRESHOLD_PITCH
+      description: Minimum VP required to submit pitch proposals
+      affects: Pitch submission validation
 
-    - name: VITE_SSO_URL
-      description: Single Sign On service URL
-      affects: Authentication flow
+    - name: SUBMISSION_THRESHOLD_TENDER
+      description: Minimum VP required to submit tender proposals
+      affects: Tender submission validation
 
-    - name: VITE_DCL_DATA_API
-      description: DCL Data API endpoint for analytics
-      affects: Statistics and charts
+    - name: SUBMISSION_THRESHOLD_COUNCIL_DECISION_VETO
+      description: Minimum VP required to submit council decision veto proposals
+      affects: Veto submission validation
 
-    - name: VITE_PUSH_CHANNEL_ID
-      description: Push Protocol channel ID for notifications
-      affects: Push notifications
+    - name: GRANT_VP_THRESHOLD
+      description: Minimum VP required for grant-related actions
+      affects: Grant access control
+
+    - name: REASON_THRESHOLD
+      description: VP threshold above which a vote reason is required
+      affects: Vote submission validation
+
+    - name: SEGMENT_KEY
+      description: Segment analytics write key
+      affects: Analytics tracking
+
+    - name: MAINTENANCE
+      description: Maintenance mode flag
+      affects: Site availability and maintenance layout display
+
+    - name: PROD_ENV_VAR
+      description: Production environment identifier
+      affects: Environment-specific behavior
 
 adrs: []

@@ -153,9 +153,79 @@ events:
   consumes: []
 
 configuration:
+  feature_flags: []
+  
   key_env_vars:
     - name: VITE_REACT_APP_DCL_DEFAULT_ENV
-      description: Default environment (dev, stg, prod)
-      affects: API endpoints and configuration selection
+      description: Default environment (dev, stg, prod) selected at build time
+      affects: Configuration selection from config/env/*.json
+
+    - name: AUTH_SERVER_URL
+      description: Auth server WebSocket and HTTP endpoint
+      affects: Authentication request relay and wallet method execution
+
+    - name: BUILDER_SERVER_URL
+      description: Builder server API endpoint
+      affects: Wearable and asset data fetching
+
+    - name: DOWNLOAD_URL
+      description: Desktop client download URL
+      affects: Download link for desktop application
+
+    - name: EVENTS_NOTIFIER_URL
+      description: Events notifier API endpoint
+      affects: User onboarding event tracking
+
+    - name: FEATURE_FLAGS_URL
+      description: Feature flags service endpoint
+      affects: Feature toggle management
+
+    - name: FEATURE_FLAGS_INTERVAL
+      description: Polling interval for feature flags refresh (milliseconds)
+      affects: Feature flag update frequency
+
+    - name: INTERCOM_APP_ID
+      description: Intercom support widget ID
+      affects: User support chat integration
+
+    - name: META_TRANSACTION_SERVER_URL
+      description: Meta-transaction API endpoint (transactions-api)
+      affects: Gasless transaction support
+
+    - name: PEER_URL
+      description: Catalyst peer URL
+      affects: Profile and avatar data fetching
+
+    - name: PLACES_API_URL
+      description: Places API endpoint
+      affects: Location and place data
+
+    - name: PROFILE_CONSISTENCY_CHECK_TIMEOUT
+      description: Timeout in milliseconds for profile consistency checks
+      affects: Avatar update validation timing
+
+    - name: REFERRAL_SERVER_URL
+      description: Referral server API endpoint (social-service-ea)
+      affects: Referral system integration
+
+    - name: SEGMENT_API_KEY
+      description: Segment analytics write key
+      affects: Analytics tracking
+
+    - name: SENTRY_DSN
+      description: Sentry error monitoring DSN
+      affects: Error tracking for web
+
+    - name: SENTRY_DSN_MOBILE
+      description: Sentry error monitoring DSN for mobile
+      affects: Error tracking for mobile devices
+
+    - name: WEARABLE_PREVIEW_URL
+      description: Wearable preview service endpoint
+      affects: Avatar customization preview rendering
+
+    - name: ENVIRONMENT
+      description: Environment name (dev, stg, prod)
+      affects: Environment-specific behavior and logging
 
 adrs: []

@@ -239,90 +239,50 @@ events:
   consumes: []
 
 configuration:
-  feature_flags: []
+  feature_flags:
+    - name: REACT_APP_FF_BUILDER_MAINTENANCE
+      description: Enable/disable maintenance mode for the Builder application
+      default: ""
+
+    - name: REACT_APP_FF_BUILDER_RENTALS
+      description: Enable/disable LAND rentals feature
+      default: ""
+
+    - name: REACT_APP_FF_BUILDER_DCL_CONTROLLER_V2
+      description: Enable/disable DCL Controller V2 feature
+      default: ""
+
+    - name: REACT_APP_FF_BUILDER_WORLDS_FOR_ENS_OWNERS
+      description: Enable/disable Worlds for ENS owners feature
+      default: ""
+
   key_env_vars:
     - name: VITE_REACT_APP_DCL_DEFAULT_ENV
-      description: Default environment for UI configuration (dev, stg, prod)
-      affects: Environment-specific configuration loading
+      description: Default environment for UI configuration (dev, stg, prod); loads corresponding config from src/config/env/*.json
+      affects: Environment-specific configuration loading (API URLs, contract addresses, feature flags)
 
     - name: VITE_BASE_URL
       description: Base URL for the application
       affects: Routing and link generation
 
-    - name: CHAIN_ID
-      description: Ethereum chain ID (1 for mainnet, 11155111 for Sepolia)
-      affects: Blockchain network selection
+    - name: VITE_REACT_APP_WEBSITE_VERSION
+      description: Application version displayed in UI
+      affects: Displayed version string
 
-    - name: BUILDER_SERVER_URL
-      description: URL for Builder API backend
-      affects: Project and collection storage
+    - name: GEN_STATIC_LOCAL
+      description: Generate static files locally during development
+      affects: Build process and asset generation
 
-    - name: PEER_URL
-      description: Catalyst/Peer server URL for deployments and profiles
-      affects: Scene deployment target and profile data source
+    - name: VITE_INSPECTOR_PORT
+      description: Local inspector dev server port for development mode (default 8000)
+      affects: Development environment - where Inspector is served locally
 
-    - name: PEER_TESTING_URL
-      description: Testing Catalyst server URL for development deployments
-      affects: Development deployment target
+    - name: VITE_BIN_INDEX_JS_DEV_PATH
+      description: Absolute path to bin/index.js for Smart Items runtime in local asset-packs development
+      affects: Development environment - local asset-packs JavaScript bundle location
 
-    - name: WORLDS_CONTENT_SERVER
-      description: Worlds Content Server URL for World deployments
-      affects: World deployment target
-
-    - name: MARKETPLACE_API
-      description: Marketplace API URL for item and order queries
-      affects: Marketplace data source
-
-    - name: MARKETPLACE_SERVER_URL
-      description: Marketplace server URL (alternative endpoint)
-      affects: Marketplace data source
-
-    - name: CREDITS_SERVER_URL
-      description: Credits server URL for publishing fees
-      affects: Fee management and payment
-
-    - name: LAND_MANAGER_GRAPH_URL
-      description: The Graph subgraph URL for LAND and Estate data
-      affects: LAND ownership and Estate queries
-
-    - name: MARKETPLACE_GRAPH_URL
-      description: The Graph subgraph URL for marketplace transactions
-      affects: Marketplace transaction history
-
-    - name: RENTALS_GRAPH_URL
-      description: The Graph subgraph URL for LAND rentals
-      affects: Rental data queries
-
-    - name: ENS_SUBGRAPH_URL
-      description: The Graph subgraph URL for ENS domain ownership
-      affects: ENS domain queries
-
-    - name: TRANSACTIONS_API_URL
-      description: Transactions API URL for meta-transactions
-      affects: Gasless transaction execution
-
-    - name: DCL_LISTS_SERVER
-      description: DCL Lists server URL for moderation data
-      affects: Content moderation and bans
-
-    - name: INSPECTOR_CONTENT_URL
-      description: CDN URL for Inspector content and asset packs
-      affects: Asset loading source
-
-    - name: SEGMENT_API_KEY
-      description: Segment analytics API key
-      affects: Analytics tracking
-
-    - name: INSPECTOR_SEGMENT_API_KEY
-      description: Segment analytics API key for Inspector events
-      affects: Inspector analytics tracking
-
-    - name: SENTRY_DSN
-      description: Sentry DSN for error tracking
-      affects: Error reporting
-
-    - name: INTERCOM_APP_ID
-      description: Intercom application ID for user support
-      affects: Support chat integration
+    - name: VITE_BIN_INDEX_JS_DEV_PORT
+      description: SDK7 dev server port for local asset-packs development (default 8001)
+      affects: Development environment - Smart Items runtime dev server
 
 adrs: []

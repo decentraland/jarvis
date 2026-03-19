@@ -3,15 +3,15 @@ schema_version: "1.1"
 service:
   name: account
   display_name: Decentraland Account
-  description: Web application where users can manage their Decentraland account, including wallet connections, email notification preferences, and credits settings. Provides a unified interface for account-level configuration.
+  description: User account management dApp (served at account.decentraland.org) that allows authenticated users to manage their wallets, MANA token balances (Ethereum and Polygon), email notification subscriptions, and Marketplace Credits settings. Requires wallet-based authentication and gates all primary functionality behind protected routes.
   owner: dapps
   repository: https://github.com/decentraland/account
   language: typescript
-  layer: feature-servers
+  layer: Feature Servers Layer
   role:
     - client
   data_domain: []
-  ai-agent-context: ""
+  ai-agent-context: https://github.com/decentraland/account/blob/master/docs/ai-agent-context.md
 
 domain:
   glossary:
@@ -31,16 +31,24 @@ domain:
   invariants: []
 
   responsibilities:
-    - Provide user interface for managing wallet connections
-    - Enable users to configure email notification preferences
-    - Allow users to manage credits and payment settings
-    - Handle user authentication and sign-in flow
-    - Display unified account information from multiple services
+    - Wallet management - view connected wallets, deposit/withdraw MANA between Ethereum L1 and Polygon L2
+    - MANA bridging - handle L1<->L2 transactions via Polygon SDK and Transak/MoonPay on-ramp integrations
+    - Notification settings - manage email notification subscriptions for Decentraland platform events
+    - Credits settings - view Marketplace Credits enrollment status and allow opt-out from credits program
+    - Email confirmation flows - handle email confirmation token paths with unified confirmation pages
+    - Bot verification - Cloudflare Turnstile integration (feature-flagged)
+    - Referral program support (feature-flagged)
+    - Protected routes - gate all primary functionality behind wallet authentication
+    - Error tracking and analytics - Sentry and Segment integration
+    - Live support - Intercom widget integration
 
   out_of_scope:
-    - Backend storage of user preferences (handled by other services)
-    - Wallet operations execution (handled by browser wallet)
+    - Authentication and wallet connection flows (handled by auth at decentraland.org/auth)
+    - Marketplace browsing and trading (handled by Marketplace dApp)
+    - Governance proposals and voting (handled by governance-ui)
+    - User profile avatar/wearable customisation (handled by Builder or auth setup flow)
     - Email delivery (handled by notification services)
+    - Backend storage of user preferences (handled by other services)
 
   owned_entities: []
 
@@ -52,16 +60,34 @@ db:
 
 dependencies:
   services:
+    - name: credits-server
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch credits enrollment status and handle opt-out requests
+      critical: true
+
     - name: marketplace-server
       relationship: sync
       protocol: HTTP
-      purpose: Fetch marketplace data and user assets
+      purpose: Fetch marketplace data via MARKETPLACE_API_URL
       critical: true
 
     - name: transactions-api
       relationship: sync
       protocol: HTTP
-      purpose: Retrieve transaction history and status
+      purpose: Meta-transaction relay for gasless transactions
+      critical: true
+
+    - name: catalyst
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch user profile data via PEER_URL
+      critical: false
+
+    - name: auth
+      relationship: sync
+      protocol: HTTP
+      purpose: Wallet-based authentication flows
       critical: true
 
   external:
@@ -69,12 +95,32 @@ dependencies:
       purpose: User authentication and transaction signing
       type: other
 
+    - name: Polygon SDK
+      purpose: L1<->L2 MANA bridging via @maticnetwork/maticjs
+      type: api
+
     - name: MoonPay
-      purpose: Fiat-to-crypto payment provider
+      purpose: Fiat-to-crypto on-ramp widget integration
+      type: api
+
+    - name: Transak
+      purpose: Fiat-to-crypto on-ramp widget integration
       type: api
 
     - name: Segment
       purpose: Analytics and user behavior tracking
+      type: api
+
+    - name: Sentry
+      purpose: Error monitoring and performance tracking
+      type: api
+
+    - name: Intercom
+      purpose: Live support chat widget
+      type: api
+
+    - name: Cloudflare Turnstile
+      purpose: Bot verification (feature-flagged)
       type: api
 
     - name: Polygon RPC
@@ -90,21 +136,119 @@ events:
   consumes: []
 
 configuration:
+  feature_flags: []
+  
   key_env_vars:
-    - name: GEN_STATIC_LOCAL
-      description: Generate static files locally (development mode)
-      affects: Build process
+    - name: VITE_REACT_APP_DCL_DEFAULT_ENV
+      description: Active environment (dev, stg, prod) selected at build time
+      affects: Configuration selection from config/env/*.json
 
-    - name: REACT_APP_WEBSITE_VERSION
-      description: Version identifier for the application
-      affects: Version tracking and cache busting
+    - name: CHAIN_ID
+      description: Ethereum chain ID (1 = mainnet)
+      affects: Blockchain network selection
 
-    - name: VITE_DCL_DEFAULT_ENV
-      description: Default environment (dev, stg, prod)
-      affects: API endpoints and configuration selection
+    - name: PEER_URL
+      description: Catalyst peer URL for profile data
+      affects: User profile resolution
 
-    - name: VITE_BASE_URL
-      description: Base URL for the application
-      affects: Routing and asset loading
+    - name: MARKETPLACE_API_URL
+      description: Marketplace API endpoint
+      affects: Marketplace data fetching
+
+    - name: TRANSACTIONS_API_URL
+      description: Meta-transaction relay API endpoint
+      affects: Gasless transaction submission
+
+    - name: CREDITS_SERVER_URL
+      description: Credits service API endpoint
+      affects: Credits enrollment and opt-out
+
+    - name: AUTH_URL
+      description: Authentication service path (relative /auth)
+      affects: Wallet authentication flows
+
+    - name: MARKETPLACE_URL
+      description: Link target for marketplace navigation
+      affects: Marketplace redirect links
+
+    - name: ACCOUNT_URL
+      description: Account site URL
+      affects: Self-referential links
+
+    - name: BUILDER_URL
+      description: Builder site URL
+      affects: Builder redirect links
+
+    - name: EXPLORER_URL
+      description: Explorer site URL
+      affects: Explorer redirect links
+
+    - name: DISCORD_URL
+      description: Discord community URL
+      affects: Social links
+
+    - name: SEGMENT_API_KEY
+      description: Segment analytics write key
+      affects: Analytics tracking
+
+    - name: SENTRY_DSN
+      description: Sentry error monitoring DSN
+      affects: Error tracking
+
+    - name: INTERCOM_APP_ID
+      description: Intercom support widget ID
+      affects: Live support chat
+
+    - name: REACT_APP_CLOUDFLARE_TURNSTILE_SITE_KEY
+      description: Cloudflare Turnstile site key for bot protection
+      affects: Bot verification (feature-flagged)
+
+    - name: MANA_CONTRACT_ADDRESS
+      description: MANA token contract address on Ethereum
+      affects: MANA balance queries and bridging
+
+    - name: ERC20_PREDICATE_CONTRACT_ADDRESS
+      description: Polygon ERC20 predicate contract for L1<->L2 bridging
+      affects: MANA bridging operations
+
+    - name: ROOT_CHAIN_MANAGER_CONTRACT_ADDRESS
+      description: Polygon root chain manager contract for bridging
+      affects: MANA bridging operations
+
+    - name: MATIC_ENV
+      description: Matic network environment (mainnet, testnet)
+      affects: Polygon SDK configuration
+
+    - name: MOON_PAY_API_KEY
+      description: MoonPay API key for on-ramp widget
+      affects: Fiat on-ramp integration
+
+    - name: MOON_PAY_API_URL
+      description: MoonPay API endpoint
+      affects: MoonPay API calls
+
+    - name: MOON_PAY_WIDGET_URL
+      description: MoonPay widget URL
+      affects: On-ramp widget loading
+
+    - name: MOON_PAY_POLLING_DELAY
+      description: Delay in milliseconds for MoonPay transaction polling
+      affects: On-ramp status updates
+
+    - name: TRANSAK_POLLING_DELAY
+      description: Delay in milliseconds for Transak transaction polling
+      affects: On-ramp status updates
+
+    - name: TRANSAK_PUSHER_APP_KEY
+      description: Pusher app key for Transak real-time updates
+      affects: Transak event subscription
+
+    - name: TRANSAK_PUSHER_APP_CLUSTER
+      description: Pusher app cluster for Transak
+      affects: Transak event routing
+
+    - name: ENVIRONMENT
+      description: Environment name (dev, stg, prod)
+      affects: Environment-specific behavior
 
 adrs: []

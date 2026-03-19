@@ -3,15 +3,15 @@ schema_version: "1.1"
 service:
   name: dao-landing
   display_name: Decentraland DAO Landing
-  description: Landing page for the Decentraland DAO, showcasing governance proposals, projects, vesting schedules, voting power distribution, and newsletter subscription. Provides an overview of DAO activities and entry point for community participation.
+  description: Static marketing and informational page (served at dao.decentraland.org) for the Decentraland DAO. Introduces the DAO to new and existing community members, explains how governance works, visualises treasury and voting power data, and funnels visitors toward the full governance application. It does not support proposal creation or voting directly.
   owner: dapps
   repository: https://github.com/decentraland/dao-landing
   language: typescript
-  layer: feature-servers
+  layer: Feature Servers Layer
   role:
     - client
   data_domain: []
-  ai-agent-context: ""
+  ai-agent-context: https://github.com/decentraland/dao-landing/blob/master/docs/ai-agent-context.md
 
 domain:
   glossary:
@@ -58,19 +58,23 @@ domain:
   invariants: []
 
   responsibilities:
-    - Display featured and recent DAO proposals
-    - Showcase active and completed projects
-    - Visualize vesting schedules and token release timelines
-    - Show voting power distribution for addresses
-    - Handle newsletter subscription for DAO updates
-    - Provide entry point to full governance interface
-    - Display DAO statistics and metrics
+    - Hero section with animated background and primary call-to-action
+    - What is the DAO explainer with live proposal previews fetched from Governance API
+    - Animated proposal carousel with infinite horizontal scroll via Framer Motion
+    - How Does It Work step-by-step guide
+    - Voting Power distribution pie chart per wallet address
+    - VP carousel showcasing delegate/user VP breakdowns
+    - Treasury section - live DAO treasury balance and 10-year vesting contract progress
+    - Big CTA section linking to governance.decentraland.org
+    - Newsletter subscription via Governance API
+    - Footer with links to community resources (Discord, Forum, blog)
+    - SEO head management and analytics integration
 
   out_of_scope:
-    - Proposal creation and voting (handled by governance UI)
-    - Project management (handled by governance backend)
-    - Newsletter delivery (handled by governance backend)
-    - Voting power calculation (handled by governance snapshot system)
+    - Proposal creation, editing, or voting (handled by governance-ui at governance.decentraland.org)
+    - Detailed transparency dashboards (handled by governance-ui transparency page)
+    - User authentication (handled by auth)
+    - Account management (handled by account)
 
   owned_entities: []
 
@@ -85,19 +89,19 @@ dependencies:
     - name: governance
       relationship: sync
       protocol: HTTP
-      purpose: Fetch proposals, projects, vesting data, and voting power distribution
+      purpose: Fetch proposals, projects, vesting data, VP distribution, and newsletter subscriptions
       critical: true
 
     - name: catalyst
       relationship: sync
       protocol: HTTP
-      purpose: Fetch user profile information
+      purpose: Fetch user profile information via PEER_URL
       critical: false
 
     - name: credits-server
       relationship: sync
       protocol: HTTP
-      purpose: Credits and payment integration
+      purpose: Credits integration (referenced in config but not actively used)
       critical: false
 
     - name: auth
@@ -107,6 +111,14 @@ dependencies:
       critical: false
 
   external:
+    - name: Transparency API
+      purpose: DAO treasury balances and team/committee information from data.decentraland.vote
+      type: api
+
+    - name: Vesting Contract
+      purpose: 10-year vesting contract data from hardcoded address 0x7a3abf8897f31b56f09c6f69d074a393a905c1ac
+      type: blockchain
+
     - name: Segment
       purpose: Analytics and user behavior tracking
       type: api
@@ -120,33 +132,39 @@ events:
   consumes: []
 
 configuration:
+  feature_flags: []
+  
   key_env_vars:
+    - name: VITE_REACT_APP_DCL_DEFAULT_ENV
+      description: Active environment (dev or prod) selected at build time - no staging environment defined
+      affects: Configuration selection from config/env/*.json
+
     - name: CHAIN_ID
-      description: Ethereum chain ID for blockchain interactions (11155111 for Sepolia testnet)
+      description: Ethereum chain ID (1 = mainnet)
       affects: Blockchain network selection
 
     - name: PEER_URL
-      description: Catalyst peer URL for profile data
-      affects: Profile data source
+      description: Catalyst peer URL for profile data and identity module
+      affects: User profile resolution
 
     - name: ENVIRONMENT
-      description: Deployment environment identifier
-      affects: Environment-specific configuration
+      description: Deployment environment identifier (production, dev)
+      affects: Environment-specific configuration and logging
 
     - name: AUTH_URL
-      description: Authentication service URL
-      affects: User authentication flow
+      description: Authentication service path (relative /auth)
+      affects: User authentication redirect
 
     - name: LANDING_URL
-      description: DAO landing page URL
-      affects: Site routing and links
+      description: Canonical URL for this DAO landing site
+      affects: SEO and self-referential links
 
     - name: SEGMENT_API_KEY
-      description: Segment analytics API key
+      description: Segment analytics write key
       affects: Analytics tracking
 
     - name: CREDITS_SERVER_URL
-      description: Credits server base URL
+      description: Credits server URL (referenced in config but not actively used in landing flows)
       affects: Credits integration
 
 adrs: []

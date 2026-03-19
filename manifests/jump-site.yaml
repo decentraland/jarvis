@@ -3,15 +3,15 @@ schema_version: "1.1"
 service:
   name: "jump-site"
   display_name: "Jump In Web (Deep Links)"
-  description: "A web application that serves as an entry point to the Decentraland virtual world. It allows users to launch the Decentraland Explorer desktop client or download it if not installed, providing preview cards for locations and worlds."
+  description: "Vite/React SPA (served at jump.decentraland.org) that acts as a deep-link entry point into the Decentraland Explorer. Given a position and/or realm passed as query parameters, it attempts to launch the desktop Explorer client via the decentraland:// custom protocol URI scheme. If the desktop client is not detected as installed, it redirects the user to the download or onboarding flow."
   owner: "decentraland-foundation"
   repository: "https://github.com/decentraland/jump-site"
   language: "typescript"
-  layer: "client"
+  layer: "Feature Servers Layer"
   role:
     - "client"
   data_domain: []
-  ai-agent-context: ""
+  ai-agent-context: "https://github.com/decentraland/jump-site/blob/master/docs/ai-agent-context.md"
 
 domain:
   glossary:
@@ -68,19 +68,26 @@ domain:
       severity: "hard"
 
   responsibilities:
-    - "Provide a web-based entry point to launch the Decentraland Explorer desktop client"
-    - "Display preview cards for Decentraland locations (Genesis City coordinates) and custom worlds (.eth domains)"
-    - "Generate and handle deep links using the decentraland:// protocol"
-    - "Detect whether the desktop client is installed and offer download options if not"
-    - "Fetch and display location metadata including images, titles, and descriptions"
-    - "Support URL parameters for position (?position=x,y) and realm (?realm=worldname.eth)"
+    - Deep-link launch of Decentraland desktop Explorer using the decentraland:// custom protocol
+    - Desktop client installation detection by monitoring window blur events after iframe injection
+    - Mobile detection and disclaimer modal display instead of deep-link attempts
+    - PlacesPage for Decentraland land coordinates and EventsPage for event-specific jump-in
+    - Realm/world validation via peer health check and ENS name resolution
+    - Place metadata fetching from Places API for scene title, description, image, and owner
+    - Creator information fetching from Catalyst peer API for scene deployer data
+    - Invalid page fallback when realm validation fails
+    - Wallet-based authentication context support
+    - Segment analytics tracking for click events, mobile detection, and client-not-installed events
+    - Bot/crawler detection and static informational response
 
   out_of_scope:
-    - "Running the actual Decentraland Explorer client (only launches it)"
-    - "Managing world or scene content (only displays previews)"
-    - "Hosting or processing 3D assets"
-    - "User authentication or profile management"
-    - "Direct peer-to-peer communications"
+    - Running the actual Decentraland Explorer client (only launches it)
+    - Managing world or scene content (only displays previews)
+    - Hosting or processing 3D assets
+    - User profile editing or wallet transaction signing
+    - Event creation or place management
+    - Blog, marketplace, DAO, or other Decentraland product pages
+    - Server-side rendering or SEO pre-rendering
 
   owned_entities: []
 
@@ -95,23 +102,41 @@ dependencies:
     - name: "places"
       relationship: "sync"
       protocol: "HTTP"
-      purpose: "Fetch place data for Genesis City locations by coordinates or world names"
+      purpose: "Scene metadata (title, description, image) and world name lookup via PLACES_API_URL"
       critical: true
+
     - name: "worlds-content-server"
       relationship: "sync"
       protocol: "HTTP"
-      purpose: "Fetch world metadata and about information for .eth domain worlds"
+      purpose: "World metadata and health for ENS-based worlds via WORLD_CONTENT_API_URL"
       critical: true
+
     - name: "catalyst"
       relationship: "sync"
       protocol: "HTTP"
-      purpose: "Fetch scene entities, deployment data, and user profiles for Genesis City locations"
+      purpose: "Scene deployer info (name, address, avatar) via PEER_URL /about/scenes endpoint"
       critical: true
+
+    - name: "events"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Event metadata for EventsPage jump-in via EVENTS_API_URL"
+      critical: false
+
+    - name: "auth"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Decentraland SSO authentication via AUTH_URL"
+      critical: false
 
   external:
     - name: "Decentraland Explorer Desktop Client"
       purpose: "Launched via deep links (decentraland:// protocol) to enter the virtual world"
       type: "client"
+
+    - name: "Segment"
+      purpose: "Analytics tracking for click events, mobile detection, and error events"
+      type: "api"
 
 events:
   publishes: []
@@ -122,13 +147,135 @@ configuration:
 
   key_env_vars:
     - name: "VITE_REACT_APP_DCL_DEFAULT_ENV"
-      description: "Determines which environment configuration to use (dev or prd)"
-      affects: "Application environment and API endpoint URLs"
-    - name: "VITE_SEGMENT_DEV_API_KEY"
-      description: "Segment analytics API key for development environment"
-      affects: "Analytics tracking in development"
-    - name: "VITE_SEGMENT_PRD_API_KEY"
-      description: "Segment analytics API key for production environment"
-      affects: "Analytics tracking in production"
+      description: "Active environment (dev or prd) selected at build time"
+      affects: "Configuration selection from config/env/*.json"
+
+    - name: "JUMP_IN_URL"
+      description: "Base URL for this site (used in share links)"
+      affects: "Share link generation"
+
+    - name: "PEER_URL"
+      description: "Decentraland Catalyst peer URL"
+      affects: "Scene deployer data and peer health checks"
+
+    - name: "PLACES_URL"
+      description: "Places web app URL"
+      affects: "External links to Places app"
+
+    - name: "PLACES_API_URL"
+      description: "Places REST API base URL"
+      affects: "Scene metadata fetching"
+
+    - name: "EVENTS_URL"
+      description: "Events web app URL"
+      affects: "External links to Events app"
+
+    - name: "EVENTS_API_URL"
+      description: "Events REST API base URL"
+      affects: "Event metadata fetching for EventsPage"
+
+    - name: "WORLD_CONTENT_API_URL"
+      description: "World Content Server API base URL"
+      affects: "ENS world validation and metadata"
+
+    - name: "AUTH_URL"
+      description: "Decentraland SSO auth URL"
+      affects: "Wallet authentication redirects"
+
+    - name: "ONBOARDING_URL"
+      description: "New-user onboarding redirect URL"
+      affects: "User onboarding flow"
+
+    - name: "DOWNLOAD_URL"
+      description: "Desktop client download page URL"
+      affects: "Download redirect when client not installed"
+
+    - name: "HOME_URL"
+      description: "Decentraland homepage URL"
+      affects: "Home navigation links"
+
+    - name: "CHAIN_ID"
+      description: "EVM chain ID (1 = mainnet, 11155111 = Sepolia testnet)"
+      affects: "Blockchain network selection for wallet"
+
+    - name: "DAO_URL"
+      description: "DAO landing page URL"
+      affects: "DAO navigation links"
+
+    - name: "MARKETPLACE_URL"
+      description: "Marketplace URL"
+      affects: "Marketplace navigation links"
+
+    - name: "PROFILE_URL"
+      description: "Profile URL"
+      affects: "Profile navigation links"
+
+    - name: "CREATE_URL"
+      description: "Creator tools URL"
+      affects: "Creator navigation links"
+
+    - name: "BLOG_URL"
+      description: "Decentraland blog URL"
+      affects: "Blog navigation links"
+
+    - name: "DOCS_URL"
+      description: "Documentation URL"
+      affects: "Documentation links"
+
+    - name: "FAQ_URL"
+      description: "FAQ page URL"
+      affects: "Help links"
+
+    - name: "SUPPORT_URL"
+      description: "Support page URL"
+      affects: "Support links"
+
+    - name: "DISCORD_URL"
+      description: "Discord community URL"
+      affects: "Social links"
+
+    - name: "X_URL"
+      description: "X (Twitter) profile URL"
+      affects: "Social links"
+
+    - name: "YOUTUBE_URL"
+      description: "YouTube channel URL"
+      affects: "Social links"
+
+    - name: "INSTAGRAM_URL"
+      description: "Instagram profile URL"
+      affects: "Social links"
+
+    - name: "LINKEDIN_URL"
+      description: "LinkedIn profile URL"
+      affects: "Social links"
+
+    - name: "TIKTOK_URL"
+      description: "TikTok profile URL"
+      affects: "Social links"
+
+    - name: "GITHUB_URL"
+      description: "GitHub organization URL"
+      affects: "Social links"
+
+    - name: "BEEHIIV_SUBSCRIBE_URL"
+      description: "Newsletter subscription URL"
+      affects: "Newsletter signup"
+
+    - name: "EMAIL_HELLO_URL"
+      description: "Contact email URL"
+      affects: "Contact links"
+
+    - name: "LOCAL_STORAGE_KEY"
+      description: "LocalStorage key prefix"
+      affects: "Browser storage namespacing"
+
+    - name: "STORAGE_LOCALE_KEY"
+      description: "LocalStorage key for locale preference"
+      affects: "i18n locale persistence"
+
+    - name: "ENVIRONMENT"
+      description: "Environment name (dev, prd)"
+      affects: "Environment-specific behavior and logging"
 
 adrs: []
