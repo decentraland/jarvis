@@ -4,7 +4,7 @@ service:
   name: unity-explorer
   display_name: Unity Explorer
   description: Official desktop client implementation for Decentraland 2.0, allowing users to explore and interact with the Decentraland metaverse using Unity. Delivers enhanced performance, immersive graphics, and improved user experience compared to web-based clients.
-  owner: game-technology
+  owner: explorer
   repository: https://github.com/decentraland/unity-explorer
   language: csharp
   layer: client
@@ -61,6 +61,37 @@ domain:
       definition: Configuration values and addressable asset references scoped to individual plugins, stored in PluginSettingsContainer scriptable object
       not_to_be_confused_with: "Runtime settings - plugin settings are design-time configuration"
 
+    - term: MVC Controller
+      definition: UI architecture pattern using ControllerBase<TView> that manages view instantiation, lifecycle, and window stacking across four layers (Persistent, Fullscreen, Popup, Overlay). Controllers bridge ECS systems to UI via ControllerECSBridgeSystem.
+      examples:
+        - "SettingsController manages the settings panel with modular toggle/slider/dropdown modules"
+        - "WindowStackManager coordinates which panels are visible across layers"
+
+    - term: AssetPromise
+      definition: Generic async loading handle (AssetPromise<TAsset, TLoadingIntention>) for ECS-driven asset loading — textures, models, audio, wearables. Lifecycle includes creation, polling via TryGetResult/TryConsume, async via ToUniTaskAsync, and cleanup via ForgetLoading/Consume.
+      not_to_be_confused_with: "C# Task or UniTask — AssetPromise is ECS-integrated and supports cache dereferencing via TryDereference"
+
+    - term: ReportHub
+      definition: Centralized diagnostics and logging system replacing Debug.Log. Uses ReportCategory (e.g., ECS, SCENE_LOADING, COMMS, UI) and report handlers (DebugLog, Sentry). Supports CategorySeverityMatrix for per-category log levels and ECS_EXCEPTIONS_PER_MINUTE_TOLERANCE for exception throttling.
+      examples:
+        - "ReportHub.LogError(ReportCategory.SCENE_LOADING, 'Failed to load scene')"
+        - "Runtime override via /log-matrix chat command or --use-log-matrix JSON file"
+
+    - term: Global Vertex Buffer
+      definition: GPU skinning pipeline component using FixedComputeBufferHandler with Rent/Release/Defragmentation for efficient avatar rendering. CPU bone matrix jobs feed GPU compute shaders for skinned mesh rendering across all visible avatars.
+      not_to_be_confused_with: "Standard Unity skinned mesh rendering — this is a custom compute-shader pipeline for performance"
+
+    - term: Intention Component
+      definition: ECS request-response pattern where a system creates an entity with an intention component (e.g., loading request), a handler system processes it and writes a result component, and the requester consumes the result. Used throughout for async operations in ECS.
+      examples:
+        - "CreateGetTextureIntention triggers texture loading, result arrives as StreamableLoadingResult<Texture2D>"
+
+    - term: Feature Flag
+      definition: Runtime feature toggle system using FeatureFlagsConfiguration (remote, naming convention explorer-alfa-*), FeaturesRegistry (code-declared FeatureId enum), and IFeatureProvider for runtime-dependent features. Checked via IsEnabled with variant support (text/CSV/JSON payloads).
+      examples:
+        - "explorer-alfa-new-backpack controls new backpack UI rollout"
+        - "FeaturesRegistry.Check(FeatureId.NewBackpack) for code-level feature gates"
+
   concept_relationships:
     internal:
       - from: Scene Runtime
@@ -82,6 +113,26 @@ domain:
         to: Addressables
         relationship: uses
         description: Contextual assets leverage Unity's Addressables for efficient load/unload cycles
+
+      - from: MVC Controller
+        to: ECS World
+        relationship: bridges
+        description: ControllerECSBridgeSystem connects ECS systems to MVC controllers for UI updates
+
+      - from: AssetPromise
+        to: ECS World
+        relationship: operates_within
+        description: Asset promises are created and polled within ECS systems for async loading
+
+      - from: Intention Component
+        to: ECS World
+        relationship: operates_within
+        description: Intention components use ECS entities as request-response channels for async operations
+
+      - from: ReportHub
+        to: Plugin System
+        relationship: used_by
+        description: Each system declares its ReportCategory via [LogCategory] attribute for structured logging
 
     cross_service:
       - local_concept: Realm
@@ -280,7 +331,22 @@ configuration:
       description: When enabled, uses asset-bundle-registry for entity resolution instead of direct Catalyst access
       default: enabled
 
-  key_env_vars: []
+  key_env_vars:
+    - name: "--realm"
+      description: Connect to a specific realm URL on launch
+      affects: Realm connection
+    - name: "--local-scene"
+      description: Load a local scene for development (points to local preview server)
+      affects: Scene loading
+    - name: "--debug"
+      description: Enable debug mode with additional logging and diagnostics
+      affects: ReportHub logging levels
+    - name: "--self-preview"
+      description: Launch in self-preview mode for scene development
+      affects: Scene runtime
+    - name: "--position"
+      description: Set initial spawn position (e.g., --position 0,0)
+      affects: Player spawn
 
 adrs:
   - id: ADR-117

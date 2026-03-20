@@ -1,0 +1,96 @@
+schema_version: "1.1"
+
+service:
+  name: aang-renderer
+  display_name: Aang Renderer
+  description: WebGPU-based avatar and wearable preview renderer for Decentraland. Renders 3D previews of user profiles and wearables across multiple platforms including Marketplace, Authentication, Profile, Builder, and Configurator interfaces. Shares Toon and Scene shaders with the Unity Explorer for visual consistency.
+  owner: explorer
+  repository: https://github.com/decentraland/aang-renderer
+  language: csharp
+  layer: client
+  role:
+    - client
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Render Mode
+      definition: One of five distinct operating modes (Marketplace, Authentication, Profile, Builder, Configurator) that determines which avatar/wearable preview is rendered and how it is configured
+      examples:
+        - "Marketplace mode renders wearable item previews for purchase pages"
+        - "Profile mode renders full avatar previews for user profile pages"
+
+    - term: WebGPU
+      definition: Browser-native graphics API used as the rendering backend, enabling high-quality 3D rendering without plugins
+      not_to_be_confused_with: "WebGL - WebGPU is the newer, more performant successor"
+
+    - term: Toon Shader
+      definition: Custom shader shared between the Aang Renderer and Unity Explorer that provides Decentraland's distinctive stylized rendering for avatars and wearables
+      examples:
+        - "Ensures avatar previews in the marketplace look identical to in-world rendering"
+
+  concept_relationships:
+    internal: []
+
+    cross_service:
+      - local_concept: Toon Shader
+        remote_service: unity-explorer
+        remote_concept: Plugin System
+        mapping_type: shared
+        description: Toon and Scene shaders are shared between the renderer and the Explorer client for visual consistency
+
+      - local_concept: Render Mode
+        remote_service: catalyst
+        remote_concept: Scene Entity
+        mapping_type: references
+        description: The renderer fetches wearable and profile data from Catalyst to render previews
+
+  invariants: []
+
+  responsibilities:
+    - Render 3D previews of avatars and wearables for web-based Decentraland applications
+    - Provide consistent visual rendering that matches the Unity Explorer client
+    - Support multiple render modes for different platform contexts (Marketplace, Profile, Builder, etc.)
+    - Capture screenshots of rendered avatars as base64-encoded images
+    - Support dynamic configuration via URL parameters and SendMessage API
+
+  out_of_scope:
+    - In-world avatar rendering (handled by unity-explorer)
+    - Wearable creation or editing (handled by builder)
+    - Avatar profile storage (handled by catalyst)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      protocol: HTTP
+      purpose: Fetch wearable definitions, profile data, and avatar configurations for rendering
+      critical: true
+
+  external:
+    - name: WebGPU
+      purpose: Browser-native graphics rendering backend
+      type: other
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: env
+      description: API environment configuration (production or development)
+      affects: Which Decentraland API endpoints are used for fetching data
+
+adrs: []
