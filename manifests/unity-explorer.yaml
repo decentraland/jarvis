@@ -92,6 +92,25 @@ domain:
         - "explorer-alfa-new-backpack controls new backpack UI rollout"
         - "FeaturesRegistry.Check(FeatureId.NewBackpack) for code-level feature gates"
 
+    - term: DynamicWorldContainer
+      definition: Central orchestrator that manages the application's runtime state including realm controllers, ECS world factories, profile repositories, message routing hubs, multiplayer room management, and both global and world-specific plugin lifecycles
+      examples:
+        - "Initializes required containers (textures, LOD, etc.), sets up realm containers and navigation"
+        - "Configures multiplayer systems and initializes global plugins"
+      not_to_be_confused_with: "BootstrapContainer - which handles pre-authentication setup; DynamicWorldContainer manages post-authentication runtime"
+
+    - term: BootstrapContainer
+      definition: Initialization component created at application startup that sets up diagnostic systems, Web3 services, analytics tracking, caching systems, feature flags, and audio systems before user authentication occurs
+      examples:
+        - "EntryPoint GameObject initializes BootstrapContainer as the first step in the bootstrap sequence"
+        - "Prepares all foundational services before presenting the authentication screen"
+
+    - term: RemoteEntities
+      definition: System responsible for synchronizing other players' avatar representations within the ECS world, handling creation, update, and removal of remote player entities with wallet ID association and collider creation for interaction
+      examples:
+        - "TryCreateOrUpdateRemoteEntity creates or updates remote player visual representations"
+        - "ForceRemoveAll clears all remote entities during realm transitions"
+
   concept_relationships:
     internal:
       - from: Scene Runtime
@@ -133,6 +152,21 @@ domain:
         to: Plugin System
         relationship: used_by
         description: Each system declares its ReportCategory via [LogCategory] attribute for structured logging
+
+      - from: DynamicWorldContainer
+        to: Plugin System
+        relationship: orchestrates
+        description: DynamicWorldContainer initializes, coordinates, and manages lifecycle of all global and world plugins
+
+      - from: BootstrapContainer
+        to: DynamicWorldContainer
+        relationship: initializes
+        description: BootstrapContainer sets up foundational services, then after authentication creates DynamicWorldContainer for runtime orchestration
+
+      - from: RemoteEntities
+        to: ECS World
+        relationship: operates_within
+        description: RemoteEntities system creates and manages remote player avatar entities within the global ECS world
 
     cross_service:
       - local_concept: Realm
