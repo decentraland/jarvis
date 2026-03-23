@@ -1,0 +1,105 @@
+schema_version: "1.1"
+
+service:
+  name: launcher-rust
+  display_name: Decentraland Launcher
+  description: Cross-platform desktop application built with Rust and Tauri that manages installation, updates, and launching of the Decentraland Explorer client. Handles automatic update checks, secure downloads, URI scheme handling (decentraland://), and auto-authentication on first launch via embedded tokens.
+  owner: explorer
+  repository: https://github.com/decentraland/launcher-rust
+  language: rust
+  layer: client
+  role:
+    - client
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Tauri Bridge
+      definition: Inter-process communication layer between the Rust backend (system operations) and TypeScript frontend (UI rendering) in the Tauri v2 framework
+      examples:
+        - "Rust backend triggers download progress events that the TypeScript UI displays"
+
+    - term: Auto-Authentication
+      definition: Token-based system that enables seamless first-launch login. Windows appends encoded tokens to executables without breaking code signatures; macOS stores tokens in file metadata. Tokens are bridged to the Explorer client via auth-token-bridge.txt
+      not_to_be_confused_with: "Auth-server authentication - auto-auth is a launcher-specific mechanism for first launch only"
+
+    - term: URI Scheme Handler
+      definition: System-level handler for decentraland:// URIs that allows deep linking into the Explorer client from web browsers and other applications
+      examples:
+        - "Clicking decentraland://goto/0,0 in a browser launches the Explorer at coordinates 0,0"
+
+  concept_relationships:
+    internal: []
+
+    cross_service:
+      - local_concept: Auto-Authentication
+        remote_service: auth-server
+        remote_concept: Authentication
+        mapping_type: references
+        description: Launcher bridges authentication tokens to the Explorer which then uses auth-server for full session establishment
+
+      - local_concept: URI Scheme Handler
+        remote_service: unity-explorer
+        remote_concept: Realm
+        mapping_type: triggers
+        description: URI scheme handling launches the Explorer client with specific realm or position parameters
+
+  invariants:
+    - rule: Token embedding must not break Windows code signatures
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Manage installation and updates of the Decentraland Explorer desktop client
+    - Provide cross-platform support for Windows and macOS
+    - Handle decentraland:// URI scheme for deep linking from web browsers
+    - Perform automatic update checks and secure downloads from S3
+    - Bridge authentication tokens for seamless first-launch login
+
+  out_of_scope:
+    - In-world rendering or gameplay (handled by unity-explorer)
+    - User authentication flow (handled by auth-server and auth)
+    - Content delivery (handled by catalyst)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: unity-explorer
+      relationship: sync
+      protocol: filesystem
+      purpose: Downloads, installs, and launches the Explorer client binary
+      critical: true
+
+  external:
+    - name: Tauri
+      purpose: Cross-platform desktop application framework (Rust backend + web frontend)
+      type: other
+
+    - name: AWS S3
+      purpose: Hosts Explorer client builds for download and updates
+      type: storage
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: TAURI_SIGNING_PRIVATE_KEY
+      description: Private key for signing Tauri update bundles
+      affects: Update package verification
+    - name: VITE_AWS_S3_BUCKET_PUBLIC_URL
+      description: Public URL of the S3 bucket hosting Explorer builds
+      affects: Download and update source
+
+adrs: []

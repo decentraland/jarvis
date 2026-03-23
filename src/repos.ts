@@ -77,8 +77,12 @@ export const workspaces: Record<string, Repo[]> = {
     { url: 'https://github.com/decentraland/internal-tools', lastCommit: '7977af2592a829600c9d38c08aee8d8fab540bf3' },
     { url: 'https://github.com/decentraland/linker-dapp', lastCommit: '5306cb5c0c239ad81784a32d50644248354cbb8a' },
   ],
+  'https://github.com/decentraland/explorer-workspace': [
+    { url: 'https://github.com/decentraland/unity-explorer', lastCommit: '209db912cd9d66b369f20f6be468e6b8899f3f4d' },
+    { url: 'https://github.com/decentraland/aang-renderer', lastCommit: 'ff00c316c4a2f6881d06a36586fc20ce22cf2033' },
+    { url: 'https://github.com/decentraland/launcher-rust', lastCommit: '2bb867c6dea3f707279ca5a2e595dc8ca6a769cb' },
+  ],
 }
 
 export const standalone: Repo[] = [
-  { url: 'https://github.com/decentraland/unity-explorer', lastCommit: '82fa0e65b8aef919ef9580c9084e85f200e83de9' },
 ]

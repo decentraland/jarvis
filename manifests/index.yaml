@@ -28,6 +28,20 @@ services:
   - name: auth
     relationship: sync
     protocol: HTTP
+- name: aang-renderer
+  display_name: Aang Renderer
+  description: WebGPU-based avatar and wearable preview renderer for Decentraland. Renders
+    3D previews of user profiles and wearables across multiple platforms including Marketplace,
+    Authentication, Profile, Builder, and Configurator interfaces.
+  layer: client
+  repository: https://github.com/decentraland/aang-renderer
+  role:
+  - client
+  data_domain: []
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
 - name: archipelago-workers
   display_name: Archipelago Workers
   description: Monorepo containing three services that implement the Archipelago protocol
@@ -757,6 +771,20 @@ services:
   - name: archipelago-workers
     relationship: sync
     protocol: HTTP
+- name: launcher-rust
+  display_name: Decentraland Launcher
+  description: Cross-platform desktop application built with Rust and Tauri that manages
+    installation, updates, and launching of the Decentraland Explorer client. Handles
+    automatic update checks, secure downloads, URI scheme handling, and auto-authentication.
+  layer: client
+  repository: https://github.com/decentraland/launcher-rust
+  role:
+  - client
+  data_domain: []
+  dependencies:
+  - name: unity-explorer
+    relationship: sync
+    protocol: filesystem
 - name: landing-site
   display_name: Landing Site (Modern)
   description: Modern Vite/React SPA serving as the new Decentraland main landing
