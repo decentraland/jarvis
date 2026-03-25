@@ -1,0 +1,216 @@
+schema_version: "1.1"
+
+# ============================================================
+# IDENTITY
+# ============================================================
+service:
+  name: linker-dapp
+  display_name: Linker dApp UI
+  description: |
+    Web application that bridges the Decentraland CLI and blockchain, enabling users to deploy scenes 
+    to LAND parcels or Worlds, manage World access control lists (ACL), perform storage operations, 
+    create quests, view server logs, and create ephemeral identities for signing deployments.
+  owner: decentraland-foundation
+  repository: https://github.com/decentraland/linker-dapp
+  language: typescript
+  layer: client
+  role:
+    - client
+  data_domain: []
+  ai-agent-context: docs/ai-agent-context.md
+
+# ============================================================
+# DOMAIN & RESPONSIBILITIES
+# ============================================================
+domain:
+  glossary:
+    - term: LAND/Estate
+      definition: Virtual real estate NFTs in Decentraland where users can deploy scenes. Authorization is verified via smart contracts before deployment.
+      examples:
+        - "A LAND parcel at coordinates (10, 20)"
+        - "An Estate consisting of multiple connected parcels"
+      
+    - term: World
+      definition: Personal deployment space where users can deploy scenes without owning LAND. Worlds have their own access control and can be accessed by name.
+      examples:
+        - "A user's personal World named 'my-gallery'"
+      
+    - term: ACL (Access Control List)
+      definition: Permission system for World deployments that manages which addresses can deploy to a World. Includes both owner and deployer permissions.
+      
+    - term: Auth Chain
+      definition: Cryptographic authentication chain used for signing deployment operations, providing proof of authorization and identity.
+      
+    - term: Ephemeral Identity
+      definition: Temporary identity created for signing deployments without exposing the main wallet. Allows safer delegation of deployment permissions.
+      
+    - term: Storage Types
+      definition: Different scopes for persistent data storage in Decentraland - env (environment), scene (scene-specific), and player (user-specific data).
+      
+    - term: Portable Experience
+      definition: Special deployment type that can override scenes and provide cross-scene functionality.
+      
+    - term: Coords
+      definition: Parcel coordinates in the Decentraland world, represented as {x, y} integers.
+      examples:
+        - "{x: 0, y: 0} is Genesis Plaza"
+
+  concept_relationships:
+    internal:
+      - from: World
+        to: ACL
+        relationship: has_one
+        description: Each World has an ACL that controls who can deploy to it
+        
+      - from: Ephemeral Identity
+        to: Auth Chain
+        relationship: produces
+        description: Ephemeral identities are used to create auth chains for deployment signing
+        
+      - from: LAND
+        to: Coords
+        relationship: identified_by
+        description: LAND parcels are identified by their coordinate positions
+        
+    cross_service:
+      - local_concept: World
+        remote_service: worlds-content-server
+        remote_concept: World
+        mapping_type: equivalent
+        description: Worlds in the linker-dapp correspond to the same World entities managed by worlds-content-server
+        
+      - local_concept: LAND
+        remote_service: catalyst
+        remote_concept: Scene Pointer
+        mapping_type: references
+        description: LAND coordinates are used as pointers when deploying scenes to Catalyst
+
+  invariants:
+    - rule: A user must be authorized via LAND/Estate Registry smart contracts before deploying to LAND parcels
+      enforced_at: api_validation
+      severity: hard
+      
+    - rule: World deployments require valid ACL permissions (owner or deployer role)
+      enforced_at: api_validation
+      severity: hard
+      
+    - rule: All deployment operations must be signed with a valid auth chain
+      enforced_at: middleware
+      severity: hard
+      
+    - rule: Ephemeral identities must be signed by the main wallet to be valid
+      enforced_at: api_validation
+      severity: hard
+
+  responsibilities:
+    - Enable users to deploy scenes to LAND parcels with blockchain authorization verification
+    - Enable users to deploy scenes to personal Worlds
+    - Manage World ACL by granting and revoking deployer permissions
+    - Perform storage operations (get, set, delete, clear) for scene, player, and environment data
+    - Create and manage quests through signed requests
+    - View real-time server logs for World deployments
+    - Create ephemeral identities for secure deployment signing without exposing main wallet
+    - Validate parcel and estate ownership through smart contract interactions
+    - Proxy authentication requests to Decentraland auth service
+    - Preview deployed scenes via Decentraland Play integration
+
+  out_of_scope:
+    - Scene content creation and authoring (handled by SDK and builder tools)
+    - Actual content storage and hosting (handled by Catalyst and Worlds Content Server)
+    - Blockchain transaction execution (only provides signing, CLI executes transactions)
+    - World name resolution and routing (handled by realm-provider and worlds-content-server)
+    - Storage backend implementation (handled by world-storage-service)
+    - Quest execution logic (handled by exploration-games service)
+
+  owned_entities: []
+
+# ============================================================
+# API REFERENCE
+# ============================================================
+api:
+  openapi_url: ""
+
+# ============================================================
+# DB Schema
+# ============================================================
+db:
+  schema_url: ""
+
+# ============================================================
+# DEPENDENCIES
+# ============================================================
+dependencies:
+  services:
+    - name: sdk-commands
+      relationship: sync
+      protocol: HTTP
+      purpose: |
+        Local CLI server that provides deployment, storage, logs, and info endpoints. 
+        The linker-dapp proxies all /api/* requests to this service running on localhost:8000.
+      critical: true
+      
+    - name: decentraland-auth
+      relationship: sync
+      protocol: HTTP
+      purpose: Wallet authentication via /auth proxy endpoint
+      critical: true
+
+  external:
+    - name: LAND Registry Contract
+      purpose: Verify parcel ownership and authorization for LAND deployments
+      type: blockchain
+      
+    - name: Estate Registry Contract
+      purpose: Verify estate ownership and authorization for estate deployments
+      type: blockchain
+      
+    - name: Ethereum Blockchain
+      purpose: Smart contract interactions for LAND/Estate authorization checks
+      type: blockchain
+      
+    - name: Decentraland Play
+      purpose: Scene preview integration (play.decentraland.org / play.decentraland.zone)
+      type: other
+
+# ============================================================
+# EVENTS
+# ============================================================
+events:
+  publishes: []
+  consumes: []
+
+# ============================================================
+# CONFIGURATION & FEATURE FLAGS
+# ============================================================
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: VITE_REACT_APP_WEBSITE_VERSION
+      description: Version string displayed in the UI
+      affects: UI version display
+      
+    - name: VITE_REACT_APP_DCL_DEFAULT_ENV
+      description: Default Decentraland environment (dev/prod) to connect to
+      affects: Environment configuration, determines which blockchain network and services to use
+      
+    - name: NODE_ENV
+      description: Node.js environment (development/production)
+      affects: Build configuration and development features
+      
+    - name: PUBLIC_URL
+      description: Public URL path for static asset serving
+      affects: Asset path resolution in production builds
+      
+    - name: VITE_BASE_URL
+      description: Base URL for the application deployment
+      affects: Application routing and asset paths
+      
+    - name: VITE_API_PROXY_TARGET
+      description: Target URL for /api proxy in local development (e.g., http://localhost:8000)
+      affects: API proxy configuration for local development with hot-reload
+
+# ============================================================
+# ADRs
+# ============================================================
+adrs: []
