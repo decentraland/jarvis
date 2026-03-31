@@ -45,6 +45,25 @@ domain:
       examples:
         - "Scene with multiple entities, components, and systems"
 
+    - term: ByteBuffer
+      definition: Low-level resource providing letters to compose component serialization, encompassing well-defined processor types (uint8_t, int16_t, float, double) plus byte arrays and UTF-8 strings
+      examples:
+        - "builder.writeInt8(value.visible ? 1 : 0)"
+        - "reader.readFloat32()"
+      not_to_be_confused_with: ""
+
+    - term: EcsType
+      definition: Interface for component serialization/deserialization with serialize(value, builder) and deserialize(reader) methods that use ByteBuffer to pack/unpack component data
+      examples:
+        - "Component implements EcsType to define wire format"
+      not_to_be_confused_with: ""
+
+    - term: FlatMaterial
+      definition: Simplified flattened interface for accessing Material component properties, eliminating nested union structures (PBR vs Unlit, texture variants) with compile-time sync validation against protobuf types
+      examples:
+        - "Material.getFlat(entity).texture.src instead of nested case checks"
+      not_to_be_confused_with: ""
+
   concept_relationships:
     internal:
       - from: Component
@@ -62,6 +81,16 @@ domain:
         relationship: contains
         description: Scenes contain multiple entities that make up the 3D environment
 
+      - from: EcsType
+        to: ByteBuffer
+        relationship: uses
+        description: EcsType serialization methods use ByteBuffer to write/read component data
+
+      - from: Component
+        to: EcsType
+        relationship: implements
+        description: Each component implements EcsType for serialization/deserialization
+
     cross_service: []
 
   invariants:
@@ -70,6 +99,10 @@ domain:
       severity: hard
 
     - rule: Component data must be serializable via Protocol Buffers for network synchronization
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: FlatMaterial interface must stay in sync with protobuf PBMaterial_PbrMaterial and PBMaterial_UnlitMaterial — build fails if new properties are added to protobuf but not to FlatMaterial
       enforced_at: domain_layer
       severity: hard
 

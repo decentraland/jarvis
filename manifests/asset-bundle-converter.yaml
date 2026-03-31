@@ -235,4 +235,12 @@ configuration:
       description: Temporary secret for API authorization
       affects: Manual conversion API authentication
 
+    - name: VERSION_TAG
+      description: Version tag for the service (used for status reporting)
+      affects: Service version tracking
+
+    - name: COMMIT_HASH
+      description: Git commit hash for the deployment
+      affects: Deployment tracking and debugging
+
 adrs: []

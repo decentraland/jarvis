@@ -144,13 +144,13 @@ configuration:
       description: CDN URL for notification assets
       affects: Asset URLs in notifications
 
-    - name: MARKETPLACE_BASE_URL
-      description: Marketplace URL for notification links
-      affects: Marketplace notification links
-
     - name: ACCOUNT_BASE_URL
       description: Decentraland account URL for email links
       affects: Email notification links
+
+    - name: DECENTRALAND_URL
+      description: Decentraland platform URL
+      affects: Platform links in notifications
 
     - name: SIGNING_KEY
       description: Key for signing email unsubscribe tokens and notification links
@@ -162,15 +162,7 @@ configuration:
 
     - name: AWS_SQS_ENDPOINT
       description: AWS SQS endpoint for queue consumption
-      affects: Event consumption
-
-    - name: AWS_SNS_ARN
-      description: AWS SNS topic ARN for event publishing (processor)
-      affects: Event publishing
-
-    - name: AWS_SNS_ENDPOINT
-      description: Optional AWS SNS endpoint for local development
-      affects: SNS client configuration
+      affects: Event consumption from SNS topics
 
     - name: SENDGRID_API_URL
       description: SendGrid API URL for email delivery
@@ -189,12 +181,12 @@ configuration:
       affects: Email template selection
 
     - name: SENDGRID_SANDBOX_MODE
-      description: Enable SendGrid sandbox mode for testing (optional)
+      description: Enable SendGrid sandbox mode for testing
       affects: Email delivery in testing
 
     - name: CATALYST_LAMBDAS_URL
-      description: Catalyst lambdas URL for content data
-      affects: Content fetching for notifications
+      description: Catalyst lambdas URL for user profile data
+      affects: Profile fetching for notification metadata
 
     - name: DWH_API_URL
       description: Data Warehouse API URL for analytics
@@ -203,26 +195,6 @@ configuration:
     - name: DWH_TOKEN
       description: Data Warehouse API authentication token
       affects: Analytics security
-
-    - name: NETWORK
-      description: Blockchain network (mainnet/testnet)
-      affects: Blockchain data source selection
-
-    - name: MARKETPLACE_SUBGRAPH_URL
-      description: Marketplace subgraph URL for marketplace events
-      affects: Marketplace data querying
-
-    - name: COLLECTIONS_L2_SUBGRAPH_URL
-      description: Collections L2 subgraph URL for collection data
-      affects: Collection data querying
-
-    - name: RENTALS_SUBGRAPH_URL
-      description: Rentals subgraph URL for rental events
-      affects: Rental data querying
-
-    - name: LAND_MANAGER_SUBGRAPH_URL
-      description: Land Manager subgraph URL for land management events
-      affects: Land management data querying
 
     - name: NOTIFICATION_SERVICE_TOKEN
       description: Token for internal service authentication

@@ -1,5 +1,20 @@
 schema_version: '1.0'
 services:
+- name: aang-renderer
+  display_name: Aang Renderer
+  description: WebGPU-based avatar and wearable preview renderer for Decentraland.
+    Renders 3D previews of user profiles and wearables across multiple platforms including
+    Marketplace, Authentication, Profile, Builder, and Configurator interfaces. Shares
+    Toon and Scene shaders with the Unity Explorer for visual consistency.
+  layer: client
+  repository: https://github.com/decentraland/aang-renderer
+  role:
+  - client
+  data_domain: []
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
 - name: account
   display_name: Decentraland Account
   description: User account management dApp (served at account.decentraland.org) that
@@ -26,20 +41,6 @@ services:
     relationship: sync
     protocol: HTTP
   - name: auth
-    relationship: sync
-    protocol: HTTP
-- name: aang-renderer
-  display_name: Aang Renderer
-  description: WebGPU-based avatar and wearable preview renderer for Decentraland. Renders
-    3D previews of user profiles and wearables across multiple platforms including Marketplace,
-    Authentication, Profile, Builder, and Configurator interfaces.
-  layer: client
-  repository: https://github.com/decentraland/aang-renderer
-  role:
-  - client
-  data_domain: []
-  dependencies:
-  - name: catalyst
     relationship: sync
     protocol: HTTP
 - name: archipelago-workers
@@ -137,19 +138,6 @@ services:
   - name: signatures-server
     relationship: sync
     protocol: HTTP
-- name: auth-server
-  display_name: Auth Server
-  description: Facilitates secure communication between the Decentraland desktop client
-    and browser-based authentication dApp. Enables the desktop client to execute wallet
-    operations (transactions, signatures) using the user's browser wallet through
-    a request-response relay pattern.
-  layer: feature-servers
-  repository: https://github.com/decentraland/auth-server
-  role:
-  - auth
-  data_domain:
-  - authentication-requests
-  dependencies: []
 - name: auth
   display_name: Decentraland Auth UI
   description: Centralized authentication and identity service for Decentraland. Handles
@@ -181,6 +169,19 @@ services:
   - name: transactions-api
     relationship: sync
     protocol: HTTP
+- name: auth-server
+  display_name: Auth Server
+  description: Facilitates secure communication between the Decentraland desktop client
+    and browser-based authentication dApp. Enables the desktop client to execute wallet
+    operations (transactions, signatures) using the user's browser wallet through
+    a request-response relay pattern.
+  layer: feature-servers
+  repository: https://github.com/decentraland/auth-server
+  role:
+  - auth
+  data_domain:
+  - authentication-requests
+  dependencies: []
 - name: badges
   display_name: Badges
   description: Manages user achievements (badges) within the Decentraland ecosystem.
@@ -234,6 +235,33 @@ services:
   - name: catalyst
     relationship: sync
     protocol: HTTP
+- name: builder
+  display_name: Decentraland Builder
+  description: Web-based application for creating, editing, and publishing Decentraland
+    content. Provides drag-and-drop scene creation (SDK6), Inspector-based editing
+    (SDK7), wearable and emote design, LAND and Estate management, and Worlds deployment
+    with permission controls.
+  layer: client
+  repository: https://github.com/decentraland/builder
+  role:
+  - client
+  data_domain: []
+  dependencies:
+  - name: builder-server
+    relationship: sync
+    protocol: HTTP
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+  - name: marketplace-server
+    relationship: sync
+    protocol: HTTP
+  - name: credits-server
+    relationship: sync
+    protocol: HTTP
 - name: builder-client
   display_name: Builder Client
   description: TypeScript/JavaScript library providing a programmatic interface to
@@ -268,33 +296,6 @@ services:
   - name: catalyst
     relationship: sync
     protocol: HTTP
-- name: builder
-  display_name: Decentraland Builder
-  description: Web-based application for creating, editing, and publishing Decentraland
-    content. Provides drag-and-drop scene creation (SDK6), Inspector-based editing
-    (SDK7), wearable and emote design, LAND and Estate management, and Worlds deployment
-    with permission controls.
-  layer: client
-  repository: https://github.com/decentraland/builder
-  role:
-  - client
-  data_domain: []
-  dependencies:
-  - name: builder-server
-    relationship: sync
-    protocol: HTTP
-  - name: catalyst
-    relationship: sync
-    protocol: HTTP
-  - name: worlds-content-server
-    relationship: sync
-    protocol: HTTP
-  - name: marketplace-server
-    relationship: sync
-    protocol: HTTP
-  - name: credits-server
-    relationship: sync
-    protocol: HTTP
 - name: camera-reel-service
   display_name: Camera Reel Service
   description: Manages camera images captured from Decentraland Explorer. Provides
@@ -307,6 +308,25 @@ services:
   data_domain:
   - camera-images
   dependencies: []
+- name: catalyst
+  display_name: Catalyst
+  description: Monorepo containing the core Catalyst server implementation. Catalyst
+    servers are the decentralized content infrastructure for Decentraland, bundling
+    multiple services (Content Server, Lambdas, BFF, Archipelago) to provide entity
+    storage, content delivery, peer communication, and client APIs.
+  layer: content
+  repository: https://github.com/decentraland/catalyst
+  role:
+  - content
+  - storage
+  data_domain:
+  - entities
+  - deployments
+  - content-files
+  dependencies:
+  - name: archipelago-workers
+    relationship: both
+    protocol: WebSocket
 - name: catalyst-contracts
   display_name: Catalyst Contracts Library
   description: TypeScript library providing smart contract addresses and ABIs for
@@ -331,25 +351,6 @@ services:
   - library
   data_domain: []
   dependencies: []
-- name: catalyst
-  display_name: Catalyst
-  description: Monorepo containing the core Catalyst server implementation. Catalyst
-    servers are the decentralized content infrastructure for Decentraland, bundling
-    multiple services (Content Server, Lambdas, BFF, Archipelago) to provide entity
-    storage, content delivery, peer communication, and client APIs.
-  layer: content
-  repository: https://github.com/decentraland/catalyst
-  role:
-  - content
-  - storage
-  data_domain:
-  - entities
-  - deployments
-  - content-files
-  dependencies:
-  - name: archipelago-workers
-    relationship: both
-    protocol: WebSocket
 - name: comms-gatekeeper
   display_name: Comms Gatekeeper
   description: Acts as the guardian of LiveKit tokens within Decentraland's communication
@@ -428,7 +429,8 @@ services:
   description: Cross-platform Electron desktop application for creating, editing,
     and deploying Decentraland SDK7 scenes. Provides visual scene editing via embedded
     Inspector, asset management with curated Smart Items, and deployment to Genesis
-    City, Worlds, or custom servers.
+    City, Worlds, or custom servers. Monorepo includes asset-packs (3D assets and
+    Smart Items), inspector (web-based 3D editor), and creator-hub (desktop app).
   layer: client
   repository: https://github.com/decentraland/creator-hub
   role:
@@ -563,19 +565,6 @@ services:
   - name: catalyst
     relationship: sync
     protocol: HTTP
-- name: events-notifier
-  display_name: Events Notifier
-  description: Monitors blockchain events and publishes notifications to internal
-    event-driven systems. Runs scheduled cron jobs that query The Graph subgraphs
-    to detect marketplace transactions, rentals, and royalties, then publishes structured
-    events for downstream consumers.
-  layer: feature-servers
-  repository: https://github.com/decentraland/events-notifier
-  role:
-  - worker
-  data_domain:
-  - event-cursors
-  dependencies: []
 - name: events
   display_name: Community Events
   description: Full-stack web application that manages community events within the
@@ -610,6 +599,19 @@ services:
   - name: badges
     relationship: async
     protocol: SNS/SQS
+- name: events-notifier
+  display_name: Events Notifier
+  description: Monitors blockchain events and publishes notifications to internal
+    event-driven systems. Runs scheduled cron jobs that query The Graph subgraphs
+    to detect marketplace transactions, rentals, and royalties, then publishes structured
+    events for downstream consumers.
+  layer: feature-servers
+  repository: https://github.com/decentraland/events-notifier
+  role:
+  - worker
+  data_domain:
+  - event-cursors
+  dependencies: []
 - name: exploration-games
   display_name: Exploration Games
   description: Manages exploration games and related functionality within Decentraland.
@@ -637,25 +639,6 @@ services:
   - library
   data_domain: []
   dependencies: []
-- name: governance-ui
-  display_name: Decentraland DAO Governance UI
-  description: Full-featured governance dApp (served at governance.decentraland.org)
-    for the Decentraland DAO. Lets community members browse, create, vote on, and
-    track governance proposals, manage funded projects, view DAO transparency data,
-    configure push/email notifications, and manage their governance profile. Frontend
-    counterpart to the governance backend service.
-  layer: Feature Servers Layer
-  repository: https://github.com/decentraland/governance-ui
-  role:
-  - client
-  data_domain: []
-  dependencies:
-  - name: governance
-    relationship: sync
-    protocol: HTTP
-  - name: auth
-    relationship: sync
-    protocol: HTTP
 - name: governance
   display_name: Decentraland DAO Governance
   description: Backend service and frontend application for Decentraland's DAO governance
@@ -675,6 +658,25 @@ services:
   - tenders
   - projects
   dependencies: []
+- name: governance-ui
+  display_name: Decentraland DAO Governance UI
+  description: Full-featured governance dApp (served at governance.decentraland.org)
+    for the Decentraland DAO. Lets community members browse, create, vote on, and
+    track governance proposals, manage funded projects, view DAO transparency data,
+    configure push/email notifications, and manage their governance profile. Frontend
+    counterpart to the governance backend service.
+  layer: Feature Servers Layer
+  repository: https://github.com/decentraland/governance-ui
+  role:
+  - client
+  data_domain: []
+  dependencies:
+  - name: governance
+    relationship: sync
+    protocol: HTTP
+  - name: auth
+    relationship: sync
+    protocol: HTTP
 - name: hashing
   display_name: '@dcl/hashing'
   description: Hashing utilities library that provides content identifier calculation
@@ -771,40 +773,6 @@ services:
   - name: archipelago-workers
     relationship: sync
     protocol: HTTP
-- name: launcher-rust
-  display_name: Decentraland Launcher
-  description: Cross-platform desktop application built with Rust and Tauri that manages
-    installation, updates, and launching of the Decentraland Explorer client. Handles
-    automatic update checks, secure downloads, URI scheme handling, and auto-authentication.
-  layer: client
-  repository: https://github.com/decentraland/launcher-rust
-  role:
-  - client
-  data_domain: []
-  dependencies:
-  - name: unity-explorer
-    relationship: sync
-    protocol: filesystem
-- name: landing-site
-  display_name: Landing Site (Modern)
-  description: Modern Vite/React SPA serving as the new Decentraland main landing
-    page, replacing the Gatsby-based landing app. All marketing content (hero, missions,
-    FAQ, banners, social proof, marquee, trending news) is fetched at runtime from
-    Contentful CMS via RTK Query. Features lazy-loaded below-the-fold sections, OS-aware
-    download options, wallet-based authentication (Magic SDK, WalletConnect), and
-    analytics tracking.
-  layer: entry-points
-  repository: https://github.com/decentraland/landing-site
-  role:
-  - client
-  data_domain: []
-  dependencies:
-  - name: catalyst
-    relationship: sync
-    protocol: HTTP
-  - name: auth
-    relationship: sync
-    protocol: HTTP
 - name: landing
   display_name: Decentraland Homepage
   description: The main Decentraland homepage at decentraland.org. Gatsby-based static
@@ -828,6 +796,60 @@ services:
   - name: catalyst
     relationship: sync
     protocol: HTTP
+- name: landing-site
+  display_name: Landing Site (Modern)
+  description: Modern Vite/React SPA serving as the new Decentraland main landing
+    page, replacing the Gatsby-based landing app. Features hero section, catch the
+    vibe, weekly rituals, lazy-loaded below-the-fold sections, OS-aware download options,
+    wallet-based authentication (Magic SDK, WalletConnect), and analytics tracking.
+  layer: entry-points
+  repository: https://github.com/decentraland/landing-site
+  role:
+  - client
+  data_domain: []
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: auth
+    relationship: sync
+    protocol: HTTP
+  - name: realm-provider
+    relationship: sync
+    protocol: HTTP
+- name: launcher-rust
+  display_name: Decentraland Launcher
+  description: Cross-platform desktop application built with Rust and Tauri that manages
+    installation, updates, and launching of the Decentraland Explorer client. Handles
+    automatic update checks, secure downloads, URI scheme handling (decentraland://),
+    and auto-authentication on first launch via embedded tokens.
+  layer: client
+  repository: https://github.com/decentraland/launcher-rust
+  role:
+  - client
+  data_domain: []
+  dependencies:
+  - name: unity-explorer
+    relationship: sync
+    protocol: filesystem
+- name: linker-dapp
+  display_name: Linker dApp UI
+  description: "Web application that bridges the Decentraland CLI and blockchain,\
+    \ enabling users to deploy scenes \nto LAND parcels or Worlds, manage World access\
+    \ control lists (ACL), perform storage operations, \ncreate quests, view server\
+    \ logs, and create ephemeral identities for signing deployments.\n"
+  layer: client
+  repository: https://github.com/decentraland/linker-dapp
+  role:
+  - client
+  data_domain: []
+  dependencies:
+  - name: sdk-commands
+    relationship: sync
+    protocol: HTTP
+  - name: decentraland-auth
+    relationship: sync
+    protocol: HTTP
 - name: linker-server
   display_name: Linker Server
   description: Acts as an intermediary for deploying content to Decentraland's Catalyst
@@ -840,22 +862,6 @@ services:
   data_domain: []
   dependencies:
   - name: catalyst
-    relationship: sync
-    protocol: HTTP
-- name: marketplace-server
-  display_name: Marketplace Server
-  description: Provides comprehensive marketplace APIs for the Decentraland Marketplace.
-    Enables browsing, searching, and interacting with NFTs (wearables, emotes, LAND,
-    estates, ENS names), managing trades and orders, and accessing marketplace analytics.
-  layer: feature-servers
-  repository: https://github.com/decentraland/marketplace-server
-  role:
-  - gateway
-  data_domain:
-  - trades
-  - favorites
-  dependencies:
-  - name: signatures-server
     relationship: sync
     protocol: HTTP
 - name: marketplace
@@ -889,6 +895,22 @@ services:
     relationship: sync
     protocol: HTTP
   - name: credits-server
+    relationship: sync
+    protocol: HTTP
+- name: marketplace-server
+  display_name: Marketplace Server
+  description: Provides comprehensive marketplace APIs for the Decentraland Marketplace.
+    Enables browsing, searching, and interacting with NFTs (wearables, emotes, LAND,
+    estates, ENS names), managing trades and orders, and accessing marketplace analytics.
+  layer: feature-servers
+  repository: https://github.com/decentraland/marketplace-server
+  role:
+  - gateway
+  data_domain:
+  - trades
+  - favorites
+  dependencies:
+  - name: signatures-server
     relationship: sync
     protocol: HTTP
 - name: notifications-workers
@@ -965,21 +987,6 @@ services:
   - worker
   data_domain: []
   dependencies: []
-- name: profile-images
-  display_name: Profile Images
-  description: Generates 2D profile images (body and face) from 3D avatar models.
-    Uses producer-consumer pattern to monitor profile changes and render avatar images
-    for display in applications and user interfaces.
-  layer: feature-servers
-  repository: https://github.com/decentraland/profile-images
-  role:
-  - worker
-  data_domain:
-  - profile-images
-  dependencies:
-  - name: catalyst
-    relationship: sync
-    protocol: HTTP
 - name: profile
   display_name: Decentraland Profile UI
   description: Vite+React SPA (served at profile.decentraland.org) that displays public
@@ -1012,6 +1019,21 @@ services:
     relationship: sync
     protocol: HTTP
   - name: auth
+    relationship: sync
+    protocol: HTTP
+- name: profile-images
+  display_name: Profile Images
+  description: Generates 2D profile images (body and face) from 3D avatar models.
+    Uses producer-consumer pattern to monitor profile changes and render avatar images
+    for display in applications and user interfaces.
+  layer: feature-servers
+  repository: https://github.com/decentraland/profile-images
+  role:
+  - worker
+  data_domain:
+  - profile-images
+  dependencies:
+  - name: catalyst
     relationship: sync
     protocol: HTTP
 - name: prometheus-nats-exporter
@@ -1130,6 +1152,30 @@ services:
   - name: catalyst
     relationship: sync
     protocol: HTTP
+- name: social
+  display_name: Decentraland Social dApp
+  description: The web interface for Decentraland social features, enabling users
+    to discover, create, and manage communities. Provides functionality for viewing
+    community profiles, member management, event listings, and community requests.
+    Integrates with social-service-ea backend for social graph and community data.
+  layer: client
+  repository: https://github.com/decentraland/social
+  role:
+  - client
+  data_domain: []
+  dependencies:
+  - name: social-service-ea
+    relationship: sync
+    protocol: HTTP
+  - name: events
+    relationship: sync
+    protocol: HTTP
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: credits-server
+    relationship: sync
+    protocol: HTTP
 - name: social-service-ea
   display_name: Social Service EA
   description: Microservice handling social interactions for Decentraland. Enables
@@ -1160,30 +1206,6 @@ services:
     relationship: sync
     protocol: HTTP
   - name: rewards-server
-    relationship: sync
-    protocol: HTTP
-- name: social
-  display_name: Decentraland Social dApp
-  description: The web interface for Decentraland social features, enabling users
-    to discover, create, and manage communities. Provides functionality for viewing
-    community profiles, member management, event listings, and community requests.
-    Integrates with social-service-ea backend for social graph and community data.
-  layer: client
-  repository: https://github.com/decentraland/social
-  role:
-  - client
-  data_domain: []
-  dependencies:
-  - name: social-service-ea
-    relationship: sync
-    protocol: HTTP
-  - name: events
-    relationship: sync
-    protocol: HTTP
-  - name: catalyst
-    relationship: sync
-    protocol: HTTP
-  - name: credits-server
     relationship: sync
     protocol: HTTP
 - name: ui
