@@ -435,6 +435,10 @@ configuration:
       description: TTL for content client cache entries in milliseconds
       affects: Content client cache expiration
 
+    - name: MODERATOR_TOKEN
+      description: Token for moderator authentication (alternative to wallet signature)
+      affects: Moderator authentication and authorization
+
 adrs:
   - id: ADR-44
     title: Signed Fetch Authentication

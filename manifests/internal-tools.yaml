@@ -45,6 +45,20 @@ domain:
       examples: []
       not_to_be_confused_with: ""
 
+    - term: API Clients
+      definition: UserModerationClient and CreditsClient are typed class-based clients that encapsulate endpoint logic, error handling, and identity injection for interacting with backend services.
+      examples:
+        - "UserModerationClient handles bans, warnings, and ban status queries"
+        - "CreditsClient manages credit granting and season history retrieval"
+      not_to_be_confused_with: ""
+
+    - term: IFramedPage
+      definition: Reusable wrapper component for embedding external tools (Catalyst Monitor, Event Map Generator, etc.) as full-height iframes within the dashboard.
+      examples:
+        - "Catalyst Monitor embedded via IFramedPage"
+        - "Event Map Generator displayed in iframe"
+      not_to_be_confused_with: ""
+
   concept_relationships:
     internal:
       - from: AuthIdentity
@@ -56,6 +70,11 @@ domain:
         to: User Moderation
         relationship: requires
         description: Moderator role is enforced server-side by comms-gatekeeper for moderation endpoints
+
+      - from: API Clients
+        to: Signed Fetch
+        relationship: uses
+        description: API clients use Signed Fetch to attach authentication headers to all requests
 
     cross_service:
       - local_concept: User Ban
@@ -165,7 +184,7 @@ configuration:
   feature_flags: []
   key_env_vars:
     - name: VITE_HOST
-      description: LiveKit host URL for debugger and kick tools
+      description: LiveKit host URL for WebSocket connections (currently hardcoded to wss://dcl.livekit.cloud in code)
       affects: LiveKit WebSocket connection endpoint
 
     - name: VITE_API_KEY
@@ -183,18 +202,6 @@ configuration:
     - name: VITE_CREDITS_GRANTER_API_TOKEN_PRD
       description: Bearer token for Credits API in production environment
       affects: Credits API authorization for production environment
-
-    - name: VITE_COMMS_GATEKEEPER_URL
-      description: Comms Gatekeeper base URL (overrides environment config)
-      affects: User moderation API endpoint
-
-    - name: VITE_CREDITS_API_URL
-      description: Credits API base URL (overrides default credits.decentraland.org)
-      affects: Credits API endpoint
-
-    - name: VITE_LIVEKIT_URL
-      description: LiveKit Cloud WebSocket URL (overrides default wss://dcl.livekit.cloud)
-      affects: LiveKit debugger WebSocket connection
 
 adrs:
   - id: ADR-44

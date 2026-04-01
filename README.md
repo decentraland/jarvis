@@ -76,4 +76,3 @@ manifests/                # Generated output (published via npm)
 ## License
 
 Apache-2.0
-

@@ -285,4 +285,216 @@ configuration:
       description: SDK7 dev server port for local asset-packs development (default 8001)
       affects: Development environment - Smart Items runtime dev server
 
+    - name: CHAIN_ID
+      description: Ethereum chain ID (1 for mainnet, 11155111 for Sepolia)
+      affects: Blockchain network selection for wallet connections and contract interactions
+
+    - name: ENVIRONMENT
+      description: Runtime environment label (dev, stg, production)
+      affects: Environment-specific behavior and logging
+
+    - name: LOCAL_STORAGE_KEY
+      description: LocalStorage key prefix for application state
+      affects: Browser storage namespacing
+
+    - name: EMAIL_SERVER_URL
+      description: Newsletter subscription API endpoint
+      affects: Email subscription functionality
+
+    - name: PEER_URL
+      description: Catalyst peer URL for scene deployment and content operations
+      affects: Scene deployment target and profile fetching
+
+    - name: ERC721_COLLECTION_BASE_URI
+      description: Base URI for ERC721 collection metadata
+      affects: Collection metadata URL generation
+
+    - name: BUILDER_SERVER_URL
+      description: Builder API endpoint for projects, items, and collections
+      affects: Project storage and retrieval
+
+    - name: MARKETPLACE_URL
+      description: Legacy marketplace API endpoint
+      affects: Marketplace data fetching
+
+    - name: MARKETPLACE_API
+      description: Current marketplace API endpoint
+      affects: Marketplace items and order data
+
+    - name: DOCS_URL
+      description: Documentation URL
+      affects: Help and documentation links
+
+    - name: MARKETPLACE_WEB_URL
+      description: Marketplace web interface URL
+      affects: External marketplace navigation
+
+    - name: CREATOR_HUB_DOWNLOAD_URL
+      description: Creator Hub download page URL
+      affects: Creator Hub download links
+
+    - name: LAND_MANAGER_GRAPH_URL
+      description: The Graph subgraph URL for LAND Manager
+      affects: LAND and Estate data queries
+
+    - name: MARKETPLACE_GRAPH_URL
+      description: The Graph subgraph URL for Marketplace
+      affects: Marketplace transaction queries
+
+    - name: RENTALS_GRAPH_URL
+      description: The Graph subgraph URL for Rentals
+      affects: LAND rental data queries
+
+    - name: SHARE_SCENE_URL
+      description: Scene sharing service URL
+      affects: Scene sharing functionality
+
+    - name: INTERCOM_APP_ID
+      description: Intercom application ID for user support
+      affects: Support chat integration
+
+    - name: SEGMENT_API_KEY
+      description: Segment analytics write key for Builder
+      affects: Analytics tracking
+
+    - name: ROLLBAR_ACCESS_TOKEN
+      description: Rollbar error tracking token
+      affects: Error reporting and monitoring
+
+    - name: MANA_TOKEN_CONTRACT_ADDRESS
+      description: MANA token contract address on Ethereum
+      affects: MANA token interactions
+
+    - name: LAND_REGISTRY_CONTRACT_ADDRESS
+      description: LAND Registry contract address
+      affects: LAND NFT operations
+
+    - name: ESTATE_REGISTRY_CONTRACT_ADDRESS
+      description: Estate Registry contract address
+      affects: Estate NFT operations
+
+    - name: ENS_CONTRACT_ADDRESS
+      description: ENS Registry contract address
+      affects: ENS domain operations
+
+    - name: ENS_GATEWAY
+      description: ENS content gateway provider (limo)
+      affects: ENS content resolution
+
+    - name: RESOLVER_CONTRACT_ADDRESS
+      description: ENS Resolver contract address
+      affects: ENS name resolution
+
+    - name: REGISTRAR_CONTRACT_ADDRESS
+      description: DCL Names Registrar contract address
+      affects: DCL Name registration and management
+
+    - name: RENTALS_CONTRACT_ADDRESS
+      description: Rentals contract address
+      affects: LAND rental operations
+
+    - name: EXPLORER_URL
+      description: Decentraland Explorer play URL
+      affects: Play links and navigation
+
+    - name: TRANSACTIONS_API_URL
+      description: Transactions API endpoint for meta-transactions
+      affects: Gasless transaction support
+
+    - name: ACCOUNT_URL
+      description: Account management page URL
+      affects: Account settings navigation
+
+    - name: DISCORD_URL
+      description: Discord community URL
+      affects: Community links
+
+    - name: WEARABLES_ZIP_INFRA_URL
+      description: Linked wearables documentation URL
+      affects: Help documentation for wearables
+
+    - name: MIN_SALE_VALUE_IN_WEI
+      description: Minimum marketplace sale value in wei
+      affects: Marketplace sale validation
+
+    - name: FORUM_URL
+      description: Decentraland forum URL
+      affects: Forum navigation links
+
+    - name: WORLDS_CONTENT_SERVER
+      description: Worlds Content Server API endpoint
+      affects: World deployment and settings
+
+    - name: PROFILE_URL
+      description: User profile page URL
+      affects: Profile navigation
+
+    - name: SENTRY_DSN
+      description: Sentry error tracking DSN
+      affects: Error monitoring and crash reporting
+
+    - name: DCL_LISTS_SERVER
+      description: DCL Lists server for content moderation
+      affects: Content moderation lists
+
+    - name: INSPECTOR_CONTENT_URL
+      description: Inspector content CDN URL for asset packs
+      affects: Asset loading in Inspector
+
+    - name: ENS_SUBGRAPH_URL
+      description: The Graph subgraph URL for ENS
+      affects: ENS domain data queries
+
+    - name: DCL_NAME_STATS_URL
+      description: DCL Name statistics service URL
+      affects: Name statistics and analytics
+
+    - name: ENS_DOMAINS_URL
+      description: ENS Domains web interface URL
+      affects: External ENS navigation
+
+    - name: INSPECTOR_SEGMENT_API_KEY
+      description: Segment analytics write key for Inspector
+      affects: Inspector analytics tracking
+
+    - name: INSPECTOR_SEGMENT_APP_ID
+      description: Segment app identifier for Inspector
+      affects: Inspector analytics identification
+
+    - name: AUTH_URL
+      description: Authentication service URL
+      affects: User authentication flows
+
+    - name: MARKETPLACE_SERVER_URL
+      description: Marketplace server API endpoint (same as MARKETPLACE_API)
+      affects: Marketplace data operations
+
+    - name: WERT_PUBLISH_FEES_ENV
+      description: Wert payment environment (prod/dev) for publishing fees
+      affects: Payment processing environment
+
+    - name: PEER_TESTING_URL
+      description: Testing Catalyst peer URL
+      affects: Testing environment scene deployments
+
+    - name: CONTENTFUL_ENVIRONMENT
+      description: Contentful environment ID (master/staging)
+      affects: CMS content source
+
+    - name: CONTENTFUL_SPACE_ID
+      description: Contentful space ID for CMS content
+      affects: CMS content fetching
+
+    - name: CONTENTFUL_ADMIN_ENTITY_ID
+      description: Contentful admin entity ID for admin templates
+      affects: Admin UI content
+
+    - name: CREDITS_SERVER_URL
+      description: Credits server API endpoint
+      affects: User credits queries and management
+
+    - name: ENS_LIST_PAGE_SIZE
+      description: Page size for ENS list queries
+      affects: Pagination for ENS domain queries
+
 adrs: []

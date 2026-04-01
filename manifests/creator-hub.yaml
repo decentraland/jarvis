@@ -3,7 +3,7 @@ schema_version: "1.1"
 service:
   name: creator-hub
   display_name: Decentraland Creator Hub
-  description: Cross-platform Electron desktop application for creating, editing, and deploying Decentraland SDK7 scenes. Provides visual scene editing via embedded Inspector, asset management with curated Smart Items, and deployment to Genesis City, Worlds, or custom servers.
+  description: Cross-platform Electron desktop application for creating, editing, and deploying Decentraland SDK7 scenes. Provides visual scene editing via embedded Inspector, asset management with curated Smart Items, and deployment to Genesis City, Worlds, or custom servers. Monorepo includes asset-packs (3D assets and Smart Items), inspector (web-based 3D editor), and creator-hub (desktop app).
   owner: sdk-team
   repository: https://github.com/decentraland/creator-hub
   language: typescript
@@ -76,6 +76,12 @@ domain:
       examples:
         - "Asset at https://builder-items.decentraland.org/contents/:hash"
       not_to_be_confused_with: ""
+      
+    - term: DevTools Frontend
+      definition: Bundled standalone Chrome DevTools frontend (git submodule from decentraland/devtools-frontend) for Unity CDP debugging. Loaded via file:// protocol when --open-devtools-with-port argument is provided. Solves Chromium security restrictions that prevent internal devtools:// protocol from connecting to external WebSocket endpoints.
+      examples:
+        - "Creator Hub opens DevTools for Unity Explorer debugging on specified CDP port"
+      not_to_be_confused_with: "Electron DevTools"
 
   concept_relationships:
     internal:
@@ -98,6 +104,11 @@ domain:
         to: Static Item
         relationship: contains
         description: Scenes contain Static Items for visual composition
+        
+      - from: Creator Hub
+        to: DevTools Frontend
+        relationship: contains
+        description: Creator Hub bundles DevTools frontend as extraResource for Unity CDP debugging
 
     cross_service:
       - local_concept: Scene
@@ -130,6 +141,14 @@ domain:
     - rule: Scene deployment requires valid wallet signature via decentraland-crypto-fetch
       enforced_at: api_validation
       severity: hard
+      
+    - rule: Renderer process never imports electron or Node.js modules directly - all system access goes through preload bridge
+      enforced_at: domain_layer
+      severity: hard
+      
+    - rule: Inspector is transport-agnostic at data layer - communicates exclusively through DataService protocol regardless of backing storage
+      enforced_at: domain_layer
+      severity: hard
 
   responsibilities:
     - Provide cross-platform Electron desktop application for SDK7 scene creation and editing
@@ -148,6 +167,8 @@ domain:
     - Integrate analytics tracking (Segment) and error reporting (Sentry)
     - Manage npm binary execution unpacked from ASAR for CLI operations
     - Support Unity CDP debugging via bundled DevTools frontend (devtools-frontend submodule)
+    - Publish asset-packs and inspector packages to npm registry
+    - Upload asset content to CDN (production and development environments)
 
   out_of_scope:
     - 3D rendering engine implementation (delegated to Inspector's Babylon.js integration)
@@ -156,7 +177,6 @@ domain:
     - Blockchain transactions and on-chain deployments (only reads blockchain state via viem)
     - Scene runtime execution and ECS processing (handled by Explorer clients and @dcl/js-runtime)
     - Asset pack content hosting (handled by S3 CDN)
-    - npm package publishing (automated by CI/CD workflows)
     - Code signing and notarization (handled by CI/CD with external services)
     - Protocol Buffers compilation (requires external protoc binary, managed via Makefile)
 
@@ -245,11 +265,11 @@ dependencies:
       type: other
 
     - name: AWS S3
-      purpose: Temporary artifact storage for PR builds, branch previews, and production asset hosting
+      purpose: Asset storage (builder-items bucket) and temporary artifact storage (SDK team bucket) for PR builds and branch previews
       type: storage
 
     - name: DevTools Frontend (Git Submodule)
-      purpose: Bundled standalone Chrome DevTools frontend (from decentraland/devtools-frontend private repo, ~25MB) for Unity CDP debugging. Loaded via file:// protocol when --open-devtools-with-port=<port> argument is provided. Bundled as extraResource to avoid ASAR path length issues. Solves Chromium security restrictions that prevent internal devtools:// protocol from connecting to external WebSocket endpoints.
+      purpose: Bundled standalone Chrome DevTools frontend (from decentraland/devtools-frontend private repo, ~25MB) for Unity CDP debugging. Loaded via file:// protocol when --open-devtools-with-port=<port> argument is provided. Solves Chromium security restrictions that prevent internal devtools:// protocol from connecting to external WebSocket endpoints.
       type: other
 
     - name: Code Signing Services
