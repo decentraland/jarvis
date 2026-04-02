@@ -1,0 +1,81 @@
+schema_version: "1.1"
+
+service:
+  name: metamorph
+  display_name: MetaMorph
+  description: Media conversion service that transforms images and videos into formats compatible with Decentraland's Explorer client. Converts images to KTX2 containers (with UASTC/ASTC compression) and videos to MP4 (H.264) or OGV (Theora). Supports synchronous and asynchronous conversion modes with caching via Redis.
+  owner: explorer
+  repository: https://github.com/decentraland/metamorph
+  language: csharp
+  layer: support
+  role:
+    - service
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: KTX2
+      definition: Khronos texture container format used for GPU-compressed textures, supporting UASTC, ASTC 8x8, and ASTC 4x4 compression options
+      examples:
+        - "Images are converted to KTX2 for efficient GPU loading in the Explorer"
+
+  concept_relationships:
+    internal: []
+
+    cross_service:
+      - local_concept: Media Conversion
+        remote_service: unity-explorer
+        remote_concept: Asset Bundle
+        mapping_type: produces_for
+        description: MetaMorph converts media into formats optimized for consumption by the Explorer client
+
+  invariants: []
+
+  responsibilities:
+    - Convert images to KTX2 containers with GPU-friendly compression
+    - Encode videos to MP4 (H.264) or OGV (Theora) formats
+    - Provide REST API endpoint for media conversion requests
+    - Cache conversion results for efficient repeated access
+
+  out_of_scope:
+    - Media hosting or storage (converted media is returned to caller)
+    - 3D model conversion (handled by asset-bundle-converter)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: ImageMagick
+      purpose: Image processing and format conversion
+      type: other
+
+    - name: FFmpeg
+      purpose: Video encoding and format conversion
+      type: other
+
+    - name: Redis
+      purpose: Caching layer for conversion results
+      type: storage
+
+    - name: AWS S3 / LocalStack
+      purpose: Storage backend for converted media assets
+      type: storage
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+adrs: []

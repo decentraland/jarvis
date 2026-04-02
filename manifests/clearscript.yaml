@@ -1,0 +1,65 @@
+schema_version: "1.1"
+
+service:
+  name: clearscript
+  display_name: ClearScript
+  description: Decentraland fork of Microsoft's ClearScript library, providing V8 JavaScript engine integration for Unity. Customized with additional unsafe APIs, Unity package generation, and platform-specific native library builds. Used as the JavaScript execution engine for SDK7 scene runtimes in the Explorer client.
+  owner: explorer
+  repository: https://github.com/decentraland/ClearScript
+  language: csharp
+  layer: library
+  role:
+    - library
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary: []
+
+  concept_relationships:
+    internal: []
+
+    cross_service:
+      - local_concept: V8 Engine
+        remote_service: unity-explorer
+        remote_concept: Scene Runtime
+        mapping_type: used_by
+        description: Unity Explorer uses ClearScript's V8 engine to execute SDK7 JavaScript scenes
+
+  invariants: []
+
+  responsibilities:
+    - Provide V8 JavaScript engine bindings for Unity/C# environments
+    - Enable JavaScript scene execution within the Decentraland Explorer
+    - Distribute as a Unity package via UPM
+
+  out_of_scope:
+    - JScript and VBScript support (removed from upstream)
+    - x86 architecture support (removed from upstream)
+    - COM support (removed from upstream)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: V8 JavaScript Engine
+      purpose: Core JavaScript execution engine
+      type: other
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+adrs: []

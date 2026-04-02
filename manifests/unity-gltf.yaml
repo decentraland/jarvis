@@ -1,0 +1,65 @@
+schema_version: "1.1"
+
+service:
+  name: unity-gltf
+  display_name: Unity glTF
+  description: Decentraland fork of the glTFast library, providing glTF 3D model loading and rendering capabilities for Unity. Forked to work around GitHub's LTS fork quota limitations while allowing Decentraland-specific modifications for 3D content loading in the Explorer client.
+  owner: explorer
+  repository: https://github.com/decentraland/unity-gltf
+  language: csharp
+  layer: library
+  role:
+    - library
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary: []
+
+  concept_relationships:
+    internal: []
+
+    cross_service:
+      - local_concept: glTF Loader
+        remote_service: unity-explorer
+        remote_concept: Asset Bundle
+        mapping_type: used_by
+        description: Unity Explorer uses unity-gltf for loading and rendering glTF 3D models from Decentraland content
+
+  invariants: []
+
+  responsibilities:
+    - Load and parse glTF/glb 3D model files in Unity
+    - Render imported 3D models with materials, textures, and animations
+    - Provide Editor and Runtime glTF import support
+
+  out_of_scope:
+    - glTF model creation or export
+    - Asset bundle conversion (handled by asset-bundle-converter)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external: []
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+adrs:
+  - id: ADR-215
+    title: GltfContainer SDK Component
+    url: https://adr.decentraland.org/adr/ADR-215
+    relevance: Defines GltfContainer component for loading glTF 2.0 models including mesh visibility and collision layers

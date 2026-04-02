@@ -1,0 +1,57 @@
+schema_version: "1.1"
+
+service:
+  name: metaforge
+  display_name: MetaForge
+  description: CLI toolkit for managing Decentraland Explorer development workflows. Provides commands to manage test accounts, install and run Explorer builds, inspect preferences, tail logs, and control the launcher.
+  owner: explorer
+  repository: https://github.com/decentraland/MetaForge
+  language: unknown
+  layer: tooling
+  role:
+    - tool
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary: []
+
+  concept_relationships:
+    internal: []
+    cross_service: []
+
+  invariants: []
+
+  responsibilities:
+    - Manage test accounts for Explorer development
+    - Install and run Explorer builds
+    - Inspect user preferences
+    - Tail application logs
+    - Control the launcher process
+
+  out_of_scope:
+    - Explorer client functionality (handled by unity-explorer)
+    - Launcher functionality (handled by launcher-rust)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external: []
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+adrs: []

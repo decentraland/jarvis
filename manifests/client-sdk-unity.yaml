@@ -1,0 +1,64 @@
+schema_version: "1.1"
+
+service:
+  name: client-sdk-unity
+  display_name: LiveKit Client SDK Unity
+  description: Decentraland fork of the LiveKit Unity SDK, enabling real-time video, audio, and data communication features within Unity applications. Provides WebSocket-based connectivity to LiveKit servers for voice chat, position streaming, and messaging in the Explorer client. Supports Windows, macOS, and Linux.
+  owner: explorer
+  repository: https://github.com/decentraland/client-sdk-unity
+  language: csharp
+  layer: library
+  role:
+    - library
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary: []
+
+  concept_relationships:
+    internal: []
+
+    cross_service:
+      - local_concept: LiveKit Client
+        remote_service: unity-explorer
+        remote_concept: Plugin System
+        mapping_type: used_by
+        description: Unity Explorer uses the LiveKit SDK for real-time communications (voice, chat, positions)
+
+  invariants: []
+
+  responsibilities:
+    - Provide Unity SDK for connecting to LiveKit servers
+    - Enable publishing and subscribing to audio, video, and data tracks
+    - Support cross-platform real-time communication for desktop platforms
+
+  out_of_scope:
+    - LiveKit server infrastructure (external service)
+    - iOS, Android, and WebGL support (planned but not yet available)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: LiveKit
+      purpose: Real-time WebRTC-based communication server
+      type: other
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+adrs: []

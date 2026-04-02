@@ -351,6 +351,38 @@ services:
   - library
   data_domain: []
   dependencies: []
+- name: chrome-devtool-protocol-unity
+  display_name: Chrome DevTools Protocol Unity
+  description: Chrome DevTools Protocol implementation for Unity, providing code generation
+    utilities and integration between Chrome's debugging tools and the Unity engine.
+  layer: library
+  repository: https://github.com/decentraland/chrome-devtool-protocol-unity
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: clearscript
+  display_name: ClearScript
+  description: Decentraland fork of Microsoft's ClearScript library, providing V8
+    JavaScript engine integration for Unity. Used as the JavaScript execution engine
+    for SDK7 scene runtimes in the Explorer client.
+  layer: library
+  repository: https://github.com/decentraland/ClearScript
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: client-sdk-unity
+  display_name: LiveKit Client SDK Unity
+  description: Decentraland fork of the LiveKit Unity SDK, enabling real-time video,
+    audio, and data communication features within Unity applications for voice chat
+    and messaging in the Explorer client.
+  layer: library
+  repository: https://github.com/decentraland/client-sdk-unity
+  role:
+  - library
+  data_domain: []
+  dependencies: []
 - name: comms-gatekeeper
   display_name: Comms Gatekeeper
   description: Acts as the guardian of LiveKit tokens within Decentraland's communication
@@ -628,6 +660,20 @@ services:
   - name: reward-server
     relationship: sync
     protocol: HTTP
+- name: explorer-automation
+  display_name: Explorer Automation
+  description: UI automation tests for the Decentraland Explorer client using AltTester
+    SDK and NUnit, following the Page Object Model pattern. Provides end-to-end test
+    coverage for Explorer UI panels, navigation, and keyboard shortcuts.
+  layer: testing
+  repository: https://github.com/decentraland/explorer-automation
+  role:
+  - test
+  data_domain: []
+  dependencies:
+  - name: unity-explorer
+    relationship: sync
+    protocol: AltTester
 - name: gltf-validator-ts
   display_name: GLTF Validator (TypeScript)
   description: TypeScript implementation of GLTF/GLB validation compatible with the
@@ -913,6 +959,28 @@ services:
   - name: signatures-server
     relationship: sync
     protocol: HTTP
+- name: metaforge
+  display_name: MetaForge
+  description: CLI toolkit for managing Decentraland Explorer development workflows.
+    Provides commands to manage test accounts, install and run Explorer builds, inspect
+    preferences, tail logs, and control the launcher.
+  layer: tooling
+  repository: https://github.com/decentraland/MetaForge
+  role:
+  - tool
+  data_domain: []
+  dependencies: []
+- name: metamorph
+  display_name: MetaMorph
+  description: Media conversion service that transforms images and videos into formats
+    compatible with Decentraland's Explorer client. Converts images to KTX2 containers
+    and videos to MP4 or OGV formats.
+  layer: support
+  repository: https://github.com/decentraland/metamorph
+  role:
+  - service
+  data_domain: []
+  dependencies: []
 - name: notifications-workers
   display_name: Notifications Workers
   description: Manages user notifications across the Decentraland platform. Split
@@ -1125,6 +1193,16 @@ services:
   - name: archipelago-workers
     relationship: sync
     protocol: HTTP
+- name: rpc-csharp
+  display_name: RPC C#
+  description: C# implementation of the Decentraland RPC specification, providing
+    server-side RPC functionality and protobuf code generation tools for Unity integration.
+  layer: library
+  repository: https://github.com/decentraland/rpc-csharp
+  role:
+  - library
+  data_domain: []
+  dependencies: []
 - name: schemas
   display_name: Decentraland Schemas
   description: Shared TypeScript type definitions and JSON Schema validators for all
@@ -1287,6 +1365,47 @@ services:
   - name: events-notifier
     relationship: sync
     protocol: HTTP
+- name: unity-explorer-packages
+  display_name: Unity Explorer Packages
+  description: Collection of third-party plugins and libraries used by the Decentraland
+    Explorer Unity client. Provides packaged dependencies for the unity-explorer project.
+  layer: library
+  repository: https://github.com/decentraland/unity-explorer-packages
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: unity-gltf
+  display_name: Unity glTF
+  description: Decentraland fork of the glTFast library, providing glTF 3D model
+    loading and rendering capabilities for Unity.
+  layer: library
+  repository: https://github.com/decentraland/unity-gltf
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: unity-shared-dependencies
+  display_name: Unity Shared Dependencies
+  description: Unity package containing shared dependencies including GLTF importer
+    wrappers, custom shaders (Toon and Scene), and wearable utilities for Decentraland's
+    Unity-based projects.
+  layer: library
+  repository: https://github.com/decentraland/unity-shared-dependencies
+  role:
+  - library
+  data_domain: []
+  dependencies: []
+- name: unity3d-nsubstitute
+  display_name: Unity3D NSubstitute
+  description: Unity package providing NSubstitute mocking framework for use in Unity
+    Test Framework. Repository is archived as of August 2025.
+  layer: library
+  repository: https://github.com/decentraland/Unity3D-NSubstitute
+  role:
+  - library
+  data_domain: []
+  dependencies: []
 - name: urn-resolver
   display_name: '@dcl/urn-resolver'
   description: TypeScript library that resolves and parses Decentraland asset URNs
