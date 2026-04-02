@@ -387,3 +387,43 @@ adrs:
     title: CRDT Protocol
     url: https://adr.decentraland.org/adr/ADR-117
     relevance: Defines CRDT message format for Unity-JavaScript scene synchronization
+
+  - id: ADR-108
+    title: Specific optimizers for explorer assets
+    url: https://adr.decentraland.org/adr/ADR-108
+    relevance: Defines pre-processing of deployed assets into optimized formats like Asset Bundles
+
+  - id: ADR-289
+    title: Explorer Client Scenes Signed Fetch
+    url: https://adr.decentraland.org/adr/ADR-289
+    relevance: Extends Signed Fetch with scene-specific metadata headers for authenticated HTTP requests
+
+  - id: ADR-291
+    title: ECS-based plugin system for Explorer
+    url: https://adr.decentraland.org/adr/ADR-291
+    relevance: Replaces DataStore/Bridge/HUD pattern with ECS-based plugin architecture using dependency injection
+
+  - id: ADR-292
+    title: Explorer avatar rendering pipeline
+    url: https://adr.decentraland.org/adr/ADR-292
+    relevance: GPU-accelerated skinning pipeline using compute shaders and Global Vertex Buffer for avatar rendering
+
+  - id: ADR-293
+    title: Explorer emotes system
+    url: https://adr.decentraland.org/adr/ADR-293
+    relevance: New emotes architecture using Unity Mecanim, ECS components, and asset bundles
+
+  - id: ADR-294
+    title: Explorer ECS runtime architecture
+    url: https://adr.decentraland.org/adr/ADR-294
+    relevance: ECS runtime using Arch framework with dual-world systems and hybrid ECS components
+
+  - id: ADR-295
+    title: Explorer realm modifiers for Worlds
+    url: https://adr.decentraland.org/adr/ADR-295
+    relevance: ECS-based realm modifier system using FeaturesRegistry for DAO realms vs Worlds behavior
+
+  - id: ADR-296
+    title: Explorer unreleased wearables and emotes preview
+    url: https://adr.decentraland.org/adr/ADR-296
+    relevance: CLI-based preview mechanism for testing unpublished wearables and emotes in Explorer

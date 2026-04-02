@@ -1,0 +1,78 @@
+schema_version: "1.1"
+
+service:
+  name: rpc-csharp
+  display_name: RPC C#
+  description: C# implementation of the Decentraland RPC specification, providing server-side RPC functionality and protobuf code generation tools for Unity integration. Includes a protoc plugin (dcl-protoc-csharp-plugin) for generating C# service stubs from protocol definitions.
+  owner: explorer
+  repository: https://github.com/decentraland/rpc-csharp
+  language: csharp
+  layer: library
+  role:
+    - library
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary: []
+
+  concept_relationships:
+    internal: []
+
+    cross_service:
+      - local_concept: RPC Server
+        remote_service: unity-explorer
+        remote_concept: Scene Runtime
+        mapping_type: used_by
+        description: Unity Explorer uses rpc-csharp for RPC communication between scene runtimes and the engine
+
+      - local_concept: RPC Server
+        remote_service: protocol
+        remote_concept: Protocol Definitions
+        mapping_type: implements
+        description: Implements the RPC protocol defined in the Decentraland protocol repository
+
+  invariants: []
+
+  responsibilities:
+    - Provide C# RPC server implementation for Decentraland services
+    - Generate C# service stubs from protobuf definitions via dcl-protoc-csharp-plugin
+    - Integrate with Unity via UPM (Unity Package Manager)
+
+  out_of_scope:
+    - RPC client implementation (not needed per project scope)
+    - Protocol definition (handled by protocol repository)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: UniTask
+      purpose: Async/await support for Unity (requires 2.25+)
+      type: other
+
+    - name: protoc
+      purpose: Protocol buffer compiler for code generation (requires 3.12+)
+      type: other
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+adrs:
+  - id: ADR-107
+    title: Decentraland RPC Streams
+    url: https://adr.decentraland.org/adr/ADR-107
+    relevance: Redesigns RPC streaming to support server, client, and bidirectional streams

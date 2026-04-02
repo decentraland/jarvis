@@ -6,7 +6,7 @@ service:
   description: Converts Decentraland scene assets (GLTF models, textures) into optimized Unity Asset Bundles for improved WebGL performance. Monitors deployment events and processes entities by re-importing GLTF files in Unity and packaging them into versioned, compressed Asset Bundles stored on CDN.
   owner: core-engineering
   repository: https://github.com/decentraland/asset-bundle-converter
-  language: typescript
+  language: csharp/typescript
   layer: content
   role:
     - worker
@@ -33,6 +33,11 @@ domain:
       examples:
         - v4 (legacy)
         - v5 (current)
+
+    - term: ISS
+      definition: Initial Scene State. Pre-generated staticScene_ Asset Bundle that classifies scene entities as static or dynamic based on their GltfContainer components, visibility, and animation state. Allows clients to load a pre-baked initial state instead of processing every entity at runtime. Uses its own version track (e.g. v2003) separate from the main AB_VERSION.
+      examples:
+        - staticScene_ Asset Bundle generated during scene conversion when doISS is true
 
   concept_relationships:
     internal:
@@ -78,6 +83,7 @@ domain:
     - Generate versioned asset bundles with multiple compression formats
     - Create conversion manifests listing converted files
     - Upload converted assets to S3 CDN with version-scoped paths
+    - Generate Initial Scene State (ISS) Asset Bundles classifying static vs dynamic entities for optimized client loading
     - Archive conversion logs for debugging and audit
     - Publish conversion completion events to SNS
 

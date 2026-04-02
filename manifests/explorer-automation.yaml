@@ -1,0 +1,94 @@
+schema_version: "1.1"
+
+service:
+  name: explorer-automation
+  display_name: Explorer Automation
+  description: UI automation tests for the Decentraland Explorer client using AltTester SDK 2.3.0 and NUnit, following the Page Object Model pattern. Provides end-to-end test coverage for Explorer UI panels, navigation, and keyboard shortcuts. Tests can be run via MetaForge CLI or manually with an instrumented Explorer build.
+  owner: explorer
+  repository: https://github.com/decentraland/explorer-automation
+  language: csharp
+  layer: testing
+  role:
+    - test
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: AltTester
+      definition: UI automation testing framework that connects to instrumented Unity builds to drive and inspect UI elements
+      examples:
+        - "AltTester Desktop connects to an instrumented Explorer build for test execution"
+
+    - term: Page Object Model (POM)
+      definition: Design pattern where each UI screen/view is represented by a class encapsulating locators and interaction methods
+      examples:
+        - "ExplorePanelView encapsulates locators and actions for the Explore panel"
+
+  concept_relationships:
+    internal: []
+
+    cross_service:
+      - local_concept: UI Tests
+        remote_service: unity-explorer
+        remote_concept: Explorer Client
+        mapping_type: tests
+        description: Automation tests validate the Explorer client UI via AltTester instrumentation
+
+      - local_concept: Test Runner
+        remote_service: metaforge
+        remote_concept: CLI Commands
+        mapping_type: triggered_by
+        description: MetaForge CLI orchestrates the full test workflow including build setup and test execution
+
+  invariants: []
+
+  responsibilities:
+    - End-to-end UI testing of the Explorer client
+    - Validate Explore panel sections (Events, Places, Communities, Navmap, Backpack, Gallery, Settings)
+    - Validate keyboard shortcuts
+    - Generate Allure test reports with screenshots on failure
+
+  out_of_scope:
+    - Unit testing of Explorer internals (handled by unity-explorer)
+    - Performance testing
+    - API testing
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: unity-explorer
+      relationship: sync
+      protocol: AltTester
+      purpose: Target application under test
+      critical: true
+
+  external:
+    - name: AltTester SDK
+      purpose: UI automation framework for Unity applications
+      type: other
+
+    - name: NUnit
+      purpose: Test framework for running and organizing tests
+      type: other
+
+    - name: Allure
+      purpose: Test reporting with screenshots and step tracking
+      type: other
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+adrs: []

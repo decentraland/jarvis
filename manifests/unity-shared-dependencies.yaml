@@ -1,0 +1,67 @@
+schema_version: "1.1"
+
+service:
+  name: unity-shared-dependencies
+  display_name: Unity Shared Dependencies
+  description: Unity package containing shared dependencies for Decentraland's Unity-based projects, including GLTF importer wrappers, custom shaders (Toon and Scene shaders), and wearable utilities. Serves as a foundational component for both unity-explorer and asset-bundle-converter.
+  owner: explorer
+  repository: https://github.com/decentraland/unity-shared-dependencies
+  language: csharp
+  layer: library
+  role:
+    - library
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary: []
+
+  concept_relationships:
+    internal: []
+
+    cross_service:
+      - local_concept: Custom Shaders
+        remote_service: unity-explorer
+        remote_concept: Plugin System
+        mapping_type: used_by
+        description: Unity Explorer uses shared shaders for consistent rendering of avatars and scenes
+
+      - local_concept: GLTF Wrappers
+        remote_service: asset-bundle-converter
+        remote_concept: Asset Processing
+        mapping_type: used_by
+        description: Asset bundle converter uses shared GLTF import wrappers for model processing
+
+  invariants: []
+
+  responsibilities:
+    - Provide shared GLTF importer wrappers for Unity projects
+    - Supply custom shaders (Toon, Scene) for consistent visual rendering
+    - Offer wearable utility functions shared across projects
+
+  out_of_scope:
+    - Standalone rendering (consumed as a dependency by other projects)
+    - Asset bundle conversion logic (handled by asset-bundle-converter)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external: []
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+adrs: []

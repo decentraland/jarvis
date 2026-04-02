@@ -93,4 +93,13 @@ configuration:
       description: API environment configuration (production or development)
       affects: Which Decentraland API endpoints are used for fetching data
 
-adrs: []
+adrs:
+  - id: ADR-57
+    title: Avatar assembling instructions for visualization
+    url: https://adr.decentraland.org/adr/ADR-57
+    relevance: Specifies the full pipeline for rendering avatars including bodyshape, wearable filtering, and shader application
+
+  - id: ADR-292
+    title: Explorer avatar rendering pipeline
+    url: https://adr.decentraland.org/adr/ADR-292
+    relevance: GPU-accelerated skinning pipeline relevant to avatar preview rendering

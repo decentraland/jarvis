@@ -1,0 +1,59 @@
+schema_version: "1.1"
+
+service:
+  name: unity-explorer-packages
+  display_name: Unity Explorer Packages
+  description: Collection of third-party plugins and libraries used by the Decentraland Explorer Unity client. Provides packaged dependencies for the unity-explorer project.
+  owner: explorer
+  repository: https://github.com/decentraland/unity-explorer-packages
+  language: csharp
+  layer: library
+  role:
+    - library
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary: []
+
+  concept_relationships:
+    internal: []
+
+    cross_service:
+      - local_concept: Unity Packages
+        remote_service: unity-explorer
+        remote_concept: Dependencies
+        mapping_type: consumed_by
+        description: Provides third-party plugins and libraries consumed by the Explorer client
+
+  invariants: []
+
+  responsibilities:
+    - Package and version third-party Unity plugins for the Explorer client
+    - Provide a centralized dependency source for unity-explorer
+
+  out_of_scope:
+    - First-party Decentraland packages (handled by respective repositories)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external: []
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+adrs: []
