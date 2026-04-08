@@ -17,7 +17,7 @@ service:
   role:
     - client
   data_domain: []
-  ai-agent-context: docs/ai-agent-context.md
+  ai-agent-context: https://github.com/decentraland/linker-dapp/blob/main/docs/ai-agent-context.md
 
 # ============================================================
 # DOMAIN & RESPONSIBILITIES

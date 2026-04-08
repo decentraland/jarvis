@@ -98,6 +98,9 @@ configuration:
     - name: TAURI_SIGNING_PRIVATE_KEY
       description: Private key for signing Tauri update bundles
       affects: Update package verification
+    - name: TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+      description: Password for the Tauri signing private key
+      affects: Update package signing and verification
     - name: VITE_AWS_S3_BUCKET_PUBLIC_URL
       description: Public URL of the S3 bucket hosting Explorer builds
       affects: Download and update source

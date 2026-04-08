@@ -116,41 +116,69 @@ events:
 
 configuration:
   key_env_vars:
-    - name: DATABASE_URL
-      description: PostgreSQL connection string for image metadata
+    - name: port
+      description: HTTP server port (default 3000)
+      affects: Service availability and routing
+
+    - name: api_url
+      description: Public API URL for the service (default http://localhost:3000)
+      affects: URL generation in responses
+
+    - name: database_url
+      description: PostgreSQL connection string for image metadata (default postgres://postgres:postgres@localhost:5432/camera_reel)
       affects: Data persistence and query performance
 
-    - name: S3_BUCKET
-      description: S3 bucket name for image file storage
-      affects: Image storage location
-
-    - name: S3_ENDPOINT
-      description: S3 endpoint URL (for MinIO or custom S3)
-      affects: Storage service connectivity
-
-    - name: AWS_ACCESS_KEY_ID
-      description: AWS access key for S3 and SNS services
-      affects: AWS service authentication
-
-    - name: AWS_SECRET_ACCESS_KEY
-      description: AWS secret key for AWS services
-      affects: AWS service authentication
-
-    - name: AWS_DEFAULT_REGION
-      description: AWS region for S3 and SNS services
+    - name: aws_region
+      description: AWS region for S3 and SNS services (default us-east-1)
       affects: AWS service regional configuration
 
-    - name: AWS_SNS_TOPIC_ARN
-      description: SNS topic ARN for image upload events (optional)
+    - name: s3_url
+      description: S3 endpoint URL (default http://localhost:4566 for LocalStack/MinIO)
+      affects: Storage service connectivity
+
+    - name: s3_bucket_name
+      description: S3 bucket name for image file storage (default camera-reel)
+      affects: Image storage location
+
+    - name: max_images_per_user
+      description: Maximum number of images allowed per user (default 500)
+      affects: User storage limits
+
+    - name: aws_sns_arn
+      description: SNS topic ARN for image upload events (default arn:aws:sns:us-east-1:000000000000:events)
       affects: Event publishing
+
+    - name: aws_sns_endpoint
+      description: Optional SNS endpoint URL (for LocalStack or custom SNS)
+      affects: Event publishing endpoint
+
+    - name: s3_access_key_id
+      description: S3 access key for authentication (default test)
+      affects: S3 service authentication
+
+    - name: s3_secret_access_key
+      description: S3 secret key for authentication (default test)
+      affects: S3 service authentication
+
+    - name: places_api_url
+      description: Places API URL for place metadata (default https://places.decentraland.org)
+      affects: Place association and metadata retrieval
+
+    - name: places_cache_ttl_seconds
+      description: TTL for places cache entries in seconds (default 300)
+      affects: Places cache expiration
+
+    - name: places_cache_max_size
+      description: Maximum number of entries in places cache (default 1000)
+      affects: Places cache size
+
+    - name: ENV
+      description: Environment name (prd for production, anything else for dev)
+      affects: Environment-specific configuration and authentication requirements
 
     - name: WKC_METRICS_BEARER_TOKEN
       description: Optional bearer token for Prometheus metrics endpoint security
       affects: Metrics endpoint authentication
-
-    - name: ENV
-      description: Environment name (affects behavior and authentication requirements)
-      affects: Environment-specific configuration
 
     - name: RUST_LOG
       description: Logging level configuration (e.g., debug, info, warn, error)

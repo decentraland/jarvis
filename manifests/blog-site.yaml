@@ -3,29 +3,44 @@ schema_version: "1.1"
 service:
   name: blog-site
   display_name: Decentraland Blog UI
-  description: Web application that renders blog content, category and author pages, search results, and SEO metadata. Integrates with Contentful CMS for content management and Algolia for search functionality.
+  description: Vite/React single-page application serving the Decentraland blog at decentraland.org/blog. Renders blog posts, categories, author pages, and search results sourced from Contentful CMS. Includes a Vercel serverless function for SEO with pre-rendered HTML and Open Graph meta tags for crawlers.
   owner: dapps
   repository: https://github.com/decentraland/blog-site
   language: typescript
-  layer: feature-servers
+  layer: presentation
   role:
     - client
   data_domain: []
-  ai-agent-context: ""
+  ai-agent-context: "https://github.com/decentraland/blog-site/blob/main/docs/ai-agent-context.md"
 
 domain:
   glossary:
     - term: Blog Post
-      definition: Article content published on the Decentraland blog, sourced from Contentful CMS
-
+      definition: Article content published on the Decentraland blog, sourced from Contentful CMS with rich-text body, embedded assets, and related posts
+      
     - term: Category
       definition: Blog post classification grouping related articles by topic
-
+      
     - term: Author
-      definition: Content creator attributed to blog posts
-
+      definition: Content creator attributed to blog posts, with profile pages listing all posts by that author
+      
     - term: Search Index
-      definition: Algolia-powered searchable index of all blog posts
+      definition: Algolia-powered searchable index of all blog posts, requires minimum 3 characters for search queries
+      
+    - term: CMS entry resolution
+      definition: Contentful entries use linked fields (category, author, image) that are returned as reference objects. The blog client resolves these links in parallel by fetching each linked entry/asset separately before mapping to domain types.
+      
+    - term: Normalized post store
+      definition: Resolved BlogPost objects are upserted into a Redux entity adapter slice so that the same post fetched in a list and in a detail view shares one cached copy
+      
+    - term: Preview mode
+      definition: Feature that allows viewing unpublished draft content from Contentful using a preview access token, accessed via /blog/preview route
+      
+    - term: Infinite scroll pagination
+      definition: List loading pattern that tracks nextCmsSkip and calls the RTK Query endpoint with increasing skip values; results are merged into the accumulated list
+      
+    - term: SEO function
+      definition: Vercel serverless function at api/seo.ts that detects crawlers by User-Agent and serves pre-rendered HTML with route-specific meta tags fetched from the CMS REST API
 
   concept_relationships:
     internal:
@@ -33,36 +48,51 @@ domain:
         to: Category
         relationship: belongs_to
         description: Each blog post is associated with one or more categories
-
+        
       - from: Blog Post
         to: Author
         relationship: belongs_to
         description: Each blog post has one or more authors
+        
+      - from: Blog Post
+        to: Blog Post
+        relationship: references
+        description: Blog posts can reference other posts as related content
 
     cross_service:
       - local_concept: Blog Post
         remote_service: contentful
         remote_concept: Entry
         mapping_type: equivalent
-        description: Blog posts are stored as entries in Contentful CMS
+        description: Blog posts are stored as entries in Contentful CMS with linked fields for categories, authors, and images
 
-  invariants: []
+  invariants:
+    - rule: Search queries must be at least 3 characters long
+      enforced_at: api_validation
+      severity: hard
+      
+    - rule: CMS linked fields must be resolved before rendering
+      enforced_at: domain_layer
+      severity: hard
 
   responsibilities:
-    - Render blog posts with rich text content from Contentful
-    - Display blog posts filtered by category
-    - Display blog posts filtered by author
-    - Provide search functionality using Algolia
-    - Generate SEO metadata for crawlers
-    - Handle sign-in redirects for authenticated features
-    - Support web3 wallet integration for user profiles
-    - Display user notifications
+    - Blog post listing with infinite scroll pagination, filtered by category or author
+    - Individual post pages with rich-text body rendering, embedded assets, and related posts
+    - Category browse pages showing all posts under a given category
+    - Author profile pages listing all posts by a given author
+    - Full-text search via Algolia with minimum 3 characters required, results with image and category resolution
+    - Post preview mode for Contentful draft content using preview access token
+    - SEO serverless function that detects crawlers by User-Agent and serves pre-rendered HTML with route-specific meta tags
+    - Wallet-based authentication via Magic SDK and WalletConnect
+    - Decentraland notification bell with in-app notifications from the Notifications API
+    - Responsive layout with mobile-specific breakpoints
 
   out_of_scope:
-    - Content creation and editing (handled by Contentful CMS)
-    - Search indexing (handled by Algolia)
-    - User profile storage (handled by Catalyst/Peer)
-    - Notification delivery (handled by notifications service)
+    - Server-side rendering or static site generation (Gatsby/Next.js is not used)
+    - Database or backend server functionality; all data comes from Contentful or Algolia
+    - Event management, marketplace, or metaverse world features
+    - Image upload or CMS content authoring
+    - Push notifications (only in-app bell from the Notifications API)
 
   owned_entities: []
 
@@ -74,46 +104,36 @@ db:
 
 dependencies:
   services:
-    - name: auth
+    - name: notifications
       relationship: sync
       protocol: HTTP
-      purpose: Login flow and authentication redirects
-      critical: false
-
-    - name: catalyst
-      relationship: sync
-      protocol: HTTP
-      purpose: Fetch user profile information
+      purpose: Fetch in-app notifications for the notification bell component
       critical: false
 
   external:
     - name: Contentful CMS
-      purpose: Source of blog posts, categories, and author data
+      purpose: Source of blog posts, categories, authors, and assets via REST API
       type: api
-
+      
     - name: Algolia
-      purpose: Blog search index and search API
+      purpose: Full-text search index and search API for blog posts
       type: api
-
-    - name: Notifications API
-      purpose: Page notifications display
+      
+    - name: Decentraland Catalyst
+      purpose: Fetch user avatar and profile data via peer lambdas endpoint
       type: api
-
-    - name: Segment
-      purpose: Analytics and user behavior tracking
-      type: api
-
+      
     - name: Magic SDK
-      purpose: OAuth-based authentication
+      purpose: Email and social OAuth login authentication
       type: api
-
-    - name: Thirdweb
-      purpose: Web3 wallet connection and authentication
-      type: api
-
+      
     - name: WalletConnect
-      purpose: Web3 wallet connection protocol
+      purpose: Web3 wallet connection protocol for wallet-based authentication
       type: other
+      
+    - name: Segment
+      purpose: Analytics event tracking
+      type: api
 
 events:
   publishes: []
@@ -122,63 +142,63 @@ events:
 configuration:
   key_env_vars:
     - name: VITE_REACT_APP_DCL_DEFAULT_ENV
-      description: Default environment (dev, stg, prd)
+      description: Default environment (dev, stg, prd) to load configuration from
       affects: API endpoints and configuration selection
-
+      
+    - name: CMS_BASE_URL
+      description: Contentful REST API base URL
+      affects: Blog content fetching
+      
     - name: ALGOLIA_APP_ID
-      description: Algolia application ID for blog search
+      description: Algolia application ID
       affects: Search functionality
-
+      
     - name: ALGOLIA_API_KEY
-      description: Algolia API key for blog search
+      description: Algolia search-only API key
       affects: Search functionality
-
+      
     - name: ALGOLIA_BLOG_INDEX
       description: Algolia index name for blog posts
       affects: Search query targeting
-
+      
     - name: AUTH_URL
-      description: Authentication service URL
-      affects: Login and authentication flows
-
-    - name: BLOG_BASE_URL
-      description: Base URL path for blog routes
-      affects: Routing and navigation
-
-    - name: CMS_BASE_URL
-      description: Contentful CMS API endpoint
-      affects: Blog content fetching
-
-    - name: MAGIC_API_KEY
-      description: Magic SDK API key for OAuth authentication
-      affects: Social login functionality
-
-    - name: MANA_TOKEN_ADDRESS_ETHEREUM
-      description: MANA token contract address on Ethereum
-      affects: Wallet balance display
-
-    - name: MANA_TOKEN_ADDRESS_MATIC
-      description: MANA token contract address on Polygon
-      affects: Wallet balance display
-
-    - name: NOTIFICATIONS_API_URL
-      description: Notifications service API endpoint
-      affects: User notification display
-
+      description: Decentraland SSO auth endpoint
+      affects: Login flow and redirect handling
+      
     - name: PEER_URL
-      description: Catalyst peer URL for profile operations
-      affects: User profile fetching
-
+      description: Decentraland Catalyst peer URL
+      affects: Profile data fetching
+      
+    - name: NOTIFICATIONS_API_URL
+      description: Decentraland Notifications API endpoint
+      affects: In-app notification bell
+      
+    - name: MAGIC_API_KEY
+      description: Magic SDK publishable key
+      affects: Email/social OAuth authentication
+      
+    - name: WALLET_CONNECT_PROJECT_ID
+      description: WalletConnect project ID
+      affects: WalletConnect wallet connection
+      
     - name: SEGMENT_API_KEY
       description: Segment analytics write key
       affects: Analytics tracking
-
+      
+    - name: BLOG_BASE_URL
+      description: Base URL path for blog routes
+      affects: Routing and navigation
+      
+    - name: MANA_TOKEN_ADDRESS_ETHEREUM
+      description: MANA token contract address on Ethereum
+      affects: Wallet balance display
+      
+    - name: MANA_TOKEN_ADDRESS_MATIC
+      description: MANA token contract address on Polygon
+      affects: Wallet balance display
+      
     - name: THIRDWEB_CLIENT_ID
       description: Thirdweb client ID for wallet connection
       affects: Web3 wallet integration
-
-    - name: WALLET_CONNECT_PROJECT_ID
-      description: WalletConnect project ID
-      affects: WalletConnect integration
 
 adrs: []

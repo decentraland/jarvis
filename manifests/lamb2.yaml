@@ -109,3 +109,43 @@ configuration:
     - name: MAX_USERS
       description: Maximum users for the realm
       affects: Realm capacity reporting
+
+    - name: NFT_FRAGMENTS_PER_QUERY
+      description: Number of NFT fragments to fetch per query
+      affects: NFT query batch size
+
+    - name: SUBGRAPH_COMPONENT_QUERY_TIMEOUT
+      description: Timeout for subgraph queries in milliseconds
+      affects: Subgraph query timeout
+
+    - name: SUBGRAPH_COMPONENT_RETRIES
+      description: Number of retries for failed subgraph queries
+      affects: Subgraph query resilience
+
+    - name: DISABLE_THIRD_PARTY_PROVIDERS_RESOLVER_SERVICE_USAGE
+      description: Disable third-party providers resolver service usage
+      affects: Third-party wearable resolution
+
+    - name: DISABLE_CACHE_WARMER_ENABLED
+      description: Disable cache warmer for entity preloading
+      affects: Cache warming behavior
+
+    - name: INTERNAL_LAMBDAS_URL
+      description: Internal lambdas URL for health checks
+      affects: Health check routing
+
+    - name: INTERNAL_CONTENT_URL
+      description: Internal content server URL for health checks
+      affects: Health check routing
+
+    - name: INTERNAL_ARCHIPELAGO_URL
+      description: Internal archipelago URL for health checks
+      affects: Health check routing
+
+    - name: COMMIT_HASH
+      description: Git commit hash for status reporting
+      affects: Version information in status endpoint
+
+    - name: CURRENT_VERSION
+      description: Service version for status reporting
+      affects: Version information in status endpoint

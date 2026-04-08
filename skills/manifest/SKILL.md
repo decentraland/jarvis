@@ -76,8 +76,10 @@ When `manifests/<name>.yaml` already exists:
 2. **Sync from `docs/ai-agent-context.md` (always)** — If the file exists, its content is the authoritative source for the following fields. Always replace/extend the manifest with what this file states, regardless of what the existing manifest says:
    - `domain.responsibilities` — replace with the full list derived from this file (union with existing if existing has entries not contradicted here)
    - `domain.out_of_scope` — replace with the full list derived from this file (same union rule)
-   - `domain.glossary` — add any terms defined here that are missing from the manifest
+   - `domain.glossary` — add any terms defined here that are missing from the manifest; this file often defines key concepts not derivable from code alone
    - `service.description`, `service.role`, `service.layer` — update if this file provides a clearer or more complete description
+   - `dependencies.external` — when this file explicitly lists external dependencies (libraries, services, APIs), union them with the existing list. Entries in this file take priority over inferred entries for purpose/type descriptions.
+   - `configuration.key_env_vars` — when this file explicitly documents env vars (e.g., in a configuration or settings table), add them to the manifest. These are authoritative and supplement code-verified vars. Still never invent names not mentioned in the file or code.
    - Any concept relationships, invariants, or domain facts stated here that are missing from the manifest
 3. **Preserve all other existing sections** — do not remove or rewrite content not covered by `ai-agent-context.md` and not contradicted by code
 4. **Add missing fields** — if exploration reveals fields the existing manifest lacks (e.g., missing dependencies, missing events, missing env vars), add them

@@ -3,11 +3,11 @@ schema_version: "1.1"
 service:
   name: "landing-site"
   display_name: "Landing Site (Modern)"
-  description: "Modern Vite/React SPA serving as the new Decentraland main landing page, replacing the Gatsby-based landing app. Features hero section, catch the vibe, weekly rituals, lazy-loaded below-the-fold sections, OS-aware download options, wallet-based authentication (Magic SDK, WalletConnect), and analytics tracking."
+  description: "Vite/React SPA serving as the new Decentraland main landing page, replacing the Gatsby-based landing app. All marketing content (hero, missions, FAQ, banners, social proof, marquee, trending news) is fetched at runtime from Contentful CMS via RTK Query, using per-section Contentful entry IDs stored in configuration."
   owner: "decentraland-foundation"
   repository: "https://github.com/decentraland/landing-site"
   language: "typescript"
-  layer: "entry-points"
+  layer: "presentation"
   role:
     - "client"
   data_domain: []
@@ -15,30 +15,34 @@ service:
 
 domain:
   glossary:
-    - term: "Landing Site"
-      definition: "A modern, Vite-based web application that serves as an entry point to Decentraland, showcasing missions, creator tools, FAQs, and community features with wallet integration. Replaces the Gatsby-based landing app with a faster, more maintainable architecture."
-      not_to_be_confused_with: "Landing (Gatsby-based homepage at github.com/decentraland/landing)"
+    - term: "Per-section Contentful entry IDs"
+      definition: "Each landing section is a distinct Contentful entry whose ID is stored in configuration (e.g., CONTENTFUL_HOMEPAGE_HERO_ID, CONTENTFUL_LANDING_MISSIONS_V2_ID, CONTENTFUL_LANDING_FAQ_ID). RTK Query endpoints read the relevant ID from config and call /entries/{id}."
+      
+    - term: "resolveLinks helper"
+      definition: "Helper function that recursively resolves Contentful entries containing {sys: {type: 'Link'}} references into fully hydrated objects before passing them to mappers."
+      
+    - term: "Section mappers"
+      definition: "Dedicated mapper functions (mapHero, mapMissions, mapFaq, mapBannerCta, mapSocialProof, mapTextMarquee, mapWhatsHot) that transform raw Contentful responses into typed domain objects."
       
     - term: "newUser param"
       definition: "URL query parameter (?newUser, ?newuser, ?new_user, ?new-user) that hides the navbar to create a clean onboarding experience for new users."
       
     - term: "DownloadOptions"
-      definition: "Component that uses advanced user agent data to detect OS and CPU architecture, then resolves the appropriate Explorer download URL (Windows .exe or macOS .dmg) for the user's system."
+      definition: "Component that uses @dcl/hooks's useAdvancedUserAgentData to detect OS and CPU architecture, then resolves the appropriate Explorer download URL from explorerDownloads.ts."
       
     - term: "Lazy loading"
-      definition: "Below-the-fold components are dynamically imported via React.lazy + Suspense to reduce initial bundle size and improve perceived performance."
-      
-    - term: "Catch the Vibe"
-      definition: "Landing section featuring user-generated content cards with images and hover videos from the Decentraland community."
-      
-    - term: "Weekly Rituals"
-      definition: "Carousel section showcasing recurring weekly events in Decentraland (Career Mondays, Takeover Tuesdays, Watch Party Wednesdays)."
+      definition: "Below-the-fold components (Missions, BannerCTA, TrendingNews, SocialProof, TextMarquee, Faqs) are dynamically imported via React.lazy + Suspense to reduce initial bundle size."
 
   concept_relationships:
     internal:
-      - from: "Landing Site"
-        to: "DownloadOptions"
-        relationship: "contains"
+      - from: "Section mappers"
+        to: "resolveLinks helper"
+        relationship: "depends_on"
+        description: "Section mappers use resolveLinks to hydrate Contentful references before transformation"
+        
+      - from: "DownloadOptions"
+        to: "Landing Site"
+        relationship: "belongs_to"
         description: "Landing page provides OS-aware Explorer download links"
         
       - from: "Lazy loading"
@@ -47,54 +51,50 @@ domain:
         description: "Below-the-fold sections are lazy-loaded to improve initial page load performance"
 
     cross_service:
+      - local_concept: "Landing Content"
+        remote_service: "contentful"
+        remote_concept: "Entry"
+        mapping_type: "equivalent"
+        description: "All landing page content sections are stored as Contentful entries accessed via per-section entry IDs"
+        
       - local_concept: "User Profile"
         remote_service: "catalyst"
         remote_concept: "Avatar Profile"
         mapping_type: "references"
         description: "Landing site fetches user avatar profiles from Catalyst's peer endpoint for authenticated contexts"
-        
-      - local_concept: "Events"
-        remote_service: "events-api"
-        remote_concept: "Live Events"
-        mapping_type: "references"
-        description: "Landing site displays live events from the events API"
-        
-      - local_concept: "Hot Scenes"
-        remote_service: "realm-provider"
-        remote_concept: "Hot Scenes"
-        mapping_type: "references"
-        description: "Landing site displays trending scenes from realm provider"
 
-  invariants: []
+  invariants:
+    - rule: "Each content section must have a valid Contentful entry ID configured"
+      enforced_at: "domain_layer"
+      severity: "hard"
+      
+    - rule: "Contentful linked references must be resolved before rendering"
+      enforced_at: "domain_layer"
+      severity: "hard"
 
   responsibilities:
-    - Serve as the new main Decentraland landing page, replacing the Gatsby-based landing app
-    - Render marketing landing page with hero, catch the vibe, weekly rituals, and other promotional sections
-    - Provide OS/architecture detection and appropriate Explorer download links (Windows .exe, macOS .dmg, Android APK, iOS App Store)
-    - Integrate wallet-based authentication via Magic SDK and WalletConnect (wagmi/viem)
-    - Handle sign-in redirect page for authentication callbacks
-    - Support newUser query parameter to hide navbar for clean onboarding experience
-    - Track analytics via Segment with event tracking utilities
-    - Provide internationalization via react-intl
-    - Detect WebGPU capability for enhanced rendering options
-    - Display live events from events API
-    - Display hot scenes from realm provider
-    - Fetch and display user profiles from Catalyst peer
-    - Show Explorer download statistics from CDN
+    - Hero section with animated content and primary CTA (download or play in browser)
+    - Missions section (experience / create / influence cards)
+    - BannerCTA sections (e.g., "Create Your Avatar", "Start Exploring")
+    - TrendingNews / "What's Hot" section (trending scenes and events)
+    - SocialProof section
+    - FAQ accordion
+    - TextMarquee scrolling banner
+    - DownloadOptions with OS/architecture detection (Windows/macOS, arm64/amd64)
+    - Lazy-loaded below-the-fold sections (React Suspense + lazy)
+    - Wallet-based authentication via Magic SDK and WalletConnect (wagmi/viem)
+    - Sign-in redirect page
+    - Segment analytics tracking
+    - Feature flags support
+    - i18n via react-intl
+    - newUser query param support to hide navbar for onboarding flow
 
   out_of_scope:
-    - User authentication logic (delegates to auth service)
-    - Hosting or distributing desktop client files
-    - Profile creation or editing (only displays profiles from Catalyst)
-    - Blockchain transactions or smart contract interactions
-    - Blog content (handled by blog-site)
-    - Event creation or management (handled by events site)
-    - Marketplace, NFT trading, or DAO governance
-    - Place discovery or world browsing
-    - Community management or user-generated content
-    - Jump-in deep-link Explorer launch (handled by jump-site)
-    - Server-side rendering or static site generation
-    - Content management system integration
+    - Blog, marketplace, DAO, or community features
+    - Event creation, place management, or world browsing
+    - Server-side rendering (Gatsby/Next.js is not used)
+    - Image uploads or CMS content authoring
+    - Jump-in deep-link launch (that is jump-site)
 
   owned_entities: []
 
@@ -117,16 +117,10 @@ dependencies:
       protocol: "HTTP"
       purpose: "SSO authentication for wallet connection and onboarding flows"
       critical: false
-      
-    - name: "realm-provider"
-      relationship: "sync"
-      protocol: "HTTP"
-      purpose: "Fetch hot scenes for trending content display"
-      critical: false
 
   external:
-    - name: "Events API"
-      purpose: "Fetch live events for What's On section (events.decentraland.org/api)"
+    - name: "Contentful CMS"
+      purpose: "All landing page content sections (hero, missions, FAQ, banners, social proof, marquee, trending news) fetched at runtime via REST API using per-section entry IDs"
       type: "api"
       
     - name: "Magic SDK"
@@ -140,10 +134,6 @@ dependencies:
     - name: "Segment"
       purpose: "Analytics tracking and user behavior monitoring with event tracking utilities"
       type: "api"
-      
-    - name: "CDN (cdn-data.decentraland.org)"
-      purpose: "Hosts Explorer download statistics JSON file for download count display"
-      type: "cdn"
 
 events:
   publishes: []
@@ -157,52 +147,72 @@ configuration:
       description: "Determines which environment configuration to use (dev, stg, prod)"
       affects: "Application environment and configuration selection via @dcl/ui-env"
       
-    - name: "ONBOARDING_URL"
-      description: "New-user onboarding URL with newUser flag and redirectTo parameter"
-      affects: "Onboarding flow routing for new users after authentication"
+    - name: "CONTENTFUL_SPACE_ID"
+      description: "Contentful space ID"
+      affects: "CMS content fetching"
+      
+    - name: "CONTENTFUL_ENVIRONMENT"
+      description: "Contentful environment (e.g., master)"
+      affects: "CMS content fetching"
+      
+    - name: "CONTENTFUL_HOMEPAGE_HERO_ID"
+      description: "Contentful entry ID for hero section"
+      affects: "Hero section content rendering"
+      
+    - name: "CONTENTFUL_LANDING_MISSIONS_V2_ID"
+      description: "Contentful entry ID for missions section"
+      affects: "Missions section content rendering"
+      
+    - name: "CONTENTFUL_LANDING_FAQ_ID"
+      description: "Contentful entry ID for FAQ section"
+      affects: "FAQ section content rendering"
+      
+    - name: "CONTENTFUL_LANDING_CREATE_AVATAR_ID"
+      description: "Contentful entry ID for Create Avatar banner"
+      affects: "Create Avatar banner content rendering"
+      
+    - name: "CONTENTFUL_LANDING_START_EXPLORING_ID"
+      description: "Contentful entry ID for Start Exploring banner"
+      affects: "Start Exploring banner content rendering"
+      
+    - name: "CONTENTFUL_LANDING_WHATS_HOT_ID"
+      description: "Contentful entry ID for What's Hot section"
+      affects: "What's Hot section content rendering"
+      
+    - name: "CONTENTFUL_LANDING_MARQUEE_ID"
+      description: "Contentful entry ID for text marquee"
+      affects: "Text marquee content rendering"
+      
+    - name: "CONTENTFUL_LANDING_SOCIAL_PROOF_ID"
+      description: "Contentful entry ID for social proof section"
+      affects: "Social proof section content rendering"
+      
+    - name: "CONTENTFUL_LANDING_INVITE_HERO_ID"
+      description: "Contentful entry ID for invite hero"
+      affects: "Invite hero content rendering"
       
     - name: "AUTH_URL"
-      description: "Decentraland SSO authentication service URL (decentraland.org/auth)"
+      description: "Decentraland SSO authentication service URL"
       affects: "User authentication flows and onboarding redirects"
       
     - name: "PEER_URL"
-      description: "Decentraland Catalyst peer URL for profile operations (peer.decentraland.org)"
+      description: "Decentraland Catalyst peer URL for profile operations"
       affects: "User avatar profile fetching and auth profile context"
       
+    - name: "ONBOARDING_URL"
+      description: "New-user onboarding URL"
+      affects: "Onboarding flow routing"
+      
     - name: "MAGIC_API_KEY"
-      description: "Magic SDK publishable API key for passwordless authentication"
-      affects: "Email and social login functionality via Magic SDK"
+      description: "Magic SDK publishable API key"
+      affects: "Email and social login functionality"
       
     - name: "WALLET_CONNECT_PROJECT_ID"
-      description: "WalletConnect project ID for Web3 wallet connections"
-      affects: "Web3 wallet integration functionality via wagmi/viem"
+      description: "WalletConnect project ID"
+      affects: "Web3 wallet integration functionality"
       
-    - name: "DOWNLOAD_COUNTS_URL"
-      description: "CDN URL to JSON file containing Explorer download statistics"
-      affects: "Download count display on landing and download pages"
-      
-    - name: "EVENTS_API_URL"
-      description: "Events API endpoint URL (events.decentraland.org/api)"
-      affects: "Live events data fetching for What's On section"
-      
-    - name: "HOT_SCENES_URL"
-      description: "Realm provider hot scenes endpoint URL (realm-provider-ea.decentraland.org/hot-scenes)"
-      affects: "Trending scenes data fetching for What's Hot section"
-      
-    - name: "JUMP_IN_URL"
-      description: "Jump-in service URL for deep-linking to scenes (decentraland.org/jump)"
-      affects: "Scene jump-in links and navigation"
-      
-    - name: "NOTIFICATIONS_API_URL"
-      description: "Notifications API endpoint URL (notifications.decentraland.org)"
-      affects: "User notifications fetching and display"
-      
-    - name: "DOWNLOAD_URL"
-      description: "Download page URL (decentraland.org/download)"
-      affects: "Download page navigation and links"
-      
-    - name: "WEARABLE_PREVIEW_URL"
-      description: "Wearable preview service URL (wearable-preview.decentraland.org)"
-      affects: "Wearable preview rendering and display"
+    - name: "SEGMENT_KEY"
+      description: "Segment analytics write key"
+      affects: "Analytics tracking"
 
 adrs: []

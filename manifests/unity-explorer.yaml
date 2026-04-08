@@ -11,7 +11,7 @@ service:
   role:
     - client
   data_domain: []
-  ai-agent-context: https://github.com/decentraland/unity-explorer/blob/main/docs/README.md
+  ai-agent-context: ""
 
 domain:
   glossary:

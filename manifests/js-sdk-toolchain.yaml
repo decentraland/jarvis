@@ -11,7 +11,7 @@ service:
   role:
     - library
   data_domain: []
-  ai-agent-context: ""
+  ai-agent-context: "https://github.com/decentraland/js-sdk-toolchain/blob/main/docs/ai-agent-context.md"
 
 domain:
   glossary:
@@ -63,6 +63,104 @@ domain:
       examples:
         - "Material.getFlat(entity).texture.src instead of nested case checks"
       not_to_be_confused_with: ""
+
+    - term: Transport Layer
+      definition: "Abstract interface (engine.addTransport()) for delivering CRDT messages between the scene runtime and the Decentraland Kernel/Renderer. The default renderer transport communicates with the Kernel; custom transports can be added for testing or alternative runtimes."
+      examples:
+        - "engine.addTransport(rendererTransport)"
+
+    - term: NetworkEntity
+      definition: An entity marked for cross-peer synchronization via the SyncComponents pattern. Only the owner peer may modify the entity's components; all other peers receive read-only CRDT replicas of its state.
+      examples:
+        - "Components decorated with SyncComponents are replicated to all connected peers"
+      not_to_be_confused_with: "A regular Entity, which is local-only unless explicitly marked for network sync"
+
+    - term: Composite
+      definition: A pre-loaded binary file (main.composite) containing pre-instantiated entities and their initial component values. Loaded at scene startup to avoid the overhead of constructing initial scene state at runtime.
+      examples:
+        - "Static scene geometry baked into main.composite to reduce startup time"
+
+    - term: Smart Wearable
+      definition: A scene-like JavaScript bundle attached to an avatar wearable NFT. Packaged via sdk-commands pack-smart-wearable and subject to a 2 MB size limit.
+      examples:
+        - "An NFT hat that triggers an in-world particle effect when worn"
+
+    - term: Scene Deployment
+      definition: The process of publishing a built scene to the Catalyst network. Requires bundling the scene code, hashing all content files, signing the manifest with a wallet identity (on-chain LAND ownership required), and uploading to a Catalyst content server.
+      examples:
+        - "sdk-commands deploy --target-content https://peer.decentraland.org/content"
+
+    - term: sdk-commands init
+      definition: "CLI command that scaffolds a new scene project from a template. Downloads a ZIP from the official GitHub template, extracts it, then runs npm install. Produces scene.json, package.json, tsconfig.json, src/index.ts, and bin/index.js. Accepts --project to choose template type (scene-template, px-template, smart-wearable, library) and --github-repo / --template for custom sources."
+      examples:
+        - "npx sdk-commands init --project scene-template"
+        - "npx sdk-commands init --github-repo https://github.com/my-org/my-template"
+
+    - term: sdk-commands build
+      definition: "CLI command that compiles TypeScript scene code to a browser-compatible JavaScript bundle using esbuild (platform=browser, format=cjs, target=es2020, tree-shaking enabled). Runs TypeScript type-checking in a separate process (tsc --noEmit). Output path is taken from scene.json's main field. Key flags: -w (watch mode), -p (production — minifies output and emits external sourcemaps)."
+      examples:
+        - "npx sdk-commands build --production"
+        - "npx sdk-commands build --watch"
+
+    - term: sdk-commands start
+      definition: "CLI command that runs a local development server with hot reload and opens the Explorer. Starts an HTTP server (default port 2044) and a WebSocket for scene update messages. GLTF/GLB changes trigger in-place model swap (updateModel); all other changes trigger a full scene reload (updateScene). Key flags: --dclenv (org/zone/today), --port, --no-browser, --web3, --mobile (prints QR code for mobile preview)."
+      examples:
+        - "npx sdk-commands start --dclenv zone"
+        - "npx sdk-commands start --port 3000 --no-browser"
+
+    - term: sdk-commands deploy
+      definition: "CLI command that builds and publishes a scene to the Catalyst network. Flow: validates scene.json, runs production build, gathers and hashes all content files, opens the linker dapp for wallet signing (or uses DCL_PRIVATE_KEY for CI), and uploads to the target content server. Always use --target-content (not --target) to specify the destination. Key flags: --target-content <url>, --skip-build, --skip-validations, --force-upload, --yes."
+      examples:
+        - "npx sdk-commands deploy --target-content https://peer.decentraland.org/content"
+        - "npx sdk-commands deploy --target-content https://peer.decentraland.zone/content"
+      not_to_be_confused_with: "sdk-commands export-static, which writes static files without publishing to Catalyst"
+
+    - term: sdk-commands export-static
+      definition: "CLI command that exports a scene as static, content-addressed files for self-hosted or Worlds content servers. If --realmName and --baseUrl are given, also writes a realm about descriptor file. Does not publish to Catalyst."
+      examples:
+        - "npx sdk-commands export-static --destination ./out --realmName MyRealm --baseUrl https://myhost.com/out"
+
+    - term: sdk-commands pack-smart-wearable
+      definition: "CLI command that packages a smart wearable project as a ZIP file for upload to the Decentraland marketplace. Validates the project, builds with --production, gathers all publishable files, warns if total size exceeds 2 MB, and writes smart-wearable.zip."
+      examples:
+        - "npx sdk-commands pack-smart-wearable"
+
+    - term: sdk-commands quests
+      definition: "CLI command for managing Quests on the Decentraland Quests service. Supports creating, listing, activating, and deactivating quests. Can open the Quests Manager web UI (--manager), create from JSON (--create-from-json), or target a custom server (--target)."
+      examples:
+        - "npx sdk-commands quests --list 0xabc..."
+        - "npx sdk-commands quests --create-from-json ./quest.json"
+
+    - term: Deployment Environment (.zone testnet)
+      definition: The testnet deployment target. Content server is `peer.decentraland.zone/content`, blockchain is Ethereum Sepolia — no real MANA or LAND required. Used for development and feature testing. Pass `--dclenv zone` to `start` to preview against this environment.
+      examples:
+        - "npx sdk-commands deploy --target-content https://peer.decentraland.zone/content"
+      not_to_be_confused_with: "peer-testing (staging), which uses Mainnet and is isolated from production"
+
+    - term: Deployment Environment (peer-testing staging)
+      definition: The staging deployment target. Content server is `peer-testing.decentraland.org/content`, blockchain is Ethereum Mainnet — real funds required. Isolated from production; used for final QA before a production release.
+      examples:
+        - "npx sdk-commands deploy --target-content https://peer-testing.decentraland.org/content"
+
+    - term: Deployment Environment (.org production)
+      definition: The live production deployment target. Content server is `peer.decentraland.org/content`, blockchain is Ethereum Mainnet. This is what players see in the live platform.
+      examples:
+        - "npx sdk-commands deploy --target-content https://peer.decentraland.org/content"
+
+    - term: Worlds Deployment
+      definition: Deployment to the Decentraland Worlds content servers, which are separate from the main Catalyst network. Worlds use `--target-content` (not `--target`) pointing to the Worlds server. Testnet uses `worlds-content-server.decentraland.zone`; production uses `worlds-content-server.decentraland.org`.
+      examples:
+        - "npx sdk-commands deploy --target-content https://worlds-content-server.decentraland.org"
+
+    - term: .dclrc
+      definition: "Configuration file read by sdk-commands from three locations in increasing priority: SDK package defaults, user global (~/.dclrc), and project-local (./.dclrc). Key settings include DCL_DISABLE_ANALYTICS, DCL_CATALYST (default Catalyst override), DCL_ANON_ID (analytics UUID), and DCL_PRIVATE_KEY (headless/CI deployments)."
+      examples:
+        - "DCL_CATALYST=https://peer.decentraland.zone in .dclrc to default to testnet"
+
+    - term: dcl-workspace.json
+      definition: "Optional file in a directory that enables multi-project workspace mode for sdk-commands. Lists sub-project paths; build and start then iterate over all projects. Without this file the current directory is treated as a single-project workspace."
+      examples:
+        - '{ "folders": [{ "path": "scene-a" }, { "path": "scene-b" }] }'
 
   concept_relationships:
     internal:
@@ -146,13 +244,76 @@ dependencies:
       purpose: Package distribution for @dcl/sdk, @dcl/ecs, @dcl/sdk-commands, and related packages
       type: api
 
+    - name: "@dcl/protocol"
+      purpose: Decentraland RPC protocol buffer definitions — auto-compiled to TypeScript during build
+      type: other
+
+    - name: "@dcl/ecs-math"
+      purpose: Vector, quaternion, and matrix math utilities used by the ECS runtime
+      type: other
+
+    - name: "@dcl/crypto"
+      purpose: Cryptographic signing for scene deployments using wallet identities
+      type: other
+
+    - name: "@dcl/inspector"
+      purpose: In-world scene inspector tool used by the `start` dev server command
+      type: other
+
+    - name: dcl-catalyst-client
+      purpose: Publishes scene content to the Catalyst decentralized network during deploy
+      type: api
+
+    - name: "@dcl/linker-dapp"
+      purpose: Wallet integration UI for signing deployment transactions in the browser
+      type: other
+
+    - name: "@dcl/quests-client / @dcl/quests-manager"
+      purpose: Quest system integration used by the `sdk-commands quests` CLI command
+      type: api
+
+    - name: "@dcl/gltf-validator-ts"
+      purpose: GLTF/GLB model validation run during `build` and `deploy` commands
+      type: other
+
+    - name: "@segment/analytics-node"
+      purpose: CLI usage analytics (opt-out supported via DCL_DISABLE_ANALYTICS)
+      type: api
+
+    - name: esbuild
+      purpose: High-speed bundler for scene TypeScript code in the `build` and `start` commands
+      type: other
+
+    - name: chokidar
+      purpose: File system watcher for hot reload in the `start` dev server (800ms debounce)
+      type: other
+
+    - name: i18next
+      purpose: Internationalization (i18n) for CLI messages and output
+      type: other
+
 events:
   publishes: []
   consumes: []
 
 configuration:
   feature_flags: []
-  key_env_vars: []
+  key_env_vars:
+    - name: DCL_DISABLE_ANALYTICS
+      description: Set to `true` to opt out of CLI usage telemetry sent to Segment
+      affects: sdk-commands analytics reporting
+
+    - name: DCL_CATALYST
+      description: Override the default Catalyst URL used by deploy and start commands
+      affects: sdk-commands deploy, start — determines which Catalyst node is targeted
+
+    - name: DCL_ANON_ID
+      description: Auto-generated anonymous UUID used for analytics; persisted in .dclrc
+      affects: sdk-commands analytics identity
+
+    - name: DCL_PRIVATE_KEY
+      description: Wallet private key for headless/CI deployments — skips the linker dapp browser signing flow
+      affects: sdk-commands deploy — enables non-interactive deployments in CI pipelines
 
 adrs:
   - id: ADR-117

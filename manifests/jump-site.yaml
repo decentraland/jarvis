@@ -11,7 +11,7 @@ service:
   role:
     - "client"
   data_domain: []
-  ai-agent-context: "https://github.com/decentraland/jump-site/blob/master/docs/ai-agent-context.md"
+  ai-agent-context: "https://github.com/decentraland/jump-site/blob/main/docs/ai-agent-context.md"
 
 domain:
   glossary:
