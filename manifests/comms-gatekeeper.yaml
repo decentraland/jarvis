@@ -44,6 +44,12 @@ domain:
     - term: LiveKit Rooms
       definition: Each scene/world gets a dedicated LiveKit room identified by a room name (e.g., scene:realm:sceneId). The service controls access to both scene-specific LiveKit rooms (tied to a particular scene/parcel) and island rooms (the dynamic clustering rooms managed by Archipelago).
 
+    - term: Token Issuance Paths
+      definition: There are two paths for token issuance in the real-time layer - (1) Archipelago Core → LiveKit API directly, where island_changed NATS messages include LiveKit connection strings with embedded tokens for island rooms; (2) Client → comms-gatekeeper via signed fetch, used for scene-specific rooms and Hammurabi bots. Ban enforcement for scene access happens in path 2.
+      examples:
+        - "Island assignment path - Archipelago Core calls LiveKit API directly to generate token for island room"
+        - "Scene access path - Client requests token from comms-gatekeeper using signed fetch"
+
   concept_relationships:
     internal:
       - from: LiveKit Token

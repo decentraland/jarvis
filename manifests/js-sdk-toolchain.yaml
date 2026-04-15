@@ -10,6 +10,7 @@ service:
   layer: library
   role:
     - library
+    - client
   data_domain: []
   ai-agent-context: "https://github.com/decentraland/js-sdk-toolchain/blob/main/docs/ai-agent-context.md"
 
@@ -162,6 +163,26 @@ domain:
       examples:
         - '{ "folders": [{ "path": "scene-a" }, { "path": "scene-b" }] }'
 
+    - term: React Reconciler
+      definition: "@dcl/react-ecs implements a custom React Fiber that maps React component lifecycle (mount/update/unmount) to ECS entity creation/modification/deletion. JSX becomes ECS calls at reconciliation time."
+      examples:
+        - "React components render to ECS entities instead of DOM nodes"
+
+    - term: Flexbox Layout
+      definition: "UI layout in @dcl/react-ecs follows a CSS Flexbox subset applied to UiTransform components. Computed during the ECS system tick and propagated as component updates."
+      examples:
+        - "UI container uses flexDirection, justifyContent, alignItems for layout"
+
+    - term: Component Binary Format
+      definition: Components are serialized to Uint8Array via a schema-driven system. Enables efficient bandwidth usage for real-time updates between scene runtime and renderer. Defined in ADR-123.
+      examples:
+        - "Transform component serialized to binary for network transmission"
+
+    - term: scene.json
+      definition: "Scene configuration file specifying ECS version, runtime version, parcels, base parcel, main script path, and whether it's a portable experience. Required for all SDK7 scenes."
+      examples:
+        - "scene.json with ecs7:true, runtimeVersion:7, parcels:['0,0'], main:'bin/index.js'"
+
   concept_relationships:
     internal:
       - from: Component
@@ -189,6 +210,21 @@ domain:
         relationship: implements
         description: Each component implements EcsType for serialization/deserialization
 
+      - from: React Reconciler
+        to: ECS
+        relationship: translates_to
+        description: React component lifecycle is mapped to ECS entity operations via custom Fiber implementation
+
+      - from: Flexbox Layout
+        to: UiTransform
+        relationship: computes
+        description: Flexbox layout system computes positioning for UiTransform components during ECS tick
+
+      - from: CRDT
+        to: Transport Layer
+        relationship: uses
+        description: CRDT messages are delivered to Kernel/Renderer via the abstract transport layer
+
     cross_service: []
 
   invariants:
@@ -204,21 +240,38 @@ domain:
       enforced_at: domain_layer
       severity: hard
 
+    - rule: Only the owner peer may modify a NetworkEntity's components; all other peers receive read-only CRDT replicas
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Scene deployment requires on-chain LAND ownership verified by wallet signature
+      enforced_at: api_validation
+      severity: hard
+
   responsibilities:
-    - Provide ECS implementation with CRDT-based networking
-    - Offer React bindings for UI development with JSX syntax
-    - Supply TypeScript definitions for scene runtime environment
-    - Provide CLI tools for scene creation, development, testing, and deployment
-    - Support snapshot testing for runtime performance tracking
-    - Compile Protocol Buffer definitions for type-safe communication
-    - Enable scene development with QuickJS runtime integration
-    - Package playground assets for Decentraland Playground
+    - Provide ECS implementation with CRDT-based networking for scene state synchronization across peers
+    - Offer React bindings for UI development with JSX syntax via custom React reconciler
+    - Supply TypeScript definitions for scene runtime environment including Web APIs and RPC types
+    - Provide CLI tools for scene creation, development, testing, and deployment to Catalyst and Worlds networks
+    - Support snapshot testing for runtime performance tracking with QuickJS golden files
+    - Compile Protocol Buffer definitions for type-safe communication between scene and Kernel
+    - Enable scene development with QuickJS runtime integration for JavaScript execution
+    - Package playground assets for Decentraland Playground web IDE
+    - Bundle scene code using esbuild with tree-shaking and minification for production deployments
+    - Implement Flexbox-based UI layout system for in-world user interfaces
+    - Provide component binary serialization for efficient network transport
+    - Support smart wearable packaging and validation for NFT-attached scene bundles
+    - Enable multi-project workspace development with dcl-workspace.json configuration
 
   out_of_scope:
-    - Scene execution (handled by Explorer runtime environments)
-    - Content distribution (handled by Catalyst and Worlds Content Server)
-    - 3D rendering (handled by Explorer renderers like Unity, Babylon.js)
-    - Blockchain transactions (handled by user wallets and smart contracts)
+    - Scene execution runtime environments (handled by Explorer via Unity, Babylon.js, or QuickJS)
+    - Content distribution infrastructure (handled by Catalyst network and Worlds Content Servers)
+    - 3D rendering engine implementation (handled by Explorer renderers)
+    - Blockchain transactions and smart contract interactions (handled by user wallets and blockchain RPCs)
+    - Avatar rendering and customization system (handled by Explorer)
+    - Comms infrastructure for voice chat and messaging (handled by Catalyst archipelago services)
+    - The Decentraland Playground web application itself (this repo only provides the playground-assets bundle)
+    - LAND and NFT ownership verification on-chain (this repo only validates signatures, not ownership)
 
   owned_entities: []
 
@@ -232,18 +285,6 @@ dependencies:
   services: []
 
   external:
-    - name: Protocol Buffers
-      purpose: Type-safe serialization for component data and network messages
-      type: other
-
-    - name: QuickJS
-      purpose: JavaScript runtime for scene execution via @dcl/quickjs-emscripten
-      type: other
-
-    - name: npm Registry
-      purpose: Package distribution for @dcl/sdk, @dcl/ecs, @dcl/sdk-commands, and related packages
-      type: api
-
     - name: "@dcl/protocol"
       purpose: Decentraland RPC protocol buffer definitions — auto-compiled to TypeScript during build
       type: other
@@ -257,7 +298,7 @@ dependencies:
       type: other
 
     - name: "@dcl/inspector"
-      purpose: In-world scene inspector tool used by the `start` dev server command
+      purpose: In-world scene inspector tool used by the start dev server command
       type: other
 
     - name: dcl-catalyst-client
@@ -269,27 +310,47 @@ dependencies:
       type: other
 
     - name: "@dcl/quests-client / @dcl/quests-manager"
-      purpose: Quest system integration used by the `sdk-commands quests` CLI command
+      purpose: Quest system integration used by the sdk-commands quests CLI command
       type: api
 
     - name: "@dcl/gltf-validator-ts"
-      purpose: GLTF/GLB model validation run during `build` and `deploy` commands
+      purpose: GLTF/GLB model validation run during build and deploy commands
       type: other
 
     - name: "@segment/analytics-node"
-      purpose: CLI usage analytics (opt-out supported via DCL_DISABLE_ANALYTICS)
+      purpose: CLI usage analytics sent to Segment (opt-out supported via DCL_DISABLE_ANALYTICS)
       type: api
 
     - name: esbuild
-      purpose: High-speed bundler for scene TypeScript code in the `build` and `start` commands
+      purpose: High-speed bundler for scene TypeScript code in the build and start commands
       type: other
 
     - name: chokidar
-      purpose: File system watcher for hot reload in the `start` dev server (800ms debounce)
+      purpose: File system watcher for hot reload in the start dev server with 800ms debounce
       type: other
 
     - name: i18next
       purpose: Internationalization (i18n) for CLI messages and output
+      type: other
+
+    - name: "@dcl/quickjs-emscripten"
+      purpose: JavaScript runtime for scene execution via QuickJS WebAssembly build
+      type: other
+
+    - name: Protocol Buffers
+      purpose: Type-safe serialization for component data and network messages
+      type: other
+
+    - name: npm Registry
+      purpose: Package distribution for @dcl/sdk, @dcl/ecs, @dcl/sdk-commands, and related packages
+      type: api
+
+    - name: react
+      purpose: React 18.2.0 library used by @dcl/react-ecs for UI component development
+      type: other
+
+    - name: react-reconciler
+      purpose: React 0.29.0 reconciler for implementing custom React Fiber that maps to ECS
       type: other
 
 events:
@@ -304,8 +365,8 @@ configuration:
       affects: sdk-commands analytics reporting
 
     - name: DCL_CATALYST
-      description: Override the default Catalyst URL used by deploy and start commands
-      affects: sdk-commands deploy, start — determines which Catalyst node is targeted
+      description: Override the default Catalyst URL used by deploy and start commands (default https://peer.decentraland.org)
+      affects: sdk-commands deploy and start — determines which Catalyst node is targeted
 
     - name: DCL_ANON_ID
       description: Auto-generated anonymous UUID used for analytics; persisted in .dclrc
@@ -313,7 +374,51 @@ configuration:
 
     - name: DCL_PRIVATE_KEY
       description: Wallet private key for headless/CI deployments — skips the linker dapp browser signing flow
-      affects: sdk-commands deploy — enables non-interactive deployments in CI pipelines
+      affects: sdk-commands deploy and quests — enables non-interactive deployments in CI pipelines
+
+    - name: DCL_LAND_REGISTRY_ADDRESS
+      description: Address of the LAND_REGISTRY smart contract (optional override)
+      affects: sdk-commands deploy — LAND ownership verification
+
+    - name: DCL_ESTATE_REGISTRY_ADDRESS
+      description: Address of the ESTATE_REGISTRY smart contract (optional override)
+      affects: sdk-commands deploy — Estate ownership verification
+
+    - name: WORKSPACE_FILE
+      description: Override the workspace configuration file name (default dcl-workspace.json)
+      affects: sdk-commands multi-project workspace detection
+
+    - name: EDITOR_SDK7
+      description: Set to `true` to enable SDK7 editor mode
+      affects: sdk-commands editor integration
+
+    - name: CI
+      description: Set to `true` to enable CI mode (disables browser and debug panel)
+      affects: sdk-commands start and deploy — non-interactive mode for CI/CD pipelines
+
+    - name: DEVELOPER_MODE
+      description: Set to enable developer mode features
+      affects: sdk-commands production build detection
+
+    - name: DEBUG
+      description: Enable debug logging output
+      affects: sdk-commands logging verbosity and deployment debug mode
+
+    - name: ANALYTICS_PROJECT_ID
+      description: Project ID for Segment analytics (internal use)
+      affects: sdk-commands analytics configuration
+
+    - name: ANALYTICS_APP_ID
+      description: App ID for Segment analytics (internal use)
+      affects: sdk-commands analytics configuration
+
+    - name: FORCE_COLOR
+      description: Force color output in logs (set to 0 to disable)
+      affects: sdk-commands log output formatting
+
+    - name: NO_COLOR
+      description: Disable color output in logs
+      affects: sdk-commands log output formatting
 
 adrs:
   - id: ADR-117

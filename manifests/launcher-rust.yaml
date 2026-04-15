@@ -21,13 +21,27 @@ domain:
         - "Rust backend triggers download progress events that the TypeScript UI displays"
 
     - term: Auto-Authentication
-      definition: Token-based system that enables seamless first-launch login. Windows appends encoded tokens to executables without breaking code signatures; macOS stores tokens in file metadata. Tokens are bridged to the Explorer client via auth-token-bridge.txt
+      definition: Token-based system that enables seamless first-launch login. Launcher installers carry an embedded one-time UUID auth token unique per user's download. On Windows, payload with the token is appended to the signed installer executable without breaking its code signature. On macOS, the download URL contains the token stored in file metadata (WhereFrom attribute). After extraction, the launcher saves the token into auth-token-bridge.txt for Explorer client consumption.
+      examples:
+        - "Windows NSIS installer triggers a separate rust executable to read the installer file's tail end (last 4 bytes for token length, then preceding bytes for token in UTF-8)"
+        - "macOS .app reads URL from WhereFrom attr via xattr to obtain the token"
       not_to_be_confused_with: "Auth-server authentication - auto-auth is a launcher-specific mechanism for first launch only"
 
     - term: URI Scheme Handler
       definition: System-level handler for decentraland:// URIs that allows deep linking into the Explorer client from web browsers and other applications
       examples:
         - "Clicking decentraland://goto/0,0 in a browser launches the Explorer at coordinates 0,0"
+
+    - term: StepError
+      definition: Standardized error type that categorizes errors for consistent behavior and improved UX. Errors are explicitly mapped and categorized, providing concise user-friendly messages while logging detailed stack traces.
+      examples:
+        - "Download errors mapped to user-friendly messages with full stack trace in logs"
+
+    - term: Config File
+      definition: JSON configuration file located at {APP_DIR}/config.json containing analytics-user-id, client-additional-arguments, and cmd-arguments for customizing launcher and client behavior
+      examples:
+        - "analytics-user-id: UUID for analytics tracking"
+        - "client-additional-arguments: Arguments passed to Explorer on launch"
 
   concept_relationships:
     internal: []
@@ -55,7 +69,16 @@ domain:
     - Provide cross-platform support for Windows and macOS
     - Handle decentraland:// URI scheme for deep linking from web browsers
     - Perform automatic update checks and secure downloads from S3
-    - Bridge authentication tokens for seamless first-launch login
+    - Bridge authentication tokens for seamless first-launch login via auth-token-bridge.txt
+    - Embed one-time UUID auth tokens in installer packages (Windows .exe, macOS .dmg)
+    - "Extract embedded tokens using platform-specific strategies (Windows: read installer tail, macOS: xattr WhereFrom)"
+    - Save auth tokens to auth-token-bridge.txt for Unity Explorer consumption
+    - Provide standardized error handling with user-friendly messages and detailed logging via StepError
+    - Support configurable client and launcher arguments via config.json
+    - "Log application events to platform-specific directories (macOS: ~/Library/Logs, Windows: AppData/Roaming)"
+    - "Operate within platform-specific app directories (macOS: ~/Library/Application Support, Windows: AppData/Local)"
+    - Support command-line arguments for version checks, updater control, and client customization
+    - Generate analytics user IDs for stable user tracking
 
   out_of_scope:
     - In-world rendering or gameplay (handled by unity-explorer)
@@ -98,11 +121,25 @@ configuration:
     - name: TAURI_SIGNING_PRIVATE_KEY
       description: Private key for signing Tauri update bundles
       affects: Update package verification
+
     - name: TAURI_SIGNING_PRIVATE_KEY_PASSWORD
       description: Password for the Tauri signing private key
       affects: Update package signing and verification
+
     - name: VITE_AWS_S3_BUCKET_PUBLIC_URL
       description: Public URL of the S3 bucket hosting Explorer builds
       affects: Download and update source
+
+    - name: --skip-version-check
+      description: CLI argument to suppress version-check popup
+      affects: Testing specific build versions
+
+    - name: --never-trigger-updater
+      description: CLI argument to disable automatic updates
+      affects: Updater behavior
+
+    - name: --always-trigger-updater
+      description: CLI argument to force automatic updates
+      affects: Updater behavior
 
 adrs: []

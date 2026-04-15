@@ -3,7 +3,7 @@ schema_version: "1.1"
 service:
   name: archipelago-workers
   display_name: Archipelago Workers
-  description: Monorepo containing three services that implement the Archipelago protocol for clustering users into dynamic islands based on their positions in Decentraland's metaverse. Enables scalable crowd management and efficient real-time communication for standalone realms.
+  description: Monorepo containing three services that implement the Archipelago protocol for clustering users into dynamic islands based on their positions in Decentraland's metaverse. WS Connector is the client entry point with WebSocket auth and position tracking, Archipelago Core is the clustering engine that calls LiveKit API directly to generate room tokens, and Stats provides read-only monitoring. Enables scalable crowd management and efficient real-time communication for standalone realms.
   owner: core-engineering
   repository: https://github.com/decentraland/archipelago-workers
   language: typescript
@@ -32,6 +32,21 @@ domain:
 
     - term: Archipelago Protocol
       definition: Communication protocol for clustering users into islands and managing real-time peer-to-peer interactions via NATS messaging.
+
+    - term: WS Connector
+      definition: Persistent WebSocket gateway that clients connect to directly. Handles ECDSA challenge-response authentication, receives position heartbeats, publishes to NATS for Core, and forwards island assignments with LiveKit connection strings back to clients. The only entry point clients interact with.
+      examples:
+        - "Client connects → WS Connector sends challenge → Client signs with ephemeral key → WS Connector validates via @dcl/crypto → Peer registered"
+
+    - term: Archipelago Core
+      definition: Stateless island clustering engine that processes position updates from NATS, calculates dynamic island assignments, calls LiveKit API directly to generate room tokens, and publishes island_changed messages with embedded connection strings to NATS. Never directly contacted by clients.
+      examples:
+        - "Receives heartbeat from NATS → Recalculates islands → Calls LiveKit API for token → Publishes livekit:{host}?access_token={jwt} to NATS"
+
+    - term: Archipelago Stats
+      definition: Read-only monitoring service that aggregates peer count and island topology from NATS messages. Exposes REST endpoints for statistics and health checks. Not in the client data path.
+      examples:
+        - "Subscribes to peer heartbeats → Aggregates counts → Exposes /stats REST endpoint"
 
   concept_relationships:
     internal:
@@ -77,13 +92,9 @@ domain:
       severity: hard
 
   responsibilities:
-    - Implement island clustering algorithms to dynamically group users by proximity
-    - Manage WebSocket connections for Decentraland clients with Ethereum-based authentication
-    - Process position updates and publish island change notifications via NATS
-    - Provide real-time bidirectional communication for positions, chat, and profiles
-    - Expose REST API for monitoring and analytics of island/peer statistics
-    - Maintain peer registry and handle authentication flow
-    - Aggregate system state for observability
+    - WS Connector - Manage WebSocket connections with ECDSA challenge-response authentication, receive position heartbeats, publish to NATS, forward island assignments with LiveKit connection strings to clients, enforce platform deny list, kick duplicate sessions
+    - Archipelago Core - Process position updates from NATS, implement dynamic island clustering (join distance 64 units, leave distance 80 units), call LiveKit API directly to generate room tokens, publish island_changed messages with embedded tokens, publish island topology and service heartbeat every 2 seconds
+    - Archipelago Stats - Subscribe to NATS messages (heartbeats, disconnects, island topology, discovery), aggregate peer count and island data, expose REST endpoints for monitoring and analytics, integrate with Catalyst for content metadata
 
   out_of_scope:
     - Content storage or scene management (handled by Catalyst)
@@ -117,6 +128,18 @@ dependencies:
     - name: NATS
       purpose: Message broker for peer heartbeats, disconnect events, island changes, and service discovery
       type: messaging
+
+    - name: LiveKit API
+      purpose: Called by Archipelago Core to generate room tokens directly (not via comms-gatekeeper)
+      type: other
+
+    - name: "@dcl/crypto"
+      purpose: Ethereum signature validation and AuthChain verification for WebSocket authentication
+      type: other
+
+    - name: "@dcl/protocol"
+      purpose: Protobuf definitions for Heartbeat and IslandChangedMessage
+      type: other
 
 events:
   publishes:

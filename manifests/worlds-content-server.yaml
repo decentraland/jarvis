@@ -19,13 +19,17 @@ service:
 domain:
   glossary:
     - term: World
-      definition: Scene identified by a DCL name rather than parcel coordinates, supporting portable and single-scene experiences. A World is a fully isolated realm where users can only see and interact with other players within that same World.
+      definition: Scene identified by a DCL name rather than parcel coordinates, supporting portable and single-scene experiences. A World is a fully isolated realm where users can only see and interact with other players within that same World. This service functions as the complete realm implementation for Worlds, not just a description layer.
+      not_to_be_confused_with: Genesis City realms - Worlds have separate LiveKit infrastructure and are fully isolated from Genesis City players
 
     - term: Addressable URN
       definition: Entity URN format enabling global portable experiences and single-scene loading.
 
     - term: World Permissions
-      definition: JSON configuration controlling deployment, access, and streaming permissions (allow-list, unrestricted, shared-secret, NFT ownership). These permissions control comms access (who can enter and interact), but scene content files are always publicly accessible.
+      definition: JSON configuration controlling deployment, access, and streaming permissions (allow-list, unrestricted, shared-secret, NFT ownership). These permissions control comms access (who can enter and interact), but scene content files are always publicly accessible. Stored in the worlds.permissions JSON column in PostgreSQL.
+      examples:
+        - "Allow-list: Only specific wallet addresses can access the World comms"
+        - "NFT ownership: Only holders of specific NFTs can join the World"
 
     - term: Global Portable Experience
       definition: Experiences loaded for all users via GLOBAL_PX query parameter, enabling cross-world features like event calendars.
