@@ -164,6 +164,10 @@ nodes:
   display_name: Decentraland DAO Governance UI
   layer: Feature Servers Layer
   repository: https://github.com/decentraland/governance-ui
+- name: hammurabi
+  display_name: Hammurabi
+  layer: other
+  repository: https://github.com/decentraland/hammurabi
 - name: hashing
   display_name: '@dcl/hashing'
   layer: Shared Libraries
@@ -252,6 +256,10 @@ nodes:
   display_name: Protocol Definitions
   layer: Shared Libraries
   repository: https://github.com/decentraland/protocol
+- name: pulse
+  display_name: Pulse
+  layer: real-time
+  repository: https://github.com/decentraland/pulse
 - name: realm-provider
   display_name: Realm Provider
   layer: feature-servers
@@ -272,6 +280,10 @@ nodes:
   display_name: Decentraland Schemas
   layer: shared-library
   repository: https://github.com/decentraland/schemas
+- name: sdk-multiplayer-server
+  display_name: SDK Multiplayer Server
+  layer: real-time
+  repository: https://github.com/decentraland/sdk-multiplayer-server
 - name: snapshots-fetcher
   display_name: '@dcl/snapshots-fetcher'
   layer: shared-library
@@ -368,17 +380,17 @@ edges:
   to: asset-bundle-registry
   relationship: async
   protocol: SNS/SQS
-  description: Notifies when conversions complete via SNS events
+  description: Notifies when conversions complete via AssetBundleConversionFinished SNS events
 - from: asset-bundle-converter
   to: catalyst
   relationship: sync
   protocol: HTTP
-  description: Fetches original entity content for conversion
+  description: Fetches original entity content (GLTF models, textures) for conversion
 - from: asset-bundle-converter
   to: deployments-to-sqs
   relationship: async
   protocol: SNS/SQS
-  description: Receives deployment events to trigger conversions
+  description: Receives deployment events to trigger conversions via ab-conversion-queue
 - from: asset-bundle-registry
   to: asset-bundle-converter
   relationship: async
@@ -409,11 +421,6 @@ edges:
   relationship: both
   protocol: WebSocket
   description: Real-time login confirmation and identity management via Socket.IO
-- from: auth
-  to: auth-server
-  relationship: sync
-  protocol: HTTP
-  description: Identity endpoints and OTP issuance
 - from: auth
   to: builder-server
   relationship: sync
@@ -655,6 +662,14 @@ edges:
   relationship: sync
   protocol: HTTP
   description: All proposal, project, vote, profile, budget, badge, and subscription data via GOVERNANCE_API
+- from: hammurabi
+  to: catalyst
+  relationship: sync
+  protocol: HTTP
+  description: 'Fetch realm configuration and scene entities using URNs.  Endpoints: /lambdas/contracts (realm info), content
+    entity resolution
+
+    '
 - from: internal-tools
   to: archipelago-workers
   relationship: sync
@@ -669,7 +684,7 @@ edges:
   to: comms-gatekeeper
   relationship: sync
   protocol: HTTP
-  description: User moderation endpoints — bans, warnings, ban status. Requires moderator role enforced server-side.
+  description: "User moderation endpoints \u2014 bans, warnings, ban status. Requires moderator role enforced server-side."
 - from: internal-tools
   to: credits-server
   relationship: sync
@@ -911,6 +926,26 @@ edges:
   relationship: sync
   protocol: HTTP
   description: Fetch wearable metadata and NFT collection information
+- from: sdk-multiplayer-server
+  to: catalyst
+  relationship: sync
+  protocol: HTTP
+  description: 'Fetch scene entity metadata to check authoritativeMultiplayer flag and  logsPermissions. Endpoints: POST /content/entities/active
+
+    '
+- from: sdk-multiplayer-server
+  to: comms-gatekeeper
+  relationship: async
+  protocol: SNS/SQS
+  description: "Consumes room events (USER_JOINED_ROOM, USER_LEFT_ROOM) published by  comms-gatekeeper via SNS\u2192SQS. These\
+    \ events originate from LiveKit webhooks.\n"
+- from: sdk-multiplayer-server
+  to: worlds-content-server
+  relationship: sync
+  protocol: HTTP
+  description: 'Fetch world entity metadata for .dcl.eth realms. Endpoints:  GET /world/{name}/about, GET /contents/{entityId}
+
+    '
 - from: snapshots-fetcher
   to: catalyst
   relationship: sync
@@ -1072,12 +1107,12 @@ event_flows:
   channel: engine.peer.${peerId}.island_changed
   consumers: []
 - publisher: archipelago-workers
-  event_name: island_status
-  channel: engine.islands
-  consumers: []
-- publisher: archipelago-workers
   event_name: service_discovery
   channel: engine.discovery
+  consumers: []
+- publisher: archipelago-workers
+  event_name: island_status
+  channel: engine.islands
   consumers: []
 - publisher: asset-bundle-converter
   event_name: AssetBundleConversionFinished
@@ -1087,7 +1122,8 @@ event_flows:
 - publisher: asset-bundle-converter
   event_name: AssetBundleConversionManuallyQueued
   channel: AWS SNS
-  consumers: []
+  consumers:
+  - asset-bundle-registry
 - publisher: badges
   event_name: badge-granted
   channel: AWS SNS
@@ -1099,49 +1135,47 @@ event_flows:
 - publisher: catalyst
   event_name: entity_deployed
   channel: internal (consumed by deployments-to-sqs)
-  consumers: []
-- publisher: comms-gatekeeper
-  event_name: CommunityStreamingEnded
-  channel: AWS SNS
-  consumers: []
-- publisher: comms-gatekeeper
-  event_name: PARTICIPANT_JOINED_ROOM
-  channel: AWS SNS
-  consumers: []
-- publisher: comms-gatekeeper
-  event_name: PARTICIPANT_LEFT_ROOM
-  channel: AWS SNS
-  consumers: []
-- publisher: comms-gatekeeper
-  event_name: SCENE_BAN_ADDED
-  channel: AWS SNS
-  consumers: []
-- publisher: comms-gatekeeper
-  event_name: SCENE_BAN_REMOVED
-  channel: AWS SNS
-  consumers: []
+  consumers:
+  - places
 - publisher: comms-gatekeeper
   event_name: streaming_access_granted
   channel: AWS SNS
-  consumers: []
+  consumers:
+  - sdk-multiplayer-server
+- publisher: comms-gatekeeper
+  event_name: CommunityStreamingEnded
+  channel: AWS SNS
+  consumers:
+  - sdk-multiplayer-server
+- publisher: comms-gatekeeper
+  event_name: PARTICIPANT_JOINED_ROOM
+  channel: AWS SNS
+  consumers:
+  - sdk-multiplayer-server
+- publisher: comms-gatekeeper
+  event_name: PARTICIPANT_LEFT_ROOM
+  channel: AWS SNS
+  consumers:
+  - sdk-multiplayer-server
+- publisher: comms-gatekeeper
+  event_name: SCENE_BAN_ADDED
+  channel: AWS SNS
+  consumers:
+  - sdk-multiplayer-server
+- publisher: comms-gatekeeper
+  event_name: SCENE_BAN_REMOVED
+  channel: AWS SNS
+  consumers:
+  - sdk-multiplayer-server
 - publisher: deployments-to-sqs
   event_name: entity_deployed
   channel: deployments-sns-${env}
-  consumers: []
-- publisher: events
-  event_name: event.approved
-  channel: AWS SNS
-  consumers: []
-- publisher: events
-  event_name: event.attendance.added
-  channel: AWS SNS
-  consumers: []
+  consumers:
+  - asset-bundle-converter
+  - badges
+  - asset-bundle-registry
 - publisher: events
   event_name: event.created
-  channel: AWS SNS
-  consumers: []
-- publisher: events
-  event_name: event.rejected
   channel: AWS SNS
   consumers: []
 - publisher: events
@@ -1149,7 +1183,19 @@ event_flows:
   channel: AWS SNS
   consumers: []
 - publisher: events
-  event_name: notification.event.ended
+  event_name: event.approved
+  channel: AWS SNS
+  consumers: []
+- publisher: events
+  event_name: event.rejected
+  channel: AWS SNS
+  consumers: []
+- publisher: events
+  event_name: event.attendance.added
+  channel: AWS SNS
+  consumers: []
+- publisher: events
+  event_name: notification.event.upcoming
   channel: AWS SNS
   consumers: []
 - publisher: events
@@ -1157,25 +1203,33 @@ event_flows:
   channel: AWS SNS
   consumers: []
 - publisher: events
-  event_name: notification.event.upcoming
+  event_name: notification.event.ended
   channel: AWS SNS
   consumers: []
 - publisher: events-notifier
   event_name: bid_accepted
   channel: AWS SNS
-  consumers: []
+  consumers:
+  - notifications-workers
+  - badges
 - publisher: events-notifier
   event_name: item_sold
   channel: AWS SNS
-  consumers: []
+  consumers:
+  - notifications-workers
+  - badges
 - publisher: events-notifier
   event_name: rental_started
   channel: AWS SNS
-  consumers: []
+  consumers:
+  - notifications-workers
+  - badges
 - publisher: events-notifier
   event_name: royalties_earned
   channel: AWS SNS
-  consumers: []
+  consumers:
+  - notifications-workers
+  - badges
 - publisher: marketplace-server
   event_name: trade_created
   channel: AWS SNS
@@ -1189,11 +1243,11 @@ event_flows:
   channel: AWS SNS
   consumers: []
 - publisher: referral
-  event_name: transaction.failed
+  event_name: transaction.success
   channel: AWS SNS
   consumers: []
 - publisher: referral
-  event_name: transaction.success
+  event_name: transaction.failed
   channel: AWS SNS
   consumers: []
 - publisher: social-service-ea
@@ -1201,11 +1255,7 @@ event_flows:
   channel: NATS
   consumers: []
 - publisher: wearable-preview
-  event_name: PreviewMessageType.CONTROLLER_RESPONSE
-  channel: postMessage
-  consumers: []
-- publisher: wearable-preview
-  event_name: PreviewMessageType.EMOTE_EVENT
+  event_name: PreviewMessageType.LOAD
   channel: postMessage
   consumers: []
 - publisher: wearable-preview
@@ -1213,10 +1263,16 @@ event_flows:
   channel: postMessage
   consumers: []
 - publisher: wearable-preview
-  event_name: PreviewMessageType.LOAD
+  event_name: PreviewMessageType.EMOTE_EVENT
+  channel: postMessage
+  consumers: []
+- publisher: wearable-preview
+  event_name: PreviewMessageType.CONTROLLER_RESPONSE
   channel: postMessage
   consumers: []
 - publisher: worlds-content-server
   event_name: world_deployed
   channel: Internal (consumed by asset-bundle-registry)
-  consumers: []
+  consumers:
+  - places
+  - asset-bundle-registry

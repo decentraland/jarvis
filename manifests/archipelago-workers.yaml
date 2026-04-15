@@ -92,15 +92,16 @@ domain:
       severity: hard
 
   responsibilities:
-    - WS Connector - Manage WebSocket connections with ECDSA challenge-response authentication, receive position heartbeats, publish to NATS, forward island assignments with LiveKit connection strings to clients, enforce platform deny list, kick duplicate sessions
-    - Archipelago Core - Process position updates from NATS, implement dynamic island clustering (join distance 64 units, leave distance 80 units), call LiveKit API directly to generate room tokens, publish island_changed messages with embedded tokens, publish island topology and service heartbeat every 2 seconds
-    - Archipelago Stats - Subscribe to NATS messages (heartbeats, disconnects, island topology, discovery), aggregate peer count and island data, expose REST endpoints for monitoring and analytics, integrate with Catalyst for content metadata
+    - WS Connector manages WebSocket connections with ECDSA challenge-response authentication, receives position heartbeats, publishes to NATS, forwards island assignments with LiveKit connection strings to clients, enforces platform deny list, kicks duplicate sessions
+    - Archipelago Core processes position updates from NATS, implements dynamic island clustering (join distance 64 units, leave distance 80 units), calls LiveKit API directly to generate room tokens, publishes island_changed messages with embedded tokens, publishes island topology and service heartbeat every 2 seconds
+    - Archipelago Stats subscribes to NATS messages (heartbeats, disconnects, island topology, discovery), aggregates peer count and island data, exposes REST endpoints for monitoring and analytics, integrates with Catalyst for content metadata
 
   out_of_scope:
     - Content storage or scene management (handled by Catalyst)
-    - Voice/video communication (handled by LiveKit transport layer)
+    - Voice/video communication transport layer (handled by LiveKit)
     - Content moderation (handled by police-server)
     - Access control rules (handled by comms-gatekeeper)
+    - Pulse endpoint management (known issue - no awareness of which Pulse instance serves a given island)
 
   owned_entities:
     - name: Peer
@@ -115,6 +116,9 @@ domain:
 
 api:
   openapi_url: https://github.com/decentraland/archipelago-workers/blob/main/docs/openapi.yaml
+
+db:
+  schema_url: ""
 
 dependencies:
   services:
@@ -131,7 +135,7 @@ dependencies:
 
     - name: LiveKit API
       purpose: Called by Archipelago Core to generate room tokens directly (not via comms-gatekeeper)
-      type: other
+      type: api
 
     - name: "@dcl/crypto"
       purpose: Ethereum signature validation and AuthChain verification for WebSocket authentication
@@ -141,14 +145,23 @@ dependencies:
       purpose: Protobuf definitions for Heartbeat and IslandChangedMessage
       type: other
 
+    - name: dcl-catalyst-client
+      purpose: Catalyst client library for fetching content server data in Stats service
+      type: other
+
+    - name: Platform Deny List API
+      purpose: Provides list of banned user wallets that are blocked from connecting (https://config.decentraland.org/denylist.json)
+      type: api
+
 events:
   publishes:
     - name: island_changed
-      description: Notifies when a peer is assigned to a different island
+      description: Notifies when a peer is assigned to a different island, includes LiveKit connection string with embedded access token
       channel: engine.peer.${peerId}.island_changed
       key_payload_fields:
         - peerId
         - islandId
+        - connectionString
         - peers
 
     - name: service_discovery
@@ -156,10 +169,12 @@ events:
       channel: engine.discovery
       key_payload_fields:
         - serviceId
-        - status
+        - commitHash
+        - timestamp
+        - userCount
 
     - name: island_status
-      description: Reports current state of all islands
+      description: Reports current state of all islands (published every ~2 seconds)
       channel: engine.islands
       key_payload_fields:
         - islands
@@ -168,7 +183,7 @@ events:
   consumes:
     - name: peer_heartbeat
       source_service: ws-connector
-      description: Periodic heartbeat from connected peers with position updates
+      description: Periodic heartbeat from connected peers with position updates and optional island preference
       channel: peer.${address}.heartbeat
 
     - name: peer_disconnect
@@ -182,16 +197,44 @@ configuration:
       description: Connection URL for NATS message broker
       affects: Event-driven communication and service discovery
 
+    - name: HTTP_SERVER_PORT
+      description: HTTP server port (core:5000, ws-connector:5001, stats:5002)
+      affects: Service endpoint accessibility
+
+    - name: HTTP_SERVER_HOST
+      description: HTTP server bind address (default 0.0.0.0)
+      affects: Service network interface binding
+
+    - name: LIVEKIT_API_KEY
+      description: LiveKit API key for generating room access tokens (core service only)
+      affects: LiveKit room token generation
+
+    - name: LIVEKIT_API_SECRET
+      description: LiveKit API secret for signing access tokens (core service only)
+      affects: LiveKit room token generation
+
+    - name: LIVEKIT_HOST
+      description: LiveKit server WebSocket URL (e.g., wss://livekit.example.com)
+      affects: LiveKit connection string returned to clients
+
+    - name: LIVEKIT_ISLAND_SIZE
+      description: Maximum number of peers per island (optional, defaults to algorithm calculation)
+      affects: Island clustering max occupancy
+
+    - name: ROOM_PREFIX
+      description: Optional prefix for LiveKit room names
+      affects: LiveKit room naming scheme
+
     - name: ARCHIPELAGO_FLUSH_FREQUENCY
-      description: Frequency (in seconds) to flush island state updates
-      affects: Island state update rate
+      description: Island recalculation interval in seconds (default 2.0)
+      affects: Island state update rate and real-time responsiveness
 
     - name: ARCHIPELAGO_JOIN_DISTANCE
-      description: Distance threshold for joining islands (in meters)
+      description: Distance threshold for joining islands in units (default 64)
       affects: Island clustering proximity algorithm
 
     - name: ARCHIPELAGO_LEAVE_DISTANCE
-      description: Distance threshold for leaving islands (in meters)
+      description: Distance threshold for leaving islands in units (default 80)
       affects: Island clustering separation algorithm
 
     - name: ARCHIPELAGO_PARCEL_SIZE
@@ -199,20 +242,32 @@ configuration:
       affects: Coordinate calculations
 
     - name: CHECK_HEARTBEAT_INTERVAL
-      description: Interval to check for peer heartbeats (in milliseconds)
+      description: Peer heartbeat timeout in milliseconds (default 60000)
       affects: Peer disconnect detection timing
 
     - name: ARCHIPELAGO_STATUS_UPDATE_INTERVAL
-      description: Interval for status updates (in milliseconds)
-      affects: Status reporting frequency
+      description: Interval for status updates in milliseconds (default 10000)
+      affects: Status reporting and discovery message frequency
 
-    - name: HTTP_SERVER_PORT
-      description: HTTP server port (different for each service - core:5000, ws-connector:5001, stats:5002)
-      affects: Service endpoint accessibility
+    - name: ETH_NETWORK
+      description: Ethereum network for signature validation (default sepolia)
+      affects: AuthChain verification in WS Connector
+
+    - name: HANDSHAKE_TIMEOUT
+      description: WebSocket handshake timeout in milliseconds (default 60000)
+      affects: WebSocket connection establishment time limit
 
     - name: CONTENT_URL
-      description: Catalyst content server URL for fetching scene entities (stats service only)
+      description: Catalyst content server URL for fetching scene entities (stats service only, default https://peer.decentraland.org/content/)
       affects: Hot scenes data retrieval
+
+    - name: COMMIT_HASH
+      description: Git commit hash for version tracking
+      affects: Service discovery and status reporting
+
+    - name: CURRENT_VERSION
+      description: Application version string
+      affects: Service discovery and status reporting
 
 adrs:
   - id: ADR-204

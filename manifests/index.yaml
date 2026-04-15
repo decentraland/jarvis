@@ -73,8 +73,8 @@ services:
 - name: asset-bundle-converter
   display_name: Asset Bundle Converter
   description: Converts Decentraland scene assets (GLTF models, textures) into optimized Unity Asset Bundles for improved
-    WebGL performance. Monitors deployment events and processes entities by re-importing GLTF files in Unity and packaging
-    them into versioned, compressed Asset Bundles stored on CDN.
+    WebGL performance. Monitors deployment events and processes entities (scenes, wearables, emotes) by re-importing GLTF
+    files in Unity and packaging them into versioned, compressed Asset Bundles stored on CDN.
   layer: content
   repository: https://github.com/decentraland/asset-bundle-converter
   role:
@@ -679,6 +679,23 @@ services:
   - name: auth
     relationship: sync
     protocol: HTTP
+- name: hammurabi
+  display_name: Hammurabi
+  description: 'Reference implementation of the Decentraland protocol. A web-based explorer  client built with Babylon.js
+    that demonstrates protocol standards, enables  prototyping of new features, and serves as educational material for contributors  learning
+    how Decentraland works.
+
+    '
+  layer: other
+  repository: https://github.com/decentraland/hammurabi
+  role:
+  - client
+  - library
+  data_domain: []
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
 - name: hashing
   display_name: '@dcl/hashing'
   description: Hashing utilities library that provides content identifier calculation functions for Decentraland. Generates
@@ -691,9 +708,10 @@ services:
   dependencies: []
 - name: internal-tools
   display_name: Decentraland Internal Tools
-  description: Internal operations and moderation dashboard for the Decentraland platform. Used by platform moderators, community
-    managers, and operations teams to perform admin tasks — banning users, managing communities, granting credits, and inspecting
-    real-time LiveKit rooms — all gated behind wallet-based authentication and role-specific access controls.
+  description: "Internal operations and moderation dashboard for the Decentraland platform. Used by platform moderators, community\
+    \ managers, and operations teams to perform admin tasks \u2014 banning users, managing communities, granting credits,\
+    \ and inspecting real-time LiveKit rooms \u2014 all gated behind wallet-based authentication and role-specific access\
+    \ controls."
   layer: client
   repository: https://github.com/decentraland/internal-tools
   role:
@@ -1063,6 +1081,19 @@ services:
   - library
   data_domain: []
   dependencies: []
+- name: pulse
+  display_name: Pulse
+  description: '.NET-based authoritative avatar synchronization server for Decentraland.  Relays avatar state (position, rotation,
+    animation, emotes, teleports) between  players within a single Archipelago island over UDP/ENet. One Pulse instance  equals
+    one island.
+
+    '
+  layer: real-time
+  repository: https://github.com/decentraland/pulse
+  role:
+  - rt-gateway
+  data_domain: []
+  dependencies: []
 - name: realm-provider
   display_name: Realm Provider
   description: Provides realm configuration service for Decentraland clients. Implements ADR-110 realm descriptions, enabling
@@ -1143,6 +1174,27 @@ services:
   - library
   data_domain: []
   dependencies: []
+- name: sdk-multiplayer-server
+  display_name: SDK Multiplayer Server
+  description: 'Orchestrates Hammurabi child processes for authoritative multiplayer scenes.  Consumes LiveKit room events
+    from SQS and decides when to spawn or terminate  a Hammurabi process for a given scene based on room membership.
+
+    '
+  layer: real-time
+  repository: https://github.com/decentraland/sdk-multiplayer-server
+  role:
+  - worker
+  data_domain: []
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: worlds-content-server
+    relationship: sync
+    protocol: HTTP
+  - name: comms-gatekeeper
+    relationship: async
+    protocol: SNS/SQS
 - name: snapshots-fetcher
   display_name: '@dcl/snapshots-fetcher'
   description: Component library for fetching and synchronizing entity snapshots from Catalyst content servers. Downloads

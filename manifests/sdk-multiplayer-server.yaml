@@ -1,0 +1,282 @@
+schema_version: "1.1"
+
+# ============================================================
+# IDENTITY
+# ============================================================
+service:
+  name: sdk-multiplayer-server
+  display_name: SDK Multiplayer Server
+  description: >
+    Orchestrates Hammurabi child processes for authoritative multiplayer scenes. 
+    Consumes LiveKit room events from SQS and decides when to spawn or terminate 
+    a Hammurabi process for a given scene based on room membership.
+  owner: protocol-squad
+  repository: https://github.com/decentraland/sdk-multiplayer-server
+  language: typescript
+  layer: real-time
+  role:
+    - worker
+  data_domain: []
+  ai-agent-context: https://github.com/decentraland/sdk-multiplayer-server/blob/main/docs/ai-agent-context.md
+
+# ============================================================
+# DOMAIN & RESPONSIBILITIES
+# ============================================================
+domain:
+  glossary:
+    - term: Hammurabi Process
+      definition: >
+        A child process spawned by sdk-multiplayer-server that runs the Hammurabi 
+        headless bot. Each process joins a LiveKit room as a bot to provide 
+        authoritative CRDT synchronization for a specific scene.
+      not_to_be_confused_with: >
+        The Hammurabi repository (web-based explorer client). The spawned process 
+        uses the @dcl/hammurabi-server NPM package.
+    - term: Scene ID
+      definition: >
+        The entity hash (e.g., bafkrei...) that uniquely identifies a scene or world. 
+        Used as the process key — one Hammurabi process per sceneId.
+    - term: Grace Period
+      definition: >
+        A 5-minute countdown that starts when the last user leaves a room. If no one 
+        rejoins within this window, the Hammurabi process is terminated. Joining during 
+        the grace period cancels the countdown.
+    - term: Process Generation
+      definition: >
+        A counter that increments each time a Hammurabi process is spawned for the 
+        same sceneId. Used for debugging and tracking process lifecycle.
+    - term: authoritativeMultiplayer
+      definition: >
+        A boolean flag in scene/world entity metadata that indicates whether the 
+        scene requires a Hammurabi process. Only scenes with this flag set to true 
+        will trigger process spawning.
+    - term: logsPermissions
+      definition: >
+        An array of Ethereum addresses in scene/world entity metadata that specifies 
+        which addresses are allowed to view logs via the /logs endpoint. Used for 
+        scene/world developer debugging.
+
+  concept_relationships:
+    internal:
+      - from: Room Event
+        to: Hammurabi Process
+        relationship: triggers
+        description: >
+          USER_JOINED_ROOM events trigger spawning of Hammurabi processes for scenes 
+          with authoritativeMultiplayer=true. USER_LEFT_ROOM events trigger grace 
+          periods and eventual termination.
+      - from: Scene ID
+        to: Hammurabi Process
+        relationship: has_one
+        description: >
+          Each scene ID can have at most one active Hammurabi process at any time. 
+          The sceneId is the unique process identifier.
+      - from: Grace Period
+        to: Hammurabi Process
+        relationship: transitions_to
+        description: >
+          When the last user leaves a room, the process enters a grace period state 
+          before transitioning to termination (unless a user rejoins).
+
+    cross_service:
+      - local_concept: Scene ID
+        remote_service: catalyst
+        remote_concept: Entity Hash
+        mapping_type: equivalent
+        description: >
+          The sceneId is the entity hash from Catalyst's content server. Used to 
+          fetch scene metadata to check authoritativeMultiplayer flag.
+      - local_concept: Scene ID
+        remote_service: worlds-content-server
+        remote_concept: Entity Hash
+        mapping_type: equivalent
+        description: >
+          For worlds (.dcl.eth realms), the sceneId is the entity hash from the 
+          worlds content server.
+      - local_concept: Room Event
+        remote_service: comms-gatekeeper
+        remote_concept: LiveKit Webhook Event
+        mapping_type: derived_from
+        description: >
+          Room events (USER_JOINED_ROOM, USER_LEFT_ROOM) originate from LiveKit 
+          webhooks processed by comms-gatekeeper and published to SNS/SQS.
+
+  invariants:
+    - rule: >
+        A Hammurabi process must only be spawned for scenes/worlds where 
+        authoritativeMultiplayer is explicitly set to true in the entity metadata
+      enforced_at: api_validation
+      severity: hard
+    - rule: >
+        Only one Hammurabi process can exist per sceneId at any given time
+      enforced_at: domain_layer
+      severity: hard
+    - rule: >
+        Grace period must be cancelled if a user joins before the timeout expires
+      enforced_at: domain_layer
+      severity: hard
+    - rule: >
+        Only SCENE and WORLD room types should trigger process spawning; ISLAND, 
+        COMMUNITY_VOICE_CHAT, and PRIVATE_VOICE_CHAT are ignored
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Consume LiveKit room events (USER_JOINED_ROOM, USER_LEFT_ROOM) from SQS queue
+    - Track participant counts per room to determine when to spawn or terminate processes
+    - Fetch scene/world entity metadata from Catalyst or Worlds Content Server
+    - Spawn Hammurabi child processes for scenes with authoritativeMultiplayer enabled
+    - Manage process lifecycle including grace periods for empty rooms
+    - Provide Server-Sent Events (SSE) log streaming for scene/world developers
+    - Pass environment variables to child processes (sceneId, content server URL, private key, etc.)
+    - Monitor resource usage (CPU, memory) of spawned processes for observability
+    - Notify Slack of process spawn/terminate events (optional)
+
+  out_of_scope:
+    - Running scene logic directly (delegated to Hammurabi child processes)
+    - Managing LiveKit rooms or webhooks (handled by comms-gatekeeper)
+    - Storing or persisting scene state (Hammurabi processes are stateless)
+    - Load balancing or distributing processes across multiple instances
+    - Cross-instance deduplication of process spawning
+    - Automatic restart of crashed Hammurabi processes
+    - Validation of scene/world permissions beyond entity metadata
+
+  owned_entities:
+    - name: Hammurabi Process
+      description: >
+        Child process instance running the Hammurabi headless bot for a specific scene
+      persistence: in-memory
+      identity_field: sceneId
+    - name: Room Participant Tracker
+      description: >
+        In-memory map tracking user addresses and participant counts per room
+      persistence: in-memory
+      identity_field: sceneId
+    - name: Log Buffer
+      description: >
+        Ring buffer storing the last 1000 log lines per scene for SSE streaming
+      persistence: in-memory
+      identity_field: sceneId
+
+# ============================================================
+# API REFERENCE
+# ============================================================
+api:
+  openapi_url: ""
+
+# ============================================================
+# DB Schema
+# ============================================================
+db:
+  schema_url: ""
+
+# ============================================================
+# DEPENDENCIES
+# ============================================================
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      protocol: HTTP
+      purpose: >
+        Fetch scene entity metadata to check authoritativeMultiplayer flag and 
+        logsPermissions. Endpoints: POST /content/entities/active
+      critical: true
+    - name: worlds-content-server
+      relationship: sync
+      protocol: HTTP
+      purpose: >
+        Fetch world entity metadata for .dcl.eth realms. Endpoints: 
+        GET /world/{name}/about, GET /contents/{entityId}
+      critical: true
+    - name: comms-gatekeeper
+      relationship: async
+      protocol: SNS/SQS
+      purpose: >
+        Consumes room events (USER_JOINED_ROOM, USER_LEFT_ROOM) published by 
+        comms-gatekeeper via SNS→SQS. These events originate from LiveKit webhooks.
+      critical: true
+
+  external:
+    - name: AWS SQS
+      purpose: Message queue for LiveKit room events
+      type: messaging
+    - name: AWS SNS
+      purpose: Event publishing layer from comms-gatekeeper to SQS
+      type: messaging
+    - name: Hammurabi Server Package
+      purpose: NPM package (@dcl/hammurabi-server) providing the headless bot runtime
+      type: other
+    - name: Slack
+      purpose: Optional notifications for process spawn/terminate events
+      type: api
+
+# ============================================================
+# EVENTS
+# ============================================================
+events:
+  publishes: []
+
+  consumes:
+    - name: USER_JOINED_ROOM
+      source_service: comms-gatekeeper
+      description: >
+        Fired when a user joins a LiveKit room. Contains sceneId, userAddress, 
+        realmName, and roomType. Triggers process spawning for the first user 
+        if authoritativeMultiplayer is true.
+      channel: AWS SQS
+    - name: USER_LEFT_ROOM
+      source_service: comms-gatekeeper
+      description: >
+        Fired when a user leaves a LiveKit room. Decrements participant count 
+        and starts grace period when the last user leaves.
+      channel: AWS SQS
+
+# ============================================================
+# CONFIGURATION & FEATURE FLAGS
+# ============================================================
+configuration:
+  feature_flags:
+    - name: QUEUE_CONSUMER_ENABLED
+      description: Enable or disable SQS message consumption
+      default: "true"
+    - name: RESOURCE_MONITOR_ENABLED
+      description: Enable or disable resource monitoring for child processes
+      default: "false"
+
+  key_env_vars:
+    - name: HTTP_SERVER_PORT
+      description: Port for HTTP server
+      affects: Server startup and health check endpoints
+    - name: HTTP_SERVER_HOST
+      description: Host address for HTTP server
+      affects: Server binding
+    - name: ENV
+      description: Environment (dev or prod) determines content server URLs
+      affects: Catalyst and Worlds Content Server URL selection
+    - name: AWS_SQS_QUEUE_URL
+      description: SQS queue URL for room events (omit for in-memory queue in local dev)
+      affects: Queue consumer configuration
+    - name: AWS_REGION
+      description: AWS region for SQS client
+      affects: SQS client initialization
+    - name: WORLDS_CONTENT_SERVER_URL
+      description: URL for Worlds Content Server (defaults based on ENV)
+      affects: World entity metadata fetching
+    - name: CATALYST_LOADBALANCER_HOST
+      description: URL for Catalyst load balancer (defaults based on ENV)
+      affects: Scene entity metadata fetching
+    - name: AUTHORITATIVE_SERVER_PRIVATE_KEY
+      description: Private key passed to Hammurabi processes for comms-gatekeeper auth
+      affects: Child process authentication with LiveKit
+    - name: ADMINS
+      description: Comma-separated list of admin addresses for debug endpoints
+      affects: Authorization for /debug endpoints
+    - name: SLACK_WEBHOOK
+      description: Slack webhook URL for process spawn/terminate notifications
+      affects: Slack notification delivery
+
+# ============================================================
+# ADRs
+# ============================================================
+adrs: []

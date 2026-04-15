@@ -3,7 +3,7 @@ schema_version: "1.1"
 service:
   name: asset-bundle-converter
   display_name: Asset Bundle Converter
-  description: Converts Decentraland scene assets (GLTF models, textures) into optimized Unity Asset Bundles for improved WebGL performance. Monitors deployment events and processes entities by re-importing GLTF files in Unity and packaging them into versioned, compressed Asset Bundles stored on CDN.
+  description: Converts Decentraland scene assets (GLTF models, textures) into optimized Unity Asset Bundles for improved WebGL performance. Monitors deployment events and processes entities (scenes, wearables, emotes) by re-importing GLTF files in Unity and packaging them into versioned, compressed Asset Bundles stored on CDN.
   owner: core-engineering
   repository: https://github.com/decentraland/asset-bundle-converter
   language: csharp/typescript
@@ -17,39 +17,44 @@ service:
 domain:
   glossary:
     - term: Asset Bundle
-      definition: Unity-generated package containing optimized 3D models, textures, and materials for efficient loading in WebGL. Assets are converted from GLTF format and compressed for network delivery.
+      definition: Unity-generated package containing optimized 3D models, textures, and materials for efficient loading in WebGL. Assets are converted from GLTF format, re-imported through Unity, and compressed for network delivery.
       examples:
-        - A scene's GLTF model converted to Unity asset bundle with LODs
-        - Wearable items packaged as asset bundles
+        - A scene's GLTF model converted to Unity asset bundle with optimizations
+        - Wearable items packaged as asset bundles with three compression variants (raw, .gz, .br)
       not_to_be_confused_with: Raw GLTF files or original Catalyst entity content
 
     - term: Conversion Manifest
-      definition: JSON file listing all converted files for an entity, including version metadata. Enables clients to resolve asset bundles without 404 roundtrips.
+      definition: JSON file listing all converted files for an entity with version metadata. Enables clients to resolve asset bundles without 404 roundtrips by checking the manifest first before attempting to fetch converted assets.
       examples:
         - manifest/bafkreie7b36aggssaerg7nvj5s56op5zqyxcqjtkq4q4kjrfhnkljhshgy.json
 
     - term: AB_VERSION
-      definition: Version identifier for asset bundles that enables multiple converter versions to coexist. Changes with Unity upgrades or shader/material modifications.
+      definition: Version identifier for asset bundles that enables multiple converter versions to coexist. Changes with Unity upgrades, shader modifications, or material system updates. Platform-specific versions can be set via AB_VERSION_WINDOWS and AB_VERSION_MAC.
       examples:
         - v4 (legacy)
-        - v5 (current)
+        - v5 (current WebGL version)
 
     - term: ISS
-      definition: Initial Scene State. Pre-generated staticScene_ Asset Bundle that classifies scene entities as static or dynamic based on their GltfContainer components, visibility, and animation state. Allows clients to load a pre-baked initial state instead of processing every entity at runtime. Uses its own version track (e.g. v2003) separate from the main AB_VERSION.
+      definition: Initial Scene State. Pre-generated staticScene_ Asset Bundle that classifies scene entities as static or dynamic based on their GltfContainer components, visibility, and animation state. Allows clients to load a pre-baked initial state instead of processing every entity at runtime. Uses its own version track (e.g. v2004) separate from the main AB_VERSION. Generated when doISS flag is set in the conversion job.
       examples:
-        - staticScene_ Asset Bundle generated during scene conversion when doISS is true
+        - staticScene_ Asset Bundle generated during scene conversion for optimized client loading
 
   concept_relationships:
     internal:
       - from: Asset Bundle
         to: Conversion Manifest
         relationship: belongs_to
-        description: Each converted asset bundle is listed in the entity's conversion manifest
+        description: Each converted asset bundle is listed in the entity's conversion manifest with version metadata
 
       - from: Asset Bundle
         to: AB_VERSION
         relationship: belongs_to
-        description: Asset bundles are stored in version-scoped paths
+        description: Asset bundles are stored in version-scoped paths (/ab/:AB_VERSION/:CID) to enable multiple converter versions to coexist
+
+      - from: ISS
+        to: Asset Bundle
+        relationship: is_a
+        description: ISS is a specialized type of Asset Bundle (staticScene_) with its own versioning scheme for initial scene state
 
     cross_service:
       - local_concept: Asset Bundle
@@ -62,45 +67,46 @@ domain:
         remote_service: asset-bundle-registry
         remote_concept: Registry Entry
         mapping_type: projects_as
-        description: The registry uses conversion manifests to serve processed content to clients
+        description: The registry uses conversion manifests to serve processed content to clients and enable fallback logic
 
   invariants:
     - rule: Asset bundles must be stored in version-scoped paths to enable coexistence of multiple converter versions
       enforced_at: domain_layer
       severity: hard
 
-    - rule: Conversion manifests must include complete file lists to enable fallback to original assets
+    - rule: Conversion manifests must include complete file lists to enable fallback to original assets without 404 roundtrips
       enforced_at: domain_layer
       severity: hard
 
-    - rule: All asset bundles must have three compression variants (raw, .gz, .br)
+    - rule: All asset bundles must have three compression variants (raw, .gz, .br) for network optimization
       enforced_at: domain_layer
       severity: hard
 
   responsibilities:
     - Convert GLTF models to optimized Unity Asset Bundles using Unity 2021.3.20f1
-    - Process deployment events from SQS queue
-    - Generate versioned asset bundles with multiple compression formats
-    - Create conversion manifests listing converted files
-    - Upload converted assets to S3 CDN with version-scoped paths
-    - Generate Initial Scene State (ISS) Asset Bundles classifying static vs dynamic entities for optimized client loading
-    - Archive conversion logs for debugging and audit
-    - Publish conversion completion events to SNS
+    - Process deployment events from SQS queue (ab-conversion-queue)
+    - Generate versioned asset bundles with multiple compression formats (raw, .gz, .br)
+    - Create conversion manifests listing converted files with version metadata
+    - Upload converted assets to S3 CDN with version-scoped paths (/ab/:AB_VERSION/:CID)
+    - Generate Initial Scene State (ISS) Asset Bundles (staticScene_) classifying static vs dynamic entities for optimized client loading when doISS flag is set
+    - Archive conversion logs to separate S3 bucket for debugging and audit
+    - Publish conversion completion events (AssetBundleConversionFinished) to SNS
 
   out_of_scope:
     - Serving asset bundles to clients (handled by Asset Bundle Registry)
     - Content validation or moderation (handled by content-validator)
     - Original content storage (handled by Catalyst)
     - Real-time content delivery (handled by CDN)
+    - Deciding which scenes need ISS generation (determined by calling service via doISS parameter)
 
   owned_entities:
     - name: Asset Bundle
-      description: Converted Unity asset bundle with compression variants
+      description: Converted Unity asset bundle with compression variants stored in versioned S3 paths
       persistence: s3
       identity_field: cid
 
     - name: Conversion Manifest
-      description: JSON listing converted files for an entity
+      description: JSON listing converted files for an entity with AB_VERSION metadata
       persistence: s3
       identity_field: entityId
 
@@ -115,36 +121,36 @@ dependencies:
     - name: catalyst
       relationship: sync
       protocol: HTTP
-      purpose: Fetches original entity content for conversion
+      purpose: Fetches original entity content (GLTF models, textures) for conversion
       critical: true
 
     - name: deployments-to-sqs
       relationship: async
       protocol: SNS/SQS
-      purpose: Receives deployment events to trigger conversions
+      purpose: Receives deployment events to trigger conversions via ab-conversion-queue
       critical: true
 
     - name: asset-bundle-registry
       relationship: async
       protocol: SNS/SQS
-      purpose: Notifies when conversions complete via SNS events
+      purpose: Notifies when conversions complete via AssetBundleConversionFinished SNS events
       critical: false
 
   external:
     - name: AWS SQS
-      purpose: ab-conversion-queue for consuming deployment events
+      purpose: ab-conversion-queue (standard priority) and priority queue for consuming deployment events
       type: messaging
 
     - name: AWS S3
-      purpose: CDN bucket for assets/manifests, logs bucket for conversion logs
+      purpose: CDN bucket for converted assets/manifests (/manifest, /ab/:version), logs bucket for conversion logs
       type: storage
 
     - name: AWS SNS
-      purpose: Publishes AssetBundleConversionFinished events
+      purpose: Publishes AssetBundleConversionFinished and AssetBundleConversionManuallyQueued events
       type: messaging
 
     - name: Unity 2021.3.20f1
-      purpose: GLTF re-import and Asset Bundle generation engine
+      purpose: GLTF re-import and Asset Bundle generation engine (C# editor scripts)
       type: other
 
 events:
@@ -158,7 +164,7 @@ events:
         - files
 
     - name: AssetBundleConversionManuallyQueued
-      description: Notifies when manual conversion is queued via API
+      description: Notifies when manual conversion is queued via /queue-task API endpoint
       channel: AWS SNS
       key_payload_fields:
         - entityId
@@ -167,27 +173,27 @@ events:
   consumes:
     - name: deployment_event
       source_service: deployments-to-sqs
-      description: Triggered when new content is deployed to Catalyst
+      description: Triggered when new content (scenes, wearables, emotes) is deployed to Catalyst
       channel: ab-conversion-queue (AWS SQS)
 
 configuration:
   feature_flags: []
   key_env_vars:
     - name: HTTP_SERVER_PORT
-      description: HTTP server port for API endpoints
+      description: HTTP server port for API endpoints (default 3000)
       affects: Server listening port
 
     - name: HTTP_SERVER_HOST
-      description: HTTP server host address
+      description: HTTP server host address (default 0.0.0.0)
       affects: Server binding configuration
 
     - name: ENV
       description: Environment identifier (prd, stg, dev)
-      affects: Environment-specific configuration and Sentry
+      affects: Environment-specific configuration and Sentry initialization
 
     - name: SENTRY_DSN
-      description: Sentry DSN for error tracking
-      affects: Error monitoring and reporting
+      description: Sentry DSN for error tracking and monitoring
+      affects: Error reporting and debugging
 
     - name: AWS_REGION
       description: AWS region for S3, SQS, and SNS resources
@@ -195,14 +201,14 @@ configuration:
 
     - name: AWS_SNS_ARN
       description: SNS topic ARN for publishing conversion completion events
-      affects: Event notification routing
+      affects: Event notification routing to downstream services
 
     - name: AWS_SNS_ENDPOINT
-      description: Custom SNS endpoint for local development
+      description: Custom SNS endpoint URL for local development and testing
       affects: Development and testing configuration
 
     - name: TASK_QUEUE
-      description: SQS queue URL for consuming deployment events
+      description: SQS queue URL for consuming standard priority deployment events
       affects: Standard priority conversion job consumption
 
     - name: PRIORITY_TASK_QUEUE
@@ -210,43 +216,55 @@ configuration:
       affects: High-priority conversion job consumption
 
     - name: CDN_BUCKET
-      description: S3 bucket for storing converted assets and manifests
-      affects: Asset storage location and CDN distribution
+      description: S3 bucket name for storing converted assets and manifests
+      affects: Asset storage location and CDN distribution path
 
     - name: LOGS_BUCKET
-      description: S3 bucket for archiving conversion logs
-      affects: Logging and debugging
+      description: S3 bucket name for archiving conversion logs
+      affects: Logging and debugging capability
 
     - name: UNITY_PATH
-      description: Path to Unity executable for asset bundle generation
+      description: Filesystem path to Unity 2021.3.20f1 executable
       affects: Unity engine location for conversion process
 
     - name: PROJECT_PATH
-      description: Path to Unity project for asset bundle generation
-      affects: Unity project location for conversion
+      description: Filesystem path to Unity project (asset-bundle-converter directory)
+      affects: Unity project location for conversion scripts
 
     - name: BUILD_TARGET
       description: Unity build target platform (webgl, windows, mac)
-      affects: Asset bundle platform compilation
+      affects: Asset bundle platform compilation target
 
     - name: PLATFORM
-      description: Target platform identifier
+      description: Target platform identifier used for determining AB_VERSION env var name
       affects: Platform-specific conversion configuration
 
     - name: AB_VERSION
-      description: Asset bundle version identifier for output paths
-      affects: CDN path structure and client resolution
+      description: Asset bundle version identifier for WebGL output paths (e.g. v5)
+      affects: CDN path structure (/ab/:version/:cid) and client resolution
+
+    - name: AB_VERSION_WINDOWS
+      description: Asset bundle version identifier for Windows platform
+      affects: Windows-specific CDN path structure
+
+    - name: AB_VERSION_MAC
+      description: Asset bundle version identifier for Mac platform
+      affects: Mac-specific CDN path structure
 
     - name: TMP_SECRET
-      description: Temporary secret for API authorization
+      description: Authorization token for manual conversion API endpoint (/queue-task)
       affects: Manual conversion API authentication
 
     - name: VERSION_TAG
-      description: Version tag for the service (used for status reporting)
-      affects: Service version tracking
+      description: Version tag for the service used in status reporting
+      affects: Service version tracking and monitoring
 
     - name: COMMIT_HASH
       description: Git commit hash for the deployment
       affects: Deployment tracking and debugging
+
+    - name: WKC_METRICS_RESET_AT_NIGHT
+      description: Whether to reset metrics at 00:00 UTC (default false)
+      affects: Metrics collection behavior
 
 adrs: []

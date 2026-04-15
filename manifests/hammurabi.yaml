@@ -1,0 +1,275 @@
+schema_version: "1.1"
+
+# ============================================================
+# IDENTITY
+# ============================================================
+service:
+  name: hammurabi
+  display_name: Hammurabi
+  description: >
+    Reference implementation of the Decentraland protocol. A web-based explorer 
+    client built with Babylon.js that demonstrates protocol standards, enables 
+    prototyping of new features, and serves as educational material for contributors 
+    learning how Decentraland works.
+  owner: protocol-squad
+  repository: https://github.com/decentraland/hammurabi
+  language: typescript
+  layer: other
+  role:
+    - client
+    - library
+  data_domain: []
+  ai-agent-context: ""
+
+# ============================================================
+# DOMAIN & RESPONSIBILITIES
+# ============================================================
+domain:
+  glossary:
+    - term: CRDT Protocol
+      definition: >
+        Conflict-free Replicated Data Type protocol (ADR-117) used for scene 
+        synchronization. Implements LastWriteWins-Element-Set and GrowOnly-Value-Set 
+        for entity state replication between scenes and renderer.
+      examples:
+        - Message serialization and deserialization for entity state changes
+        - Component updates synchronized between scene runtime and Babylon renderer
+    - term: Scene Runtime
+      definition: >
+        JavaScript execution environment for Decentraland scenes (ADR-133). 
+        Provides RuntimeApi and EngineApi interfaces for scene scripts to interact 
+        with the engine and send CRDT messages to the renderer.
+      not_to_be_confused_with: >
+        The production Unity-based explorer runtime. Hammurabi is a proof-of-concept 
+        web-based alternative.
+    - term: Realm
+      definition: >
+        A Decentraland world instance defined by a realm URL (ADR-144). Contains 
+        information about available content servers, communication servers, and 
+        the list of scenes (sceneUrns) loaded in that realm.
+    - term: SDK Component
+      definition: >
+        Protocol-defined components (Transform, Billboard, Raycast, GltfContainer, etc.) 
+        that represent entity state in the Decentraland scene graph. Implemented in 
+        Hammurabi to demonstrate protocol compliance.
+      examples:
+        - Transform component for entity position/rotation/scale
+        - GltfContainer for loading 3D models
+        - Animator for controlling model animations
+
+  concept_relationships:
+    internal:
+      - from: Scene Runtime
+        to: CRDT Protocol
+        relationship: uses
+        description: >
+          Scene runtime executes scene code and generates CRDT messages that are 
+          sent to the renderer via the EngineApi.crdtSendToRenderer interface.
+      - from: SDK Component
+        to: CRDT Protocol
+        relationship: transported_by
+        description: >
+          SDK components (Transform, GltfContainer, etc.) are serialized and 
+          transmitted using the CRDT protocol wire format.
+      - from: Realm
+        to: Scene Runtime
+        relationship: contains
+        description: >
+          A realm defines which scenes are loaded. Each scene gets its own runtime 
+          instance with isolated execution context.
+
+    cross_service:
+      - local_concept: Realm
+        remote_service: catalyst
+        remote_concept: Realm Configuration
+        mapping_type: equivalent
+        description: >
+          Realm information is fetched from Catalyst's /lambdas/contracts endpoints 
+          (ADR-110). Includes sceneUrns list and communication server configuration.
+      - local_concept: CRDT Protocol
+        remote_service: unity-explorer
+        remote_concept: CRDT Synchronization
+        mapping_type: equivalent
+        description: >
+          The CRDT protocol implementation in Hammurabi follows the same specification 
+          as the Unity explorer, ensuring protocol-level compatibility.
+
+  invariants:
+    - rule: >
+        Transform component parent-child relationships must not form cycles
+      enforced_at: domain_layer
+      severity: hard
+    - rule: >
+        CRDT messages must be processed with distance-to-scene based prioritization
+      enforced_at: domain_layer
+      severity: soft
+    - rule: >
+        Scene runtime must provide isolated execution context per scene
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Document current and future Decentraland protocol standards
+    - Provide reference implementation of CRDT protocol for scene synchronization
+    - Implement SDK components (Transform, Billboard, Raycast, GltfContainer, Animator)
+    - Execute scene runtimes using QuickJS or Web Worker JavaScript engines
+    - Render 3D scenes using Babylon.js
+    - Load and resolve entity URNs (ADR-207)
+    - Connect to realms and load static scenes
+    - Serve as educational material for new contributors
+    - Enable rapid prototyping and experimentation with protocol changes
+    - Demonstrate compliance with Decentraland ADRs
+
+  out_of_scope:
+    - Production-ready explorer client (use Unity explorer instead)
+    - Voice/video communications (partial implementation only)
+    - Avatar rendering and emotes
+    - Multiplayer state synchronization (no LiveKit integration)
+    - Content deployment or publishing
+    - Wearables and avatar customization
+    - In-world UI components (partial implementation only)
+    - Performance optimization for production use
+
+  owned_entities:
+    - name: Scene Context
+      description: >
+        Execution context for a single scene including its runtime, entities, 
+        and component state
+      persistence: in-memory
+      identity_field: sceneId
+    - name: Entity
+      description: >
+        Scene graph node with unique ID and attached components
+      persistence: in-memory
+      identity_field: entityId
+    - name: SDK Component Instance
+      description: >
+        Component data attached to an entity (Transform, GltfContainer, etc.)
+      persistence: in-memory
+      identity_field: entityId + componentId
+
+# ============================================================
+# API REFERENCE
+# ============================================================
+api:
+  openapi_url: ""
+
+# ============================================================
+# DB Schema
+# ============================================================
+db:
+  schema_url: ""
+
+# ============================================================
+# DEPENDENCIES
+# ============================================================
+dependencies:
+  services:
+    - name: catalyst
+      relationship: sync
+      protocol: HTTP
+      purpose: >
+        Fetch realm configuration and scene entities using URNs. 
+        Endpoints: /lambdas/contracts (realm info), content entity resolution
+      critical: true
+
+  external:
+    - name: Babylon.js
+      purpose: 3D rendering engine for scene visualization
+      type: other
+    - name: QuickJS (via @dcl/quickjs-emscripten)
+      purpose: JavaScript runtime for scene execution (alternative to Web Worker)
+      type: other
+    - name: protobufjs
+      purpose: Protocol buffer serialization for CRDT messages
+      type: other
+    - name: LiveKit Client
+      purpose: Real-time communication (partial/experimental implementation)
+      type: other
+
+# ============================================================
+# EVENTS
+# ============================================================
+events:
+  publishes: []
+  consumes: []
+
+# ============================================================
+# CONFIGURATION & FEATURE FLAGS
+# ============================================================
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+# ============================================================
+# ADRs
+# ============================================================
+adrs:
+  - id: ADR-117
+    title: CRDT Protocol for Scenes
+    url: https://adr.decentraland.org/adr/ADR-117
+    relevance: Core protocol for scene state synchronization
+  - id: ADR-133
+    title: Scene Runtime API
+    url: https://adr.decentraland.org/adr/ADR-133
+    relevance: Defines RuntimeApi and EngineApi interfaces implemented by Hammurabi
+  - id: ADR-148
+    title: CRDT Synchronization between Scenes and Renderer
+    url: https://adr.decentraland.org/adr/ADR-148
+    relevance: Specifies distance-based prioritization and scene tick processing
+  - id: ADR-207
+    title: Entity URN Resolution
+    url: https://adr.decentraland.org/adr/ADR-207
+    relevance: Loading entities using URN identifiers
+  - id: ADR-144
+    title: Realm URL Resolution
+    url: https://adr.decentraland.org/adr/ADR-144
+    relevance: Resolving realm configuration from Catalyst
+  - id: ADR-110
+    title: Realm Information Endpoint
+    url: https://adr.decentraland.org/adr/ADR-110
+    relevance: Fetching realm configuration from Catalyst
+  - id: ADR-111
+    title: Static Scene Loading
+    url: https://adr.decentraland.org/adr/ADR-111
+    relevance: Loading scenes with sceneUrns from realm configuration
+  - id: ADR-153
+    title: Transform Component
+    url: https://adr.decentraland.org/adr/ADR-153
+    relevance: Transform component implementation with cycle detection
+  - id: ADR-198
+    title: Billboard Component
+    url: https://adr.decentraland.org/adr/ADR-198
+    relevance: Billboard component implementation
+  - id: ADR-200
+    title: Raycast & RaycastResult Components
+    url: https://adr.decentraland.org/adr/ADR-200
+    relevance: Raycast component implementation
+  - id: ADR-215
+    title: GltfContainer Component
+    url: https://adr.decentraland.org/adr/ADR-215
+    relevance: 3D model loading component
+  - id: ADR-125
+    title: PointerEvents & UI Components
+    url: https://adr.decentraland.org/adr/ADR-125
+    relevance: Pointer events and UI component specifications
+  - id: ADR-124
+    title: UiTransform Component
+    url: https://adr.decentraland.org/adr/ADR-124
+    relevance: UI layout and flexbox implementation
+  - id: ADR-151
+    title: UI Rendering Order
+    url: https://adr.decentraland.org/adr/ADR-151
+    relevance: Z-ordering for UI elements
+  - id: ADR-219
+    title: Static Entities
+    url: https://adr.decentraland.org/adr/ADR-219
+    relevance: Camera, Root, Player, and World position entities
+  - id: ADR-180
+    title: Communications Connection Strings
+    url: https://adr.decentraland.org/adr/ADR-180
+    relevance: Parsing communication server configuration
+  - id: ADR-105
+    title: WebSocket Transport
+    url: https://adr.decentraland.org/adr/ADR-105
+    relevance: WebSocket transport for communications

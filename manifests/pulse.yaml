@@ -1,0 +1,303 @@
+schema_version: "1.1"
+
+# ============================================================
+# IDENTITY
+# ============================================================
+service:
+  name: pulse
+  display_name: Pulse
+  description: >
+    .NET-based authoritative avatar synchronization server for Decentraland. 
+    Relays avatar state (position, rotation, animation, emotes, teleports) between 
+    players within a single Archipelago island over UDP/ENet. One Pulse instance 
+    equals one island.
+  owner: protocol-squad
+  repository: https://github.com/decentraland/pulse
+  language: csharp
+  layer: real-time
+  role:
+    - rt-gateway
+  data_domain: []
+  ai-agent-context: https://github.com/decentraland/pulse/blob/main/docs/ai-agent-context.md
+
+# ============================================================
+# DOMAIN & RESPONSIBILITIES
+# ============================================================
+domain:
+  glossary:
+    - term: Island
+      definition: >
+        A spatial cluster of players managed by Archipelago. One Pulse instance 
+        serves exactly one island. All players on the same island receive avatar 
+        state updates from each other (within area-of-interest distance).
+      not_to_be_confused_with: >
+        LiveKit rooms. Pulse and LiveKit are parallel connections — Pulse handles 
+        avatar state, LiveKit handles voice/chat.
+    - term: Spatial LOD (Level of Detail)
+      definition: >
+        Three-tier update frequency system based on distance. Tier 0 (≤20m) updates 
+        every tick (~20/s), Tier 1 (≤50m) every 2nd tick, Tier 2 (≤100m) every 4th tick. 
+        Players beyond 100m receive no updates.
+      examples:
+        - Player A at 15m from Player B receives Tier 0 (20 updates/sec)
+        - Player A at 40m from Player B receives Tier 1 (10 updates/sec)
+    - term: Sliding Window Synchronization
+      definition: >
+        State sync strategy where the server diffs current state vs last_sent_snapshot 
+        per observer and sends the delta over the unreliable sequenced channel. No ACK 
+        tracking — client detects gaps and sends RESYNC_REQUEST.
+    - term: Snapshot History
+      definition: >
+        A small rolling ring buffer of past snapshots per subject. Enables targeted 
+        delta resync instead of full state when RESYNC_REQUEST arrives with a seq 
+        still in the ring.
+    - term: Quantization
+      definition: >
+        Lossy compression technique that encodes float values into a fixed number of 
+        bits within a min/max range. Reduces network bandwidth by trading precision 
+        for smaller message size.
+      examples:
+        - Position coordinates quantized to 16 bits with range [-150, 163]
+        - Rotation angles quantized to 10 bits for 0-360 degrees
+    - term: ENet Channel
+      definition: >
+        ENet's built-in channel abstraction for different reliability modes. Pulse 
+        uses Channel 0 (reliable ordered) for handshakes/emotes and Channel 1 
+        (unreliable sequenced) for high-frequency position updates.
+    - term: Auth Chain
+      definition: >
+        ECDSA signature chain proving ownership of an Ethereum wallet. Contains 
+        ephemeral key, expiry, and signatures. Validated locally by Pulse without 
+        network calls.
+    - term: Emote Anchor
+      definition: >
+        The last known position before an emote starts. Sent reliably on EMOTE_STARTED 
+        and used as the subject's position for the duration of the emote (no further 
+        position updates are sent while emoting).
+
+  concept_relationships:
+    internal:
+      - from: Island
+        to: Peer
+        relationship: has_many
+        description: >
+          One Pulse instance serves one island and manages all peers (players) on 
+          that island. Maximum 4095 peers per instance (ENet hard limit).
+      - from: Peer
+        to: Snapshot History
+        relationship: has_one
+        description: >
+          Each peer (subject) maintains a ring buffer of recent snapshots for 
+          resync requests from observers.
+      - from: Spatial LOD
+        to: Peer
+        relationship: determines_update_frequency
+        description: >
+          The distance between two peers determines which LOD tier applies and 
+          thus how frequently one receives updates about the other.
+      - from: Auth Chain
+        to: Peer
+        relationship: authenticates
+        description: >
+          Each peer must provide a valid auth chain during handshake. The first 
+          payload in the chain becomes the player_id (Ethereum address).
+
+    cross_service:
+      - local_concept: Island
+        remote_service: archipelago-workers
+        remote_concept: Island
+        mapping_type: equivalent
+        description: >
+          Archipelago assigns players to islands. Pulse serves one island, but 
+          currently has no direct interface with Archipelago — the Pulse address 
+          is hardcoded in the client.
+      - local_concept: Auth Chain
+        remote_service: auth-server
+        remote_concept: Decentraland Identity
+        mapping_type: equivalent
+        description: >
+          The auth chain validated by Pulse follows the same format used by 
+          auth-server and other Decentraland services for identity verification.
+
+  invariants:
+    - rule: >
+        A peer must complete authentication within 30 seconds of connecting or 
+        be disconnected
+      enforced_at: domain_layer
+      severity: hard
+    - rule: >
+        MovementInput messages received during PENDING_AUTH state must be silently 
+        dropped
+      enforced_at: domain_layer
+      severity: hard
+    - rule: >
+        Auth chain ephemeral key must not be expired at connection time
+      enforced_at: api_validation
+      severity: hard
+    - rule: >
+        Auth chain connectSig timestamp must be within 60 seconds of server time
+      enforced_at: api_validation
+      severity: hard
+    - rule: >
+        Spatial LOD tier must be recalculated based on current distance every tick
+      enforced_at: domain_layer
+      severity: soft
+    - rule: >
+        Peers beyond 100m must not receive state updates for each other
+      enforced_at: domain_layer
+      severity: hard
+    - rule: >
+        state_flags field must always be present in STATE_DELTA messages even 
+        when unchanged
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Accept UDP connections from Decentraland clients using ENet protocol
+    - Validate auth chains locally without network calls
+    - Relay avatar state (position, rotation, velocity, animation blend values) between players
+    - Implement 3-tier spatial LOD system to optimize update frequency by distance
+    - Maintain snapshot history ring buffer per player for targeted resync
+    - Handle emote lifecycle (EMOTE_START, EMOTE_STOP, emote anchor position)
+    - Process teleport requests and broadcast authoritative teleport events
+    - Respond to RESYNC_REQUEST with targeted delta or full state snapshot
+    - Quantize float values (position, rotation, blend values) to reduce bandwidth
+    - Enforce 30-second authentication timeout and 60-second timestamp tolerance
+    - Provide Prometheus metrics for transport, queue, and per-message-type rates
+    - Provide HTTP health check endpoint on port 5000
+
+  out_of_scope:
+    - Voice or text chat (handled by LiveKit)
+    - Scene entity state or CRDT synchronization (handled by Hammurabi)
+    - Island assignment or peer clustering (handled by Archipelago)
+    - Dynamic Pulse endpoint assignment from Archipelago (address is currently hardcoded)
+    - Cross-island communication or player discovery
+    - Server-side movement validation against scene geometry
+    - Persistent storage of player state
+    - Load balancing or auto-scaling (handled by AWS NLB with sticky 5-tuple)
+    - Graceful drain on deployment
+
+  owned_entities:
+    - name: Peer
+      description: >
+        Connected client with authenticated identity, current state, and snapshot 
+        history
+      persistence: in-memory
+      identity_field: player_id (Ethereum address from auth chain)
+    - name: Snapshot History
+      description: >
+        Ring buffer of recent state snapshots per peer for targeted resync
+      persistence: in-memory
+      identity_field: peer + sequence number
+    - name: Spatial Hash Grid
+      description: >
+        Acceleration structure for efficient area-of-interest queries
+      persistence: in-memory
+      identity_field: grid cell coordinates
+
+# ============================================================
+# API REFERENCE
+# ============================================================
+api:
+  openapi_url: ""
+
+# ============================================================
+# DB Schema
+# ============================================================
+db:
+  schema_url: ""
+
+# ============================================================
+# DEPENDENCIES
+# ============================================================
+dependencies:
+  services: []
+
+  external:
+    - name: ENet
+      purpose: UDP networking library with reliability layers and channels
+      type: other
+    - name: AWS NLB (Network Load Balancer)
+      purpose: Layer 4 UDP load balancing with sticky 5-tuple routing
+      type: other
+    - name: protoc-gen-bitwise
+      purpose: Custom protoc plugin for bitwise quantization and field mask generation
+      type: other
+    - name: ZLogger
+      purpose: High-performance structured logging library for .NET
+      type: other
+    - name: XenoAtom.Terminal.UI
+      purpose: Terminal dashboard for real-time metrics during development
+      type: other
+
+# ============================================================
+# EVENTS
+# ============================================================
+events:
+  publishes: []
+  consumes: []
+
+# ============================================================
+# CONFIGURATION & FEATURE FLAGS
+# ============================================================
+configuration:
+  feature_flags:
+    - name: SelfMirrorEnabled
+      description: >
+        When true, peers receive their own state updates (for debugging/testing)
+      default: "false"
+    - name: Dashboard.Enabled
+      description: Enable terminal UI dashboard for real-time metrics
+      default: "false"
+
+  key_env_vars:
+    - name: Transport__Port
+      description: UDP port for ENet transport
+      affects: Server bind port (default 7777)
+    - name: Transport__MaxPeers
+      description: Maximum number of simultaneous connections
+      affects: ENet host configuration (default 4095, hard limit per instance)
+    - name: Transport__ServiceTimeoutMs
+      description: ENet service loop timeout in milliseconds
+      affects: ENet tick rate
+    - name: Transport__BufferSize
+      description: ENet packet buffer size in bytes
+      affects: Maximum message size per packet
+    - name: Peers__SnapshotHistoryCapacity
+      description: Number of snapshots to keep in the ring buffer per peer
+      affects: Resync capability window
+    - name: SpatialAreaOfInterest__Tier0Radius
+      description: Distance threshold for Tier 0 updates (highest frequency)
+      affects: LOD tier assignment
+    - name: SpatialAreaOfInterest__Tier1Radius
+      description: Distance threshold for Tier 1 updates (medium frequency)
+      affects: LOD tier assignment
+    - name: SpatialAreaOfInterest__MaxRadius
+      description: Maximum distance for any updates (beyond this = no updates)
+      affects: Area-of-interest culling
+    - name: ParcelEncoder__MinParcelX
+      description: Minimum X coordinate for parcel-relative encoding
+      affects: Position quantization range
+    - name: ParcelEncoder__MinParcelZ
+      description: Minimum Z coordinate for parcel-relative encoding
+      affects: Position quantization range
+    - name: ParcelEncoder__MaxParcelX
+      description: Maximum X coordinate for parcel-relative encoding
+      affects: Position quantization range
+    - name: ParcelEncoder__MaxParcelZ
+      description: Maximum Z coordinate for parcel-relative encoding
+      affects: Position quantization range
+    - name: ParcelEncoder__ParcelSize
+      description: Size of a parcel in meters (default 16)
+      affects: Parcel coordinate conversion
+    - name: Metrics__Type
+      description: Metrics exporter type (Prometheus)
+      affects: Metrics endpoint format
+    - name: HttpService__Port
+      description: HTTP service port for health checks and metrics
+      affects: HTTP endpoint binding (default 5000)
+
+# ============================================================
+# ADRs
+# ============================================================
+adrs: []
