@@ -60,7 +60,7 @@ export const workspaces: Record<string, Repo[]> = {
     { url: 'https://github.com/decentraland/governance-ui', lastCommit: 'b7094291264dfab3fc80676ff644febac434b6b3' },
     { url: 'https://github.com/decentraland/jump-site', lastCommit: '42dede627ae6db6c748d7024d7013987d2560e93' },
     { url: 'https://github.com/decentraland/landing', lastCommit: '33b2926f7b52714983d1f3db0b5c25f56212ce55' },
-    { url: 'https://github.com/decentraland/landing-site', lastCommit: '8e683e2fbd886fa3543476d5a6b1d1e1cfb50e52' },
+    { url: 'https://github.com/decentraland/sites', lastCommit: null },
     { url: 'https://github.com/decentraland/marketplace', lastCommit: '0828b31529e77b729884677edac38e684f2bb9a6' },
     { url: 'https://github.com/decentraland/places', lastCommit: 'a26f88ed60490bec48c652cdf54e7f9debf2872d' },
     { url: 'https://github.com/decentraland/profile', lastCommit: 'a6845c7693a0834a72dcb39d02c0cbabe3da0282' },
