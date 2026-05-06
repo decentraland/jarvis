@@ -192,10 +192,10 @@ nodes:
   display_name: Decentraland Homepage
   layer: entry-points
   repository: https://github.com/decentraland/landing
-- name: landing-site
-  display_name: Landing Site (Modern)
+- name: sites
+  display_name: Sites
   layer: presentation
-  repository: https://github.com/decentraland/landing-site
+  repository: https://github.com/decentraland/sites
 - name: launcher-rust
   display_name: Decentraland Launcher
   layer: client
@@ -745,12 +745,12 @@ edges:
   relationship: sync
   protocol: HTTP
   description: Manage reward campaigns and wearable dispensers for onboarding rewards with hCaptcha verification
-- from: landing-site
+- from: sites
   to: auth
   relationship: sync
   protocol: HTTP
   description: SSO authentication for wallet connection and onboarding flows
-- from: landing-site
+- from: sites
   to: catalyst
   relationship: sync
   protocol: HTTP

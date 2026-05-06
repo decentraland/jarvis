@@ -810,13 +810,13 @@ services:
   - name: catalyst
     relationship: sync
     protocol: HTTP
-- name: landing-site
-  display_name: Landing Site (Modern)
+- name: sites
+  display_name: Sites
   description: Vite/React SPA serving as the new Decentraland main landing page, replacing the Gatsby-based landing app. All
     marketing content (hero, missions, FAQ, banners, social proof, marquee, trending news) is fetched at runtime from Contentful
     CMS via RTK Query, using per-section Contentful entry IDs stored in configuration.
   layer: presentation
-  repository: https://github.com/decentraland/landing-site
+  repository: https://github.com/decentraland/sites
   role:
   - client
   data_domain: []
