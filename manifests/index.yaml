@@ -1113,11 +1113,11 @@ services:
     protocol: HTTP
 - name: reels
   display_name: Reels Frontend
-  description: Gatsby-based static site frontend for viewing and sharing Decentraland user snapshots (reels). Displays photo
-    metadata including location, visible users, wearables, and realm information with Open Graph support for social media
-    sharing. Deployed to Cloudflare Workers.
+  description: Frontend for viewing and sharing Decentraland user snapshots (reels). Displays photo metadata including location,
+    visible users, wearables, and realm information with Open Graph support for social media sharing. Now served as the /reels
+    route within the sites app.
   layer: entry-points
-  repository: https://github.com/decentraland/reels
+  repository: https://github.com/decentraland/sites
   role:
   - gateway
   data_domain: []
@@ -1213,9 +1213,10 @@ services:
   display_name: Decentraland Social dApp
   description: The web interface for Decentraland social features, enabling users to discover, create, and manage communities.
     Provides functionality for viewing community profiles, member management, event listings, and community requests. Integrates
-    with social-service-ea backend for social graph and community data.
+    with social-service-ea backend for social graph and community data. Now served as the /social/communities/:id route within
+    the sites app.
   layer: client
-  repository: https://github.com/decentraland/social
+  repository: https://github.com/decentraland/sites
   role:
   - client
   data_domain: []

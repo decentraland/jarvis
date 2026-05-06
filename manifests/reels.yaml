@@ -3,15 +3,15 @@ schema_version: "1.1"
 service:
   name: reels
   display_name: "Reels Frontend"
-  description: Gatsby-based static site frontend for viewing and sharing Decentraland user snapshots (reels). Displays photo metadata including location, visible users, wearables, and realm information with Open Graph support for social media sharing. Deployed to Cloudflare Workers.
+  description: Frontend for viewing and sharing Decentraland user snapshots (reels). Displays photo metadata including location, visible users, wearables, and realm information with Open Graph support for social media sharing. Now served as the /reels route within the sites app.
   owner: core-engineering
-  repository: https://github.com/decentraland/reels
+  repository: https://github.com/decentraland/sites
   language: typescript
   layer: entry-points
   role:
     - gateway
   data_domain: []
-  ai-agent-context: "https://github.com/decentraland/reels/blob/main/docs/ai-agent-context.md"
+  ai-agent-context: "https://github.com/decentraland/sites/blob/main/docs/ai-agent-context.md"
 
 domain:
   glossary:

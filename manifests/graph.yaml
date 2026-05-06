@@ -267,7 +267,7 @@ nodes:
 - name: reels
   display_name: Reels Frontend
   layer: entry-points
-  repository: https://github.com/decentraland/reels
+  repository: https://github.com/decentraland/sites
 - name: referral
   display_name: Referral / Reward Services
   layer: Feature Servers Layer
@@ -291,7 +291,7 @@ nodes:
 - name: social
   display_name: Decentraland Social dApp
   layer: client
-  repository: https://github.com/decentraland/social
+  repository: https://github.com/decentraland/sites
 - name: social-service-ea
   display_name: Social Service EA
   layer: feature-servers
