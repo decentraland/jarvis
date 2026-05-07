@@ -3,7 +3,7 @@ schema_version: "1.1"
 service:
   name: "sites"
   display_name: "Sites"
-  description: "Vite/React SPA serving as the new Decentraland main landing page, replacing the Gatsby-based landing app. All marketing content (hero, missions, FAQ, banners, social proof, marquee, trending news) is fetched at runtime from Contentful CMS via RTK Query, using per-section Contentful entry IDs stored in configuration."
+  description: "Unified Decentraland web app consolidating the landing page, blog, reels, report, communities, storage, cast, jump deep-links, and whats-on (events/places) into a single Vite/React SPA. Routes include /, /blog, /reels, /report, /social/communities/:id, /storage, /cast/*, /jump, and /whats-on."
   owner: "decentraland-foundation"
   repository: "https://github.com/decentraland/sites"
   language: "typescript"
@@ -88,13 +88,20 @@ domain:
     - Feature flags support
     - i18n via react-intl
     - newUser query param support to hide navbar for onboarding flow
+    - Blog with posts, categories, authors, and search (/blog)
+    - Reels frontend for viewing and sharing user snapshots (/reels)
+    - Report page for user/content reporting (/report)
+    - Communities UI for discovering and managing communities (/social/communities/:id)
+    - Storage frontend (/storage)
+    - Cast2 live streaming interface (/cast/*)
+    - Jump deep-link launch of Decentraland Explorer (/jump)
+    - Whats-on unified events and places discovery (/whats-on)
+    - Legal and policy pages (/terms, /privacy, /content, /ethics, /brand, /security)
 
   out_of_scope:
-    - Blog, marketplace, DAO, or community features
-    - Event creation, place management, or world browsing
+    - Marketplace or DAO features
     - Server-side rendering (Gatsby/Next.js is not used)
     - Image uploads or CMS content authoring
-    - Jump-in deep-link launch (that is jump-site)
 
   owned_entities: []
 
@@ -116,6 +123,54 @@ dependencies:
       relationship: "sync"
       protocol: "HTTP"
       purpose: "SSO authentication for wallet connection and onboarding flows"
+      critical: false
+
+    - name: "camera-reel-service"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch snapshot metadata, image URLs, and user gallery listings (/reels)"
+      critical: false
+
+    - name: "credits-server"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Query user credit balances (/social/communities)"
+      critical: false
+
+    - name: "events"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch community events, event metadata for jump-in, and whats-on listings"
+      critical: false
+
+    - name: "notifications"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch in-app notifications for the notification bell (/blog)"
+      critical: false
+
+    - name: "places"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Scene metadata, world name lookup, and place discovery (/jump, /whats-on)"
+      critical: false
+
+    - name: "social-service-ea"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch and manage community data, memberships, and join requests (/social/communities)"
+      critical: false
+
+    - name: "urn-resolver"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Resolve wearable URNs for visible people in snapshots (/reels)"
+      critical: false
+
+    - name: "worlds-content-server"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "World metadata and health for ENS-based worlds (/jump)"
       critical: false
 
   external:
