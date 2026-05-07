@@ -264,10 +264,7 @@ nodes:
   display_name: Realm Provider
   layer: feature-servers
   repository: https://github.com/decentraland/realm-provider
-- name: reels
-  display_name: Reels Frontend
-  layer: entry-points
-  repository: https://github.com/decentraland/reels
+
 - name: referral
   display_name: Referral / Reward Services
   layer: Feature Servers Layer
@@ -288,10 +285,7 @@ nodes:
   display_name: '@dcl/snapshots-fetcher'
   layer: shared-library
   repository: https://github.com/decentraland/snapshots-fetcher
-- name: social
-  display_name: Decentraland Social dApp
-  layer: client
-  repository: https://github.com/decentraland/social
+
 - name: social-service-ea
   display_name: Social Service EA
   layer: feature-servers
@@ -755,6 +749,31 @@ edges:
   relationship: sync
   protocol: HTTP
   description: Fetch user avatar profiles from peer endpoint for authenticated contexts
+- from: sites
+  to: camera-reel-service
+  relationship: sync
+  protocol: HTTP
+  description: Fetch snapshot metadata, image URLs, and user gallery listings (/reels)
+- from: sites
+  to: urn-resolver
+  relationship: sync
+  protocol: HTTP
+  description: Resolve wearable URNs to displayable metadata for visible people in snapshots (/reels)
+- from: sites
+  to: social-service-ea
+  relationship: sync
+  protocol: HTTP
+  description: Fetch and manage community data, memberships, and join requests (/social/communities)
+- from: sites
+  to: events
+  relationship: sync
+  protocol: HTTP
+  description: Fetch community events and activities (/social/communities)
+- from: sites
+  to: credits-server
+  relationship: sync
+  protocol: HTTP
+  description: Query user credit balances (/social/communities)
 - from: launcher-rust
   to: unity-explorer
   relationship: sync
@@ -901,21 +920,7 @@ edges:
   relationship: sync
   protocol: HTTP
   description: Queries Catalyst nodes for scene entities and realm information
-- from: reels
-  to: camera-reel-service
-  relationship: sync
-  protocol: HTTP
-  description: Fetch snapshot metadata, image URLs, and user gallery listings
-- from: reels
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Fetch avatar and profile data for users shown in snapshots
-- from: reels
-  to: urn-resolver
-  relationship: sync
-  protocol: HTTP
-  description: Resolve wearable URNs to displayable metadata for visible people in snapshots
+
 - from: referral
   to: archipelago-workers
   relationship: sync
@@ -951,26 +956,7 @@ edges:
   relationship: sync
   protocol: HTTP
   description: Fetch entity snapshots, pointer-changes stream, and download entity content files
-- from: social
-  to: catalyst
-  relationship: sync
-  protocol: HTTP
-  description: Fetch user profile and avatar data via peer lambdas
-- from: social
-  to: credits-server
-  relationship: sync
-  protocol: HTTP
-  description: Query user credit balances and credit-related information
-- from: social
-  to: events
-  relationship: sync
-  protocol: HTTP
-  description: Fetch community events and activities
-- from: social
-  to: social-service-ea
-  relationship: sync
-  protocol: HTTP
-  description: Fetch and manage community data, memberships, and join requests via REST API
+
 - from: social-service-ea
   to: archipelago-workers
   relationship: sync

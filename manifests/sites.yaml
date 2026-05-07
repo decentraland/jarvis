@@ -88,9 +88,14 @@ domain:
     - Feature flags support
     - i18n via react-intl
     - newUser query param support to hide navbar for onboarding flow
+    - Reels frontend for viewing and sharing user snapshots (/reels)
+    - Report page for user/content reporting (/report)
+    - Communities UI for discovering and managing communities (/social/communities/:id)
+    - Storage frontend (/storage)
+    - Cast2 live streaming interface (/cast/*)
 
   out_of_scope:
-    - Blog, marketplace, DAO, or community features
+    - Blog, marketplace, or DAO features
     - Event creation, place management, or world browsing
     - Server-side rendering (Gatsby/Next.js is not used)
     - Image uploads or CMS content authoring
@@ -116,6 +121,36 @@ dependencies:
       relationship: "sync"
       protocol: "HTTP"
       purpose: "SSO authentication for wallet connection and onboarding flows"
+      critical: false
+
+    - name: "camera-reel-service"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch snapshot metadata, image URLs, and user gallery listings (/reels)"
+      critical: false
+
+    - name: "urn-resolver"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Resolve wearable URNs to displayable metadata for visible people in snapshots (/reels)"
+      critical: false
+
+    - name: "social-service-ea"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch and manage community data, memberships, and join requests (/social/communities)"
+      critical: false
+
+    - name: "events"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Fetch community events and activities (/social/communities)"
+      critical: false
+
+    - name: "credits-server"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Query user credit balances (/social/communities)"
       critical: false
 
   external:

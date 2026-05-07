@@ -812,9 +812,9 @@ services:
     protocol: HTTP
 - name: sites
   display_name: Sites
-  description: Vite/React SPA serving as the new Decentraland main landing page, replacing the Gatsby-based landing app. All
-    marketing content (hero, missions, FAQ, banners, social proof, marquee, trending news) is fetched at runtime from Contentful
-    CMS via RTK Query, using per-section Contentful entry IDs stored in configuration.
+  description: Unified Decentraland web app consolidating landing page, reels, report, communities, storage, and cast routes.
+    Landing page content (hero, missions, FAQ, banners, social proof, marquee, trending news) is fetched at runtime from Contentful
+    CMS via RTK Query. Also serves /reels, /report, /social/communities/:id, /storage, and /cast/* routes.
   layer: presentation
   repository: https://github.com/decentraland/sites
   role:
@@ -825,6 +825,21 @@ services:
     relationship: sync
     protocol: HTTP
   - name: auth
+    relationship: sync
+    protocol: HTTP
+  - name: camera-reel-service
+    relationship: sync
+    protocol: HTTP
+  - name: urn-resolver
+    relationship: sync
+    protocol: HTTP
+  - name: social-service-ea
+    relationship: sync
+    protocol: HTTP
+  - name: events
+    relationship: sync
+    protocol: HTTP
+  - name: credits-server
     relationship: sync
     protocol: HTTP
 - name: launcher-rust
@@ -1111,26 +1126,7 @@ services:
   - name: archipelago-workers
     relationship: both
     protocol: HTTP
-- name: reels
-  display_name: Reels Frontend
-  description: Gatsby-based static site frontend for viewing and sharing Decentraland user snapshots (reels). Displays photo
-    metadata including location, visible users, wearables, and realm information with Open Graph support for social media
-    sharing. Deployed to Cloudflare Workers.
-  layer: entry-points
-  repository: https://github.com/decentraland/reels
-  role:
-  - gateway
-  data_domain: []
-  dependencies:
-  - name: camera-reel-service
-    relationship: sync
-    protocol: HTTP
-  - name: urn-resolver
-    relationship: sync
-    protocol: HTTP
-  - name: catalyst
-    relationship: sync
-    protocol: HTTP
+
 - name: referral
   display_name: Referral / Reward Services
   description: Full-stack Gatsby application (served at rewards.decentraland.org) that manages the distribution of wearable
@@ -1207,29 +1203,6 @@ services:
   data_domain: []
   dependencies:
   - name: catalyst
-    relationship: sync
-    protocol: HTTP
-- name: social
-  display_name: Decentraland Social dApp
-  description: The web interface for Decentraland social features, enabling users to discover, create, and manage communities.
-    Provides functionality for viewing community profiles, member management, event listings, and community requests. Integrates
-    with social-service-ea backend for social graph and community data.
-  layer: client
-  repository: https://github.com/decentraland/social
-  role:
-  - client
-  data_domain: []
-  dependencies:
-  - name: social-service-ea
-    relationship: sync
-    protocol: HTTP
-  - name: events
-    relationship: sync
-    protocol: HTTP
-  - name: catalyst
-    relationship: sync
-    protocol: HTTP
-  - name: credits-server
     relationship: sync
     protocol: HTTP
 - name: social-service-ea
