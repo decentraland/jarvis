@@ -16,31 +16,48 @@ service:
 domain:
   glossary:
     - term: Creator Hub
-      definition: Cross-platform Electron desktop application that bundles the Inspector and provides file system access, project management, and scene deployment capabilities. Consists of three processes (main, preload, renderer) communicating via IPC.
+      definition: Cross-platform Electron desktop application that bundles the Inspector and provides file system access, project management, and scene deployment capabilities. Consists of three processes (main, preload, renderer) communicating via IPC. Its primary job is hosting the Inspector UI so users can edit scenes through a Babylon.js 3D engine; around that core it (a) manages the local scenes workspace (create, open, list, delete scene projects), (b) handles authentication and persists the user's authchain via @dcl/single-sign-on-client in browser localStorage with a 30-day expiration (renderer/src/lib/auth.ts), (c) fetches the user's ENS names and LAND parcels on login via viem and subgraphs (renderer/src/lib/ens.ts, land.ts) to populate deploy-target pickers, (d) orchestrates previews and deploys by spawning each scene's own @dcl/sdk-commands from {scenePath}/node_modules, (e) surfaces in-memory deploy status for the current session (not persisted history), (f) manages permissions for ENS-named worlds via worlds-content-server, and (g) ships auto-update via electron-updater. Its package.json has no @dcl/ecs / @dcl/sdk / @dcl/react-ecs / @dcl/sdk-commands imports — engine access is always indirect, via Inspector's asset-packs runtime or a forked CLI process.
       examples:
         - "User creates a new scene using Creator Hub"
-        - "Creator Hub manages local scene files and assets"
-        - "Creator Hub forks Node.js processes for CLI commands"
+        - "On Publish, Creator Hub lists the user's LAND parcels and ENS-named worlds as deploy targets"
+        - "Creator Hub attaches the user's authchain to deploy requests so the user does not re-sign per upload"
+        - "Creator Hub renderer cannot access Node APIs directly — it calls preload functions exposed via contextBridge, which forward to main for filesystem and CLI work"
+        - "`renderer/src/lib/ens.ts::fetchNames` pulls the user's ENS names from The Graph on login"
+        - "`main/src/modules/cli.ts::start` spawns each scene's own @dcl/sdk-commands for preview"
+        - "Creator Hub renderer does NOT have Node.js access — fs, child_process, and process spawning live in main/ and preload/ only"
+        - "Creator Hub does NOT import @dcl/ecs or any SDK engine package — engine access is always indirect (via Inspector's asset-packs runtime or a forked CLI)"
+        - "Creator Hub does NOT persist a historical deploy log — long-term deployment history lives on catalyst servers, not the Electron app"
       not_to_be_confused_with: ""
 
     - term: Inspector
-      definition: Web-based 3D scene editor embedded in Creator Hub via IFrame with postMessage communication. Provides real-time visual editing with Babylon.js-powered level editor, component manipulation, and CRDT state synchronization.
+      definition: Web-based 3D scene editor embedded in Creator Hub via IFrame with postMessage communication. Provides real-time visual editing with Babylon.js-powered level editor, component manipulation, and CRDT state synchronization. Owns all Babylon.js 3D interaction and crafts composite.json files (one scene root composite + per-entity composites) that describe the scene structure. Populates the asset browser (the catalog) by fetching from the asset-packs CDN. Contains only editor-UI components; no runtime ECS components and no direct @dcl/ecs / @dcl/sdk imports — its only Decentraland package imports are @dcl/ecs-math (vector math utility) and @dcl/schemas (types).
       examples:
         - "Inspector renders the 3D scene with Babylon.js"
         - "User drags and drops assets in Inspector"
         - "Inspector communicates with CLI via WebSocket for standalone mode"
+        - "User drags a Door Smart Item from the catalog panel → Inspector reads the asset's composite definition and merges its entities into the scene's main.composite via the data-layer RPC"
+        - "`packages/inspector/src/lib/babylon/` — all Babylon.js integration lives here"
+        - "`packages/inspector/src/lib/data-layer/host/rpc-methods.ts` — RPC handlers that read/write the scene's main.composite on the host"
+        - "Inspector does NOT define runtime ECS components — those live in @dcl/asset-packs (Smart Items) or js-sdk-toolchain (core engine)"
+        - "Inspector does NOT import @dcl/ecs or @dcl/sdk — its only Decentraland package imports are @dcl/ecs-math (vector math) and @dcl/schemas (types)"
       not_to_be_confused_with: ""
 
     - term: Asset Pack
-      definition: Curated collection of themed 3D assets (static items) and Smart Items distributed via content-addressed storage (S3 CDN). Each asset is referenced by content hash ensuring immutability.
+      definition: Curated collection of themed 3D assets (static items) and Smart Items distributed via content-addressed storage (S3 CDN). Each asset is referenced by content hash ensuring immutability. Each pack is indexed by catalog.json; per-asset entity/component layouts are described by composite.json files. Inspector consumes both — catalog.json for the browser listing, composite.json when an asset is dragged into the scene.
       examples:
         - "cyberpunk asset pack with themed 3D models"
         - "genesis_city asset pack"
-        - "Asset referenced by SHA-256 hash in catalog.json"
+        - "A Door Smart Item from `packs/smart_items/` — ships with composite.json defining its entities plus behavior authored in `src/actions.ts`"
+        - "@dcl/asset-packs publishes to npm; Inspector and the Electron creator-hub app consume it via monorepo `file:` links, not remote npm resolution"
+        - "`packages/asset-packs/packs/smart_items/assets/padlock/` — a Smart Item source folder (composite.json, model, README)"
+        - "`packages/asset-packs/scripts/catalog.ts` — regenerates catalog.json after pack changes"
+        - "@dcl/asset-packs is the ONLY package in this monorepo that imports SDK engine code (@dcl/ecs peerDep; @dcl/js-runtime / @dcl/react-ecs / @dcl/sdk-commands devDeps)"
+        - "A new core ECS component (e.g. a physics primitive) does NOT go here — that belongs in js-sdk-toolchain"
+        - "asset-packs does NOT import from inspector or creator-hub; the dependency flow is strictly asset-packs → inspector → creator-hub"
       not_to_be_confused_with: ""
 
     - term: Smart Item
-      definition: Interactive 3D item with configurable parameters and programmable behaviors. Requires SDK7 runtime (bin/index.js) to execute behaviors in scenes.
+      definition: Interactive 3D item with configurable parameters and programmable behaviors. Requires SDK7 runtime (bin/index.js) to execute behaviors in scenes. All Smart Item definitions and behaviors live in the @dcl/asset-packs package — the only package in this monorepo that imports SDK engine code. Each Smart Item ships with a composite.json describing its entity/component layout; at scene build time @dcl/sdk-commands bundles the Smart-Item runtime into the scene's bin/index.js.
       examples:
         - "Door Smart Item with open/close behavior"
         - "Video Player Smart Item with URL parameter"
@@ -53,7 +70,7 @@ domain:
       not_to_be_confused_with: "Smart Item"
 
     - term: Scene
-      definition: Decentraland SDK7 project containing 3D content, TypeScript/JavaScript scripts, and scene.json configuration for deployment to Genesis City parcels or named Worlds.
+      definition: Decentraland SDK7 project containing 3D content, TypeScript/JavaScript scripts, and scene.json configuration for deployment to Genesis City parcels or named Worlds. Each scene is a self-contained npm project in the scenes workspace, with its own node_modules/@dcl/sdk-commands. This is the unit that carries the SDK version — Creator Hub always spawns the scene's own CLI binary, never a global one.
       examples:
         - "Scene deployed to parcel 0,0 in Genesis City"
         - "Scene deployed to myworld.dcl.eth"
@@ -67,7 +84,7 @@ domain:
       not_to_be_confused_with: ""
 
     - term: catalog.json
-      definition: Central registry containing all asset packs metadata and content hashes. Maps human-readable names to content-addressed asset references.
+      definition: Central registry containing all asset packs metadata and content hashes. Maps human-readable names to content-addressed asset references. Produced and shipped by the @dcl/asset-packs package (declared in its package.json files field). Fetched by Inspector at load time to populate the asset browser (the 'catalog' section of the UI). It is the index of packs, not the per-asset layout — that lives in composite.json.
       examples: []
       not_to_be_confused_with: ""
 
@@ -83,6 +100,46 @@ domain:
         - "Creator Hub opens DevTools for Unity Explorer debugging on specified CDP port"
       not_to_be_confused_with: "Electron DevTools"
 
+    - term: composite.json
+      definition: Per-asset or per-scene layout file. A composite declares entities and the components attached to each. Asset-packs ship one composite.json per asset (describing Smart- or Static-Item structure); Inspector produces composites while the user edits a scene (one scene root composite plus any nested entity composites), written to disk through the RPC data-layer. The SDK runtime reads these composites at scene load.
+      examples:
+        - "Smart Item ships with a composite.json describing its entity/component layout"
+        - "Inspector writes the scene root composite.json as the user edits"
+      not_to_be_confused_with: "catalog.json, which is the index of available packs rather than a per-asset layout"
+
+    - term: Authchain
+      definition: Signed chain of identity (ephemeral session key signed by the user's wallet) held by Creator Hub after login (renderer/src/lib/auth.ts). Attached to every outbound deploy/publish request so catalyst servers, worlds-content-server, etc. can verify the user without a fresh wallet prompt for each action — this is what makes in-app publish feel "one click." Persisted via @dcl/single-sign-on-client in browser localStorage with a 30-day identity expiration (AuthServerProvider.identityExpirationInMillis), so it survives app restarts until it expires or the user signs out. Because @dcl/single-sign-on-client is a Decentraland-wide SSO primitive, the same authchain is shared with other Decentraland web apps served from the same origin.
+      examples:
+        - "Creator Hub attaches the authchain to a deploy request so the user does not re-sign for each action"
+        - "auth.ts::AuthServerProvider.hasValidIdentity uses sso.localStorageGetIdentity(account) to verify the stored identity before deploy"
+      not_to_be_confused_with: "An in-memory-only session token — the authchain is persisted across app restarts via the SSO client's localStorage"
+
+    - term: Scenes workspace
+      definition: Folder on the user's machine where Creator Hub stores and lists SDK scene projects. Each entry is an independent npm project (scene.json, package.json, node_modules/). Creator Hub surfaces this list on the home screen; opening an entry boots the Inspector against that scene's files.
+      examples:
+        - "Creator Hub home screen lists scene projects from the scenes workspace"
+      not_to_be_confused_with: ""
+
+    - term: Scene-scoped sdk-commands
+      definition: Architectural convention — Creator Hub never bundles or globally installs @dcl/sdk-commands. For every preview, build, and deploy, it spawns the CLI from {scenePath}/node_modules/@dcl/sdk-commands (main/src/modules/cli.ts:226, 297). This is why Creator Hub's own package.json does not list @dcl/sdk-commands as a dependency, and why two scenes on the same machine can use different SDK versions without interfering.
+      examples:
+        - "run('@dcl/sdk-commands', 'sdk-commands', { cwd: scenePath, workspace: scenePath })"
+      not_to_be_confused_with: ""
+
+    - term: Creator Hub app scope
+      definition: Precise statement of what the Electron creator-hub app is responsible for, so agents don't overload it with engine or component work. Primary — host the Inspector UI inside an Electron IFrame so users can edit scenes with a Babylon.js 3D engine. Supporting — (a) authentication and authchain custody via @dcl/single-sign-on-client (browser localStorage, 30-day expiration); (b) local scenes-workspace management (create, open, list, delete scene projects); (c) ENS names and LAND fetch on login; (d) deploy orchestration that spawns each scene's own sdk-commands; (e) in-memory deploy status for the current session (no historical persistence); (f) world-permissions management for ENS-named worlds; (g) fetching available catalysts for deploy targets; (h) auto-update via electron-updater. Anything that is not one of those — particularly ECS, runtime components, or SDK engine code — belongs elsewhere in the chain.
+      examples: []
+      not_to_be_confused_with: ""
+
+    - term: SDK layering (investigation order)
+      definition: When a task touches the engine, a component, or scene-runtime behavior, investigate in this order. (1) js-sdk-toolchain library — authoritative for ECS engine, core components, React-ECS, the sdk-commands CLI, and CRDT transport; published as npm packages (@dcl/sdk, @dcl/ecs, @dcl/js-runtime, @dcl/react-ecs, @dcl/sdk-commands) and consumed at build time; core-engine and core-component changes belong here. (2) @dcl/asset-packs package in this repo — Smart Item runtime behaviors built on top of @dcl/ecs; catalog, composites, and Smart-Item definitions live here; the only package in this monorepo that imports SDK engine code. (3) @dcl/inspector package in this repo — editor-UI components, Babylon.js integration, composite.json crafting; no runtime ECS components and no direct SDK engine imports. (4) Electron creator-hub app in this repo — scene workspace, auth + authchain, ENS/LAND fetch, deploy orchestration with scene-local CLI, in-memory deploy status, world-permissions UI, auto-update; almost never the right place for engine or component work.
+      examples:
+        - "Adding a new Transform-like core ECS component -> js-sdk-toolchain"
+        - "Adding a new Smart Item behavior (e.g. a physics trigger) -> @dcl/asset-packs"
+        - "Adding a new property-panel widget or Babylon gizmo -> @dcl/inspector"
+        - "Adding a new deploy-status notification UI -> Electron creator-hub app"
+      not_to_be_confused_with: ""
+
   concept_relationships:
     internal:
       - from: Creator Hub
@@ -92,8 +149,8 @@ domain:
 
       - from: Inspector
         to: Asset Pack
-        relationship: uses
-        description: Inspector loads and renders assets from asset packs via CDN
+        relationship: depends_on
+        description: Inspector declares @dcl/asset-packs as a file dependency (file:../asset-packs) and fetches catalog.json at load time to populate the asset browser; when an asset is dragged into the scene, Inspector reads that asset's composite.json to instantiate the correct entity/component layout.
 
       - from: Scene
         to: Smart Item
@@ -109,6 +166,16 @@ domain:
         to: DevTools Frontend
         relationship: contains
         description: Creator Hub bundles DevTools frontend as extraResource for Unity CDP debugging
+
+      - from: Creator Hub
+        to: Scene
+        relationship: contains
+        description: Creator Hub manages the scenes workspace — a directory of self-contained scene projects — and lets the user create, open, preview, and deploy each one. Each scene carries its own node_modules/@dcl/sdk-commands.
+
+      - from: Creator Hub
+        to: Authchain
+        relationship: references
+        description: Creator Hub persists the user's authchain via the @dcl/single-sign-on-client (browser localStorage, 30-day expiration) after login and attaches it to outbound publish/deploy requests, eliminating per-action wallet prompts and surviving app restarts until expiration.
 
     cross_service:
       - local_concept: Scene
@@ -150,6 +217,22 @@ domain:
       enforced_at: domain_layer
       severity: hard
 
+    - rule: Only the @dcl/asset-packs package may import SDK engine code from js-sdk-toolchain (@dcl/ecs, @dcl/js-runtime, @dcl/react-ecs, @dcl/sdk-commands). The @dcl/inspector package and the Electron creator-hub app must not take direct SDK engine dependencies. Non-engine Decentraland packages like @dcl/ecs-math and @dcl/schemas are allowed anywhere.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: The @dcl/inspector package contains only editor-UI components and Babylon-integration code (including composite.json crafting). Runtime ECS components executed inside a scene belong in @dcl/asset-packs (Smart Items) or js-sdk-toolchain (core engine).
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: The Electron creator-hub app hosts the Inspector and orchestrates scene operations; its main, preload, and renderer processes must not contain engine, ECS, or scene-runtime logic. Its concerns are Inspector embedding, authentication and authchain custody, scenes-workspace management, ENS/LAND fetch, scene-local sdk-commands spawning, in-memory deploy status, world-permissions management, and auto-update.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: When the Electron creator-hub app needs to run sdk-commands (preview, build, deploy), it must resolve and spawn the binary from the target scene's own node_modules/@dcl/sdk-commands, not from a globally-installed or monorepo-bundled CLI. This preserves per-scene SDK-version independence.
+      enforced_at: domain_layer
+      severity: hard
+
   responsibilities:
     - Provide cross-platform Electron desktop application for SDK7 scene creation and editing
     - Embed Inspector web application via IFrame with postMessage/RPC communication
@@ -169,6 +252,15 @@ domain:
     - Support Unity CDP debugging via bundled DevTools frontend (devtools-frontend submodule)
     - Publish asset-packs and inspector packages to npm registry
     - Upload asset content to CDN (production and development environments)
+    - Host the Inspector UI inside the Electron app so users can author Decentraland SDK scenes through a Babylon.js 3D engine — this is the Creator Hub app's primary feature
+    - Manage the user's local scenes workspace — create, open, list, and delete self-contained SDK scene projects on disk
+    - On login, fetch the user's ENS names (renderer/src/lib/ens.ts) and LAND parcels (renderer/src/lib/land.ts) via viem and Ethereum subgraphs to populate deploy-target pickers
+    - Hold the user's authchain via @dcl/single-sign-on-client (browser localStorage, 30-day expiration) and attach it to outbound deploy/publish requests so the user signs once instead of per action
+    - Spawn each scene's own @dcl/sdk-commands from {scenePath}/node_modules for preview, build, and deploy — never a globally-installed CLI
+    - Surface deploy progress and outcome as in-memory state for the current session; do not persist historical deployment history inside the Electron app
+    - Manage permissions for ENS-named worlds (editors, accessors, etc.) through the worlds-content-server API
+    - Package @dcl/asset-packs owns Smart-Item definitions and runtime behaviors; it is the sole monorepo consumer of js-sdk-toolchain engine packages and produces catalog.json plus per-asset composite.json files
+    - Package @dcl/inspector owns all Babylon.js editor interaction and crafts composite.json files (scene root and per-entity) consumed by the SDK runtime at scene load
 
   out_of_scope:
     - 3D rendering engine implementation (delegated to Inspector's Babylon.js integration)
@@ -179,6 +271,10 @@ domain:
     - Asset pack content hosting (handled by S3 CDN)
     - Code signing and notarization (handled by CI/CD with external services)
     - Protocol Buffers compilation (requires external protoc binary, managed via Makefile)
+    - ECS engine and core component implementations (owned by js-sdk-toolchain and consumed via @dcl/ecs)
+    - React-ECS reconciler and Flexbox UI layout engine for in-scene UI (owned by js-sdk-toolchain)
+    - sdk-commands CLI implementation — build, start, deploy, init, pack-smart-wearable (owned by js-sdk-toolchain; Creator Hub only spawns the binary from each scene's local install)
+    - Historical, persisted deployment history across sessions — Creator Hub tracks deploy status only in-memory for the current session; long-term deployment history is surfaced elsewhere (catalyst servers, builder-server, or user-visible dashboards)
 
   owned_entities:
     - name: Scene Project
@@ -232,6 +328,10 @@ dependencies:
       critical: true
 
   external:
+    - name: "@dcl/sdk, @dcl/ecs, @dcl/js-runtime, @dcl/react-ecs, @dcl/sdk-commands (libraries from js-sdk-toolchain)"
+      purpose: Core SDK library set — published as npm packages by the js-sdk-toolchain repo and consumed at build time inside this monorepo. Direct imports live only in the @dcl/asset-packs package — @dcl/ecs as a peerDependency (intentionally loose to avoid version pinning), and @dcl/js-runtime / @dcl/react-ecs / @dcl/sdk-commands as devDependencies used to build the Smart-Item bundle (bin/index.js). syncpack keeps versions aligned across the monorepo. The @dcl/inspector package and the Electron creator-hub app import none of these directly — the Electron app spawns sdk-commands from each scene's own node_modules instead. Engine or core-component changes belong in js-sdk-toolchain, not here.
+      type: other
+
     - name: GitHub CDN
       purpose: Distribution of asset packs content (builder-items.decentraland.org and builder-items.decentraland.zone)
       type: cdn
