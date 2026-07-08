@@ -1,0 +1,180 @@
+schema_version: "1.1"
+
+service:
+  name: contracts
+  display_name: Decentraland Contract Addresses Registry
+  description: Static site (default/only branch is `gh-pages`, published via GitHub Pages to the custom domain contracts.decentraland.org per the CNAME file) that is the canonical registry of Decentraland's deployed smart-contract addresses per network. The entire dataset lives in addresses.json (a flat "network -> contract name -> address" map covering mainnet, sepolia, goerli, matic/Polygon, mumbai, amoy, and arbitrum). links.html is a small vanilla-JS page that fetches addresses.json and renders each address as a clickable link to its block explorer (Etherscan/Polygonscan), with a copy-to-clipboard action. There is no package.json, source directory, build tooling, or ABI data in the repo — it is purely address data plus a browsing page. The decentraland/smart-contracts-workspace README explicitly points here as the source of truth for per-network deployed contract addresses.
+  owner: smart-contracts
+  repository: https://github.com/decentraland/contracts
+  language: html
+  layer: Smart Contracts
+  role:
+    - library
+  data_domain:
+    - contract-addresses
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Contract Address
+      definition: The hex address at which a specific Decentraland smart contract is deployed on a specific network. Stored as a plain string in addresses.json, keyed by contract name within that network's object.
+
+    - term: Network
+      definition: A top-level key in addresses.json identifying a blockchain/environment that contracts are deployed to. Present values are mainnet, sepolia, goerli, matic, mumbai, amoy, and arbitrum.
+      examples:
+        - mainnet (Ethereum L1 production)
+        - matic (Polygon L2 production)
+        - sepolia (Ethereum L1 testnet)
+
+    - term: L1 Network
+      definition: Ethereum Layer 1 networks in this registry (mainnet, sepolia, goerli) where core contracts such as LANDRegistry, EstateRegistry, MANAToken, and DCLRegistrar are deployed.
+
+    - term: L2 Network
+      definition: Layer 2 networks in this registry (matic/Polygon mainnet, mumbai, amoy, and arbitrum) used for lower-cost operations such as collections, marketplace, and third-party registry contracts.
+
+    - term: Legacy Network
+      definition: A network whose entries are retained for historical reference but is deprecated as an active testnet — goerli (Ethereum) and mumbai (Polygon) in this dataset.
+
+    - term: MANA Token
+      definition: ERC-20 token contract for Decentraland's currency, listed under every network (MANAToken).
+
+    - term: LAND Registry / Estate Registry
+      definition: ERC-721 contracts managing ownership of individual LAND parcels (LANDRegistry/LANDProxy) and of Estates, groups of parcels merged into one asset (EstateRegistry/EstateProxy).
+
+    - term: Marketplace
+      definition: Contract(s) handling primary/secondary trading of LAND, Estates, and items. Multiple versions appear per network (Marketplace, MarketplaceV2, MarketplaceV3, MarketplaceV4, MarketplaceProxy).
+
+    - term: Catalyst Contract
+      definition: On-chain registry of Catalyst server ownership/registration data (Catalyst/CatalystProxy), one of the contracts other Decentraland services look up by address from this registry.
+
+    - term: Collection Factory
+      definition: Factory contract that deploys new wearable/emote collection contracts on an L2 network (CollectionFactory, CollectionFactoryV3).
+
+    - term: Third Party Registry (TPR)
+      definition: Contract managing registration of third-party (external creator) collections (TPR, TPRV3, TPRProxy, TPRAdmin), deployed on L2 networks.
+
+    - term: Committee
+      definition: Governance contract whose members approve/curate collections (Committee, OldCommittee) on L2 networks.
+
+    - term: POI (Proof of Identity)
+      definition: Contract used for identity/allow-list checks on L2 networks (POI, POIAllowlist/POIAllowListProxy).
+
+    - term: DCL Registrar
+      definition: Contract managing registration of Decentraland (.dcl) names, with a controller contract (DCLController/DCLControllerV2) handling the registration flow.
+
+    - term: Root/Child Chain Manager Proxy
+      definition: Polygon PoS Bridge contracts (RootChainManagerProxy on L1, ChildChainManagerProxy on L2) used to move assets between Ethereum and Polygon.
+
+    - term: Rentals
+      definition: Contract enabling LAND/Estate rental agreements on-chain (RentalsProxy, RentalsImplementation, RentalsProxyAdmin).
+
+    - term: Credits Manager
+      definition: Contract managing off-chain-purchased, on-chain-redeemable "credits" balances (CreditsManager, with a deprecated CreditsManager_DEPRECATED predecessor).
+
+  concept_relationships:
+    internal:
+      - from: Network
+        to: Contract Address
+        relationship: has_many
+        description: Each network object in addresses.json maps many contract names to their deployed address on that network.
+
+      - from: Contract Address
+        to: Network
+        relationship: belongs_to
+        description: A given contract address is only meaningful in the context of the single network it was deployed to; the same contract name can have a different address on each network.
+
+    cross_service:
+      - local_concept: Contract Address
+        remote_service: smart-contracts-workspace
+        remote_concept: Deployed Contract
+        mapping_type: derived_from
+        description: Per the smart-contracts-workspace README, per-network deployed addresses for contracts built in that workspace should be looked up here rather than tracked separately.
+
+      - local_concept: Contract Address
+        remote_service: (Decentraland clients and backend services generally, e.g. Explorer, Marketplace, Builder, Catalyst servers)
+        remote_concept: On-chain contract reference
+        mapping_type: referenced_by
+        description: Any Decentraland client or service that needs to call or read a specific contract on a specific network is expected to source that address from this registry (addresses.json) rather than hardcode or duplicate it.
+
+      - local_concept: Contract Address
+        remote_service: rpc-gateway
+        remote_concept: Network endpoint
+        mapping_type: references
+        description: This registry provides the address ("what"); rpc-gateway provides the JSON-RPC endpoint to call it ("how"). To perform a blockchain query, take the address from here and send the call to the matching network endpoint of rpc-gateway.
+
+  invariants:
+    - rule: Contract names are unique within a given network's object in addresses.json
+      enforced_at: domain_layer
+      severity: soft
+
+    - rule: New or changed addresses must be added by directly editing addresses.json on the gh-pages branch, per the README's instructions
+      enforced_at: domain_layer
+      severity: soft
+
+  responsibilities:
+    - Publish the canonical, per-network list of Decentraland's deployed smart-contract addresses in addresses.json
+    - Serve that data as a static site via GitHub Pages at contracts.decentraland.org
+    - Provide a human-browsable page (links.html) that links each address to its block explorer (Etherscan for Ethereum networks, Polygonscan for Polygon networks) and supports copying an address to the clipboard
+    - Retain addresses for legacy/deprecated testnets (goerli, mumbai) alongside current networks (mainnet, sepolia, matic, amoy) and one non-EVM-family outlier network (arbitrum) for a single contract
+
+  out_of_scope:
+    - Smart contract source code, compilation, or deployment (no Solidity or deployment scripts are present in this repo)
+    - Contract ABIs (only addresses are stored; unlike catalyst-contracts, no ABI or bytecode data is included)
+    - Blockchain RPC provider connections or transaction signing (left to consuming services)
+    - Contract interaction/business logic (implemented by the services and dApps that read these addresses)
+    - Historical/versioned tracking of when an address was deployed (e.g., no per-contract deployment-block metadata)
+
+  owned_entities:
+    - name: Contract Address Entry
+      description: A single "network -> contract name -> address" record inside addresses.json.
+      persistence: static JSON file committed to the gh-pages branch, served as a static asset via GitHub Pages
+      identity_field: contract name, scoped within its network object
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: Ethereum Mainnet
+      purpose: Hosts the L1 production contract addresses listed under the "mainnet" key (LANDRegistry, EstateRegistry, MANAToken, Marketplace, Catalyst, DCLRegistrar, etc.)
+      type: blockchain
+
+    - name: Ethereum Sepolia
+      purpose: Hosts the L1 testnet contract addresses listed under the "sepolia" key
+      type: blockchain
+
+    - name: Ethereum Goerli
+      purpose: Legacy L1 testnet whose contract addresses are retained under the "goerli" key
+      type: blockchain
+
+    - name: Polygon (Matic) Mainnet
+      purpose: Hosts the L2 production contract addresses listed under the "matic" key (collections, marketplace, third-party registry, POI, etc.)
+      type: blockchain
+
+    - name: Polygon Mumbai
+      purpose: Legacy L2 testnet whose contract addresses are retained under the "mumbai" key
+      type: blockchain
+
+    - name: Polygon Amoy
+      purpose: Hosts the current L2 testnet contract addresses listed under the "amoy" key
+      type: blockchain
+
+    - name: Arbitrum One
+      purpose: Hosts a single listed address (GRTMultisig) under the "arbitrum" key
+      type: blockchain
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars: []
+
+adrs: []

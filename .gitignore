@@ -6,3 +6,4 @@ dist
 settings.local.json
 temp
 tmp
+.DS_Store

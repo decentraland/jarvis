@@ -1,0 +1,410 @@
+schema_version: "1.1"
+
+service:
+  name: vestings-builder
+  display_name: Vestings Builder (Vesting Generator)
+  description: >-
+    Deployer/factory tooling for MANA vesting contracts. Provides a Solidity
+    minimal-proxy (EIP-1167) factory and an upgradeable PeriodicTokenVesting
+    implementation that vests an ERC-20 token (typically MANA) to a
+    beneficiary over configurable periods, plus a React frontend
+    (vestings-deployer) that lets a wallet-connected user deploy a single
+    vesting contract or a batch of them (via CSV) without writing code. The
+    original, simpler TokenVesting contract (contractsOld/) is still
+    supported for legacy-style single/batch deployments under the "/old"
+    routes.
+  owner: smart-contracts
+  repository: https://github.com/decentraland/vestings-builder
+  language: solidity
+  layer: Smart Contracts
+  role:
+    - other
+  data_domain:
+    - vestings
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Vesting
+      definition: >-
+        The gradual release of a fixed pool of tokens to a beneficiary over
+        time, according to a predefined schedule, instead of transferring
+        them all at once.
+
+    - term: PeriodicTokenVesting
+      definition: >-
+        The current (contracts/) upgradeable vesting contract. Vests an
+        ERC-20 token to a beneficiary across consecutive, equal-length
+        periods, each with its own configured amount to vest. Supports an
+        optional cliff, optional linear vesting within each period, and
+        optional revocability/pausability. Deployed as the implementation
+        behind many minimal-proxy clones rather than deployed directly per
+        beneficiary.
+      not_to_be_confused_with: >-
+        The legacy TokenVesting contract (contractsOld/VestingImpl.sol),
+        which vests linearly over a single start/cliff/duration window
+        instead of per-period amounts.
+
+    - term: Beneficiary
+      definition: >-
+        The address entitled to release vested tokens from a
+        PeriodicTokenVesting instance. Only the beneficiary can call
+        release() (choosing the receiving address and amount) or transfer
+        beneficiary status to a new address.
+
+    - term: Cliff
+      definition: >-
+        A duration (in seconds) after the vesting start during which no
+        tokens vest at all, regardless of elapsed periods. Once the cliff
+        passes, vesting is calculated as if it had been accruing since start.
+
+    - term: Vesting Period
+      definition: >-
+        A fixed-length span of time (in seconds) with its own configured
+        token amount (vestedPerPeriod[i]). A vesting schedule is made up of
+        one or more consecutive periods; once a period fully elapses its
+        full amount is vested (or, if the schedule isLinear, its amount
+        accrues proportionally to elapsed time within that period).
+
+    - term: Factory / Builder
+      definition: >-
+        MinimalProxyFactory (contracts/MinimalProxyFactory.sol), a contract
+        that deploys minimal-proxy (EIP-1167) clones pointing at a single
+        deployed implementation (e.g. PeriodicTokenVesting) via CREATE2, then
+        optionally calls the clone with initialization data in the same
+        transaction.
+
+    - term: Batch Deployment
+      definition: >-
+        Deploying multiple vesting contracts in one flow. OwnableBatchVestings
+        (contracts/OwnableBatchVestings.sol) lets its owner call the factory's
+        createVesting once per entry in a list of encoded initialization
+        payloads (one per beneficiary), typically sourced from a CSV upload
+        in the frontend's batch UI.
+
+    - term: Minimal Proxy (EIP-1167 Clone)
+      definition: >-
+        A tiny bytecode stub deployed per vesting instance that delegatecalls
+        into a single shared PeriodicTokenVesting implementation contract,
+        keeping per-vesting deployment cheap while each clone has its own
+        storage (owner, beneficiary, schedule, etc.).
+
+    - term: Surplus
+      definition: >-
+        Tokens held in a PeriodicTokenVesting contract's balance beyond what
+        remains to be vested (or, if revoked, beyond what was already
+        vested). Only the contract owner can withdraw surplus, via
+        releaseSurplus.
+
+    - term: Revoke vs. Pause
+      definition: >-
+        Revoking (owner-only, requires isRevocable) irreversibly stops
+        vesting forever at that timestamp. Pausing (owner-only, requires
+        isPausable) also stops vesting at that timestamp but can be undone
+        with unpause, resuming the normal schedule.
+
+    - term: TokenVesting (Legacy)
+      definition: >-
+        The original vesting contract (contractsOld/VestingImpl.sol),
+        vesting linearly from start+cliff to start+duration. Still
+        deployable through this repo's "/old" and "/old/batch" frontend
+        routes via the legacy MinimalProxyFactory/BatchVestings
+        (contractsOld/VestingFactory.sol, contractsOld/BatchVestings.sol).
+
+  concept_relationships:
+    internal:
+      - from: OwnableBatchVestings
+        to: Factory / Builder
+        relationship: depends_on
+        description: >-
+          OwnableBatchVestings.createVestings loops over a list of
+          initialization payloads and calls the injected factory's
+          createVesting once per entry, each with a distinct salt.
+      - from: Factory / Builder
+        to: PeriodicTokenVesting
+        relationship: creates
+        description: >-
+          MinimalProxyFactory.createProxy deploys a minimal-proxy clone
+          pointed at a deployed PeriodicTokenVesting implementation and
+          optionally calls initialize() on it in the same transaction.
+      - from: PeriodicTokenVesting
+        to: Beneficiary
+        relationship: references
+        description: >-
+          Each PeriodicTokenVesting instance stores exactly one beneficiary
+          address, the only account authorized to release vested tokens.
+      - from: PeriodicTokenVesting
+        to: Vesting Period
+        relationship: has_many
+        description: >-
+          A PeriodicTokenVesting instance is configured with an ordered
+          array of per-period vested amounts (vestedPerPeriod) that
+          determine how much unlocks as each period elapses.
+
+    cross_service:
+      - local_concept: PeriodicTokenVesting
+        remote_service: mana
+        remote_concept: MANA Token (ERC-20)
+        mapping_type: references
+        description: >-
+          Each PeriodicTokenVesting instance is initialized with an ERC-20
+          token address to vest; the token is not hardcoded in the contract,
+          but the frontend defaults the token field to the MANA contract
+          address per network, and this repo's real-world usage is deploying
+          vestings that vest MANA to beneficiaries.
+
+  invariants:
+    - rule: >-
+        A PeriodicTokenVesting implementation contract cannot be initialized
+        directly; its constructor calls _disableInitializers so only proxy
+        clones can be initialized.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: >-
+        initialize() requires a non-zero token address, non-zero start time,
+        non-zero period duration, and a non-empty vestedPerPeriod array.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: Only the beneficiary can call release() or setBeneficiary().
+      enforced_at: domain_layer
+      severity: hard
+    - rule: >-
+        Only the owner can call revoke(), pause(), unpause(),
+        releaseForeignToken(), and releaseSurplus().
+      enforced_at: domain_layer
+      severity: hard
+    - rule: >-
+        Revoking a vesting is irreversible and requires isRevocable to be
+        true; once revoked, vesting is permanently stopped at that
+        timestamp and getIsRevoked() can never return to false.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: >-
+        Pausing requires isPausable to be true and can be undone via
+        unpause(), unlike revoke().
+      enforced_at: domain_layer
+      severity: hard
+    - rule: >-
+        The beneficiary can only release an amount up to getReleasable()
+        (tokens vested so far minus tokens already released), and never more
+        than the contract's actual token balance in practice.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: >-
+        releaseForeignToken() cannot be used to withdraw the vesting's own
+        configured token.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: >-
+        OwnableBatchVestings.createVestings can only be called by the
+        address set as owner at initialization.
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - >-
+      Provide MinimalProxyFactory, a CREATE2-based minimal-proxy (EIP-1167)
+      factory for cheaply deploying clones of a single deployed
+      implementation contract (e.g. PeriodicTokenVesting), optionally
+      initializing them in the same transaction.
+    - >-
+      Provide OwnableBatchVestings for deploying multiple vesting proxy
+      clones in a single owner-gated transaction, one per entry in a list of
+      encoded initialization payloads.
+    - >-
+      Implement PeriodicTokenVesting: vest an ERC-20 token to a beneficiary
+      across consecutive, equal-length periods with configurable per-period
+      amounts, an optional cliff, optional linear accrual within a period,
+      and optional revocability/pausability.
+    - >-
+      Allow a PeriodicTokenVesting beneficiary to release vested tokens to
+      an address of their choice, and to transfer beneficiary status to
+      another address.
+    - >-
+      Allow a PeriodicTokenVesting owner to revoke (irreversibly stop) or
+      pause/unpause (reversibly stop) vesting, and to withdraw surplus
+      tokens or foreign (non-vested) ERC-20 tokens sent to the contract.
+    - >-
+      Provide a React frontend (vestings-deployer) for connecting a wallet
+      and deploying single or batch (CSV-driven) vesting contracts, with URL
+      query-param prefill for single deployments, covering both the current
+      PeriodicTokenVesting flow and the legacy TokenVesting flow.
+    - >-
+      Continue to support deployment of the original TokenVesting contract
+      (contractsOld/) via legacy factory/batch contracts and the "/old"
+      frontend routes.
+
+  out_of_scope:
+    - >-
+      Implementation of the MANA token itself (owned by the separate mana
+      repository/contract) — this repo only references an ERC-20 token
+      address supplied at initialization.
+    - >-
+      Funding deployed vesting contracts with tokens — transferring tokens
+      into a deployed PeriodicTokenVesting/TokenVesting instance is a
+      separate, manual step outside this repo.
+    - >-
+      Enforcing that the vested token is MANA specifically — the contracts
+      accept any ERC-20 token address; MANA is only the frontend's default
+      convenience value.
+    - >-
+      Off-chain scheduling, notification, or automation of token releases —
+      the beneficiary must call release() themselves.
+    - >-
+      On-chain governance, approval workflows, or KYC for who can be set as
+      a beneficiary or owner.
+
+  owned_entities:
+    - name: PeriodicTokenVesting
+      description: >-
+        A deployed minimal-proxy instance (backed by the shared
+        PeriodicTokenVesting implementation) holding an owner, beneficiary,
+        ERC-20 token, revocable/pausable flags, start/period/cliff timing,
+        and a per-period vested-amount schedule.
+      persistence: on-chain (Ethereum contract storage)
+      identity_field: contract address (deterministic, derived via CREATE2 salt)
+    - name: TokenVesting (Legacy)
+      description: >-
+        A deployed legacy vesting instance vesting linearly from
+        start+cliff to start+duration, created via the legacy factory
+        contracts in contractsOld/.
+      persistence: on-chain (Ethereum contract storage)
+      identity_field: contract address (deterministic, derived via CREATE2 salt)
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: mana
+      relationship: sync
+      protocol: blockchain
+      purpose: >-
+        Deployed PeriodicTokenVesting / TokenVesting contracts vest and
+        transfer MANA to beneficiaries over time; the token address is
+        passed in at initialization (not hardcoded on-chain), and the
+        frontend defaults that field to the MANA contract address per
+        network.
+      critical: true
+
+  external:
+    - name: Ethereum Mainnet
+      purpose: >-
+        Production deployment network (chainId 1); frontend hardcodes
+        mainnet implementation, factory, and MANA addresses.
+      type: blockchain
+    - name: Ethereum Sepolia
+      purpose: >-
+        Testnet deployment network (chainId 11155111); frontend hardcodes
+        Sepolia implementation, factory, and MANA addresses.
+      type: blockchain
+    - name: OpenZeppelin Contracts
+      purpose: >-
+        Base contract library used for OwnableUpgradeable, PausableUpgradeable,
+        IERC20, and SafeERC20 in PeriodicTokenVesting.
+      type: other
+    - name: Hardhat
+      purpose: >-
+        Development, compilation, testing, coverage, and deployment
+        framework for the Solidity contracts.
+      type: other
+    - name: Etherscan
+      purpose: >-
+        Contract source verification via the hardhat-etherscan plugin
+        (ETHERSCAN_API_KEY).
+      type: api
+    - name: Vercel
+      purpose: >-
+        Hosts the React frontend (vestings-deployer.vercel.app), per the
+        repo's now.json deployment config.
+      type: other
+
+events:
+  publishes:
+    - name: ProxyCreated
+      description: >-
+        Emitted by MinimalProxyFactory (contracts/) when a new minimal-proxy
+        clone (e.g. a PeriodicTokenVesting instance) is deployed via
+        createProxy.
+      channel: on-chain event
+      key_payload_fields:
+        - _proxy
+
+    - name: VestingCreated
+      description: >-
+        Emitted by the legacy MinimalProxyFactory (contractsOld/VestingFactory.sol)
+        when a new minimal-proxy clone (e.g. a legacy TokenVesting instance)
+        is deployed via createVesting.
+      channel: on-chain event
+      key_payload_fields:
+        - _address
+        - _salt
+
+    - name: BeneficiaryUpdated
+      description: >-
+        Emitted by PeriodicTokenVesting when the beneficiary address is set
+        or transferred to a new address.
+      channel: on-chain event
+      key_payload_fields:
+        - _newBeneficiary
+
+    - name: Released
+      description: >-
+        Emitted when vested tokens are released to a receiver.
+        PeriodicTokenVesting emits this with the receiver and amount; the
+        legacy TokenVesting contract also emits a same-named event but with
+        only a cumulative released amount as its parameter.
+      channel: on-chain event
+      key_payload_fields:
+        - _receiver
+        - _amount
+
+    - name: ReleasedForeign
+      description: >-
+        Emitted by PeriodicTokenVesting when the owner withdraws a foreign
+        (non-vested) ERC-20 token from the contract via releaseForeignToken.
+      channel: on-chain event
+      key_payload_fields:
+        - _receiver
+        - _token
+        - _amount
+
+    - name: ReleasedSurplus
+      description: >-
+        Emitted by PeriodicTokenVesting when the owner withdraws surplus
+        tokens (balance exceeding what remains to vest) via releaseSurplus.
+      channel: on-chain event
+      key_payload_fields:
+        - _receiver
+        - _amount
+
+    - name: Revoked
+      description: >-
+        Emitted when a vesting contract is revoked by its owner. Both
+        PeriodicTokenVesting and the legacy TokenVesting contract emit this
+        event (the legacy version takes no parameters).
+      channel: on-chain event
+      key_payload_fields: []
+
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: RPC
+      description: >-
+        JSON-RPC endpoint URL used by the Hardhat "deploy" network for
+        contract deployment scripts.
+      affects: deployment network connection
+    - name: PRIVATE_KEY
+      description: Private key of the deployer account used by the Hardhat "deploy" network.
+      affects: deployment signer account
+    - name: ETHERSCAN_API_KEY
+      description: API key used by hardhat-etherscan to verify deployed contract source code.
+      affects: contract verification
+
+adrs: []

@@ -1,0 +1,246 @@
+schema_version: "1.1"
+
+service:
+  name: land
+  display_name: LAND & Estate Registry
+  description: Solidity smart contracts implementing the ERC-721 registry for Decentraland's virtual LAND parcels and Estates (groups of parcels). Tracks parcel ownership, (x,y) coordinates, scene content pointers, and estate composition on Ethereum.
+  owner: smart-contracts
+  repository: https://github.com/decentraland/land
+  language: solidity
+  layer: Smart Contracts
+  role:
+    - other
+  data_domain:
+    - land
+    - estates
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: LAND
+      definition: An ERC-721 non-fungible token representing ownership of a single virtual parcel of Decentraland, identified by integer (x, y) coordinates encoded into a single tokenId.
+      examples:
+        - Parcel at coordinates (10, -20)
+
+    - term: Estate
+      definition: A separate ERC-721 token (EstateRegistry) that groups one or more LAND parcels under single ownership so they can be transferred and managed as a single unit.
+
+    - term: Token ID encoding
+      definition: LAND coordinates (x, y) are packed into a single uint256 tokenId by shifting x into the high 128 bits and y into the low 128 bits. Valid coordinates must satisfy -1,000,000 < x, y < 1,000,000.
+
+    - term: Update Operator
+      definition: An address authorized by a LAND/Estate owner to update the parcel's or estate's content data (scene pointer) without being able to transfer ownership.
+
+    - term: Update Manager
+      definition: An address approved by an owner (via setUpdateManager) to manage the updateOperator role across all of that owner's LAND parcels/Estates.
+
+    - term: Authorized Deployer
+      definition: An address authorized by the proxy owner (via authorizeDeploy) to mint/assign brand-new LAND parcels using assignNewParcel/assignMultipleParcels.
+
+    - term: Fingerprint
+      definition: A checksum over the set of LAND ids contained in an Estate, used by external consumers (e.g. marketplaces) to verify an Estate's contents have not changed since being listed. getFingerprintV2 produces a collision-resistant keccak256 hash; the older getFingerprint used a linear XOR construction now documented as unsafe for larger LAND sets.
+      not_to_be_confused_with: A cryptographic wallet/device fingerprint — this is purely a content-integrity checksum over LAND ids.
+
+    - term: LAND Balance / Estate Land Balance
+      definition: Optional MiniMe token contracts that mirror an account's LAND/Estate-LAND count as a token balance for accounts that opt in via registerBalance(), enabling snapshot-based balance queries (e.g. for voting).
+
+    - term: Proxy / Upgradable pattern
+      definition: LANDRegistry sits behind an upgradable proxy (LANDProxy) and EstateRegistry uses the zos Migratable pattern, so contract logic can be upgraded by the proxy owner while preserving stored state and the public contract address.
+
+  concept_relationships:
+    internal:
+      - from: Estate
+        to: LAND
+        relationship: contains
+        description: An Estate holds one or more LAND parcels; transferring a LAND into an Estate moves custody of the LAND token to the EstateRegistry contract, which tracks membership internally (estateLandIds/landIdEstate).
+
+      - from: LANDRegistry
+        to: EstateRegistry
+        relationship: references
+        description: LANDRegistry stores a reference to the EstateRegistry contract address (setEstateRegistry) and blocks direct/unsafe transfers to it, requiring transferLandToEstate/createEstate for estate operations.
+
+      - from: LAND
+        to: Update Operator
+        relationship: has_one
+        description: Each LAND parcel (and each Estate) has at most one updateOperator address permitted to change its content/data pointer.
+    cross_service: []
+
+  invariants:
+    - rule: LAND coordinates must satisfy -1,000,000 < x, y < 1,000,000; token ids outside this range are rejected by encode/decode.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: A LAND parcel cannot be sent to the EstateRegistry address via the plain transferFrom/ERC-721 path; only transferLandToEstate/transferManyLandToEstate/createEstate may move LAND into an Estate.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Only the proxy owner or an address explicitly authorized via authorizeDeploy can assign new LAND parcels.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: An Estate's legacy XOR-based getFingerprint is accepted by verifyFingerprint only as a fallback for estates with fewer than 19 LAND ids and only before a hardcoded cutoff timestamp (block.timestamp < 1795705200, i.e. 2026-11-26 15:00 UTC); outside that window only the collision-resistant getFingerprintV2 hash is accepted.
+      enforced_at: domain_layer
+      severity: soft
+
+  responsibilities:
+    - Mint and track ownership of LAND parcels as ERC-721 tokens keyed by an encoded (x, y) coordinate tokenId.
+    - Store and expose each parcel's content/metadata pointer (IPFS identifier, IPNS url, or HTTPS scene description endpoint).
+    - Group LAND parcels into Estates, a separate ERC-721 registry that can be owned/transferred as a single unit.
+    - Manage authorization roles for updating parcel/estate content (updateOperator, updateManager) separately from ownership/transfer rights.
+    - Gate who may mint new parcels via an authorized-deployer allowlist controlled by the proxy owner.
+    - Provide Estate fingerprint verification of LAND composition for external consumers (e.g. marketplaces checking an estate hasn't changed).
+    - Support upgradability of registry logic via a proxy pattern while preserving parcel/estate ownership state.
+
+  out_of_scope:
+    - MANA token logic and the original crowdsale (handled by the mana repo).
+    - Wearables/emote collection item contracts (handled by wearables-contracts).
+    - Marketplace order listing/matching/settlement, on-chain or off-chain (handled by marketplace-contracts / offchain-marketplace-contract).
+    - LAND/Estate rental agreements (handled by rentals-contract).
+    - DCL name/subdomain registration and claiming (handled by avatars-contract).
+
+  owned_entities:
+    - name: LAND
+      description: ERC-721 token representing a single virtual land parcel identified by (x, y) coordinates.
+      persistence: ethereum (on-chain contract storage)
+      identity_field: tokenId (encoded x,y coordinates)
+
+    - name: Estate
+      description: ERC-721 token grouping one or more LAND parcels under single ownership.
+      persistence: ethereum (on-chain contract storage)
+      identity_field: estateId
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: Ethereum Mainnet
+      purpose: Production network where LANDRegistry and EstateRegistry are deployed (see zos.mainnet.json, truffle-config.js infura_mainnet network).
+      type: blockchain
+
+    - name: Ethereum Ropsten
+      purpose: Legacy testnet deployment target (see zos.ropsten.json, truffle-config.js ropsten/infura_ropsten networks).
+      type: blockchain
+
+    - name: erc821
+      purpose: External npm library providing the FullAssetRegistry/AssetRegistryStorage base asset-registry contracts that LANDRegistry extends.
+      type: other
+
+    - name: openzeppelin-zos
+      purpose: OpenZeppelin (zos-compatible fork) library providing ERC721Token, ERC721Receiver, and Ownable base contracts used by EstateRegistry.
+      type: other
+
+    - name: zos-lib
+      purpose: ZeppelinOS library providing the Migratable upgradability pattern used to initialize/upgrade EstateRegistry.
+      type: other
+
+events:
+  publishes:
+    - name: Update
+      description: Emitted when a LAND parcel's (or an Estate's) content/metadata data pointer is updated.
+      channel: on-chain event
+      key_payload_fields:
+        - assetId
+        - holder
+        - operator
+        - data
+
+    - name: UpdateOperator
+      description: Emitted when the updateOperator address for a LAND parcel or Estate is set.
+      channel: on-chain event
+      key_payload_fields:
+        - assetId
+        - operator
+
+    - name: UpdateManager
+      description: Emitted when an owner approves or revokes an updateManager address that can manage the updateOperator role across their LAND/Estates.
+      channel: on-chain event
+      key_payload_fields:
+        - owner
+        - operator
+        - caller
+        - approved
+
+    - name: DeployAuthorized
+      description: Emitted when the proxy owner authorizes a new address to assign/deploy LAND parcels.
+      channel: on-chain event
+      key_payload_fields:
+        - caller
+        - deployer
+
+    - name: DeployForbidden
+      description: Emitted when the proxy owner revokes an address's authorization to assign LAND parcels.
+      channel: on-chain event
+      key_payload_fields:
+        - caller
+        - deployer
+
+    - name: SetLandBalanceToken
+      description: Emitted when the LAND-balance MiniMe token address is changed.
+      channel: on-chain event
+      key_payload_fields:
+        - previousLandBalance
+        - newLandBalance
+
+    - name: EstateRegistrySet
+      description: Emitted when LANDRegistry's reference to the EstateRegistry contract address is set or changed.
+      channel: on-chain event
+      key_payload_fields:
+        - registry
+
+    - name: CreateEstate
+      description: Emitted when a new Estate token is minted.
+      channel: on-chain event
+      key_payload_fields:
+        - owner
+        - estateId
+        - data
+
+    - name: AddLand
+      description: Emitted when a LAND parcel is added to (transferred into) an Estate.
+      channel: on-chain event
+      key_payload_fields:
+        - estateId
+        - landId
+
+    - name: RemoveLand
+      description: Emitted when a LAND parcel is removed from (transferred out of) an Estate.
+      channel: on-chain event
+      key_payload_fields:
+        - estateId
+        - landId
+        - destinatary
+
+    - name: SetLANDRegistry
+      description: Emitted when EstateRegistry's reference to the LANDRegistry contract address is set or changed.
+      channel: on-chain event
+      key_payload_fields:
+        - registry
+
+    - name: SetEstateLandBalanceToken
+      description: Emitted when the Estate-LAND-balance MiniMe token address is changed.
+      channel: on-chain event
+      key_payload_fields:
+        - previousEstateLandBalance
+        - newEstateLandBalance
+
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: MNEMONIC
+      description: HD wallet mnemonic used by truffle-hdwallet-provider to derive the deployer account for Infura-based network deployments.
+      affects: contract deployment signing (truffle-config.js)
+
+    - name: INFURA_API_KEY
+      description: Infura project API key used to build the RPC endpoint URL for mainnet/ropsten deployments.
+      affects: contract deployment RPC connectivity (truffle-config.js)
+
+adrs: []

@@ -1387,3 +1387,250 @@ services:
   - name: notifications-workers
     relationship: sync
     protocol: HTTP
+- name: land
+  display_name: LAND & Estate Registry
+  description: >-
+    Solidity smart contracts implementing the ERC-721 registry for Decentraland's virtual LAND parcels and Estates
+    (groups of parcels). Tracks parcel ownership, (x,y) coordinates, scene content pointers, and estate composition on
+    Ethereum.
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/land
+  role:
+    - other
+  data_domain:
+    - land
+    - estates
+  dependencies: []
+- name: mana
+  display_name: MANA Token & Crowdsale
+  description: >-
+    Solidity smart contracts for Decentraland's MANA ERC-20 token together with the original 2017 token crowdsale (Dutch
+    auction) and the post-crowdsale continuous issuance contract. MANA is Decentraland's native currency, used for
+    payments, burns, and vesting across the rest of the smart-contracts workspace.
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/mana
+  role:
+    - other
+  data_domain:
+    - mana
+  dependencies: []
+- name: wearables-contracts
+  display_name: Wearables Contracts (Collection V2 & Collection Store)
+  description: >-
+    Solidity smart contracts implementing Decentraland's Collection V2 standard — ERC-721 collections of
+    wearables/emotes — plus the Collection Store primary-sale storefront, the Third Party Registry for external
+    creators, and supporting contracts (Rarities, Committee, oracles, and L1<->L2 bridges). These contracts are the
+    on-chain source of truth for which wearable/emote items exist, their rarity/supply, and their approval status.
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/wearables-contracts
+  role:
+    - other
+  data_domain:
+    - wearables
+    - emotes
+    - collections
+  dependencies:
+    - name: mana
+      relationship: sync
+      protocol: blockchain
+- name: offchain-marketplace-contract
+  display_name: Off-Chain Marketplace (Trades)
+  description: >-
+    EIP-712 signature-based Decentraland Marketplace (Solidity/Foundry). Users sign "Trades" off-chain describing the
+    Assets they will send and the Assets they want to receive; any counterparty can then settle the Trade on-chain via
+    DecentralandMarketplaceEthereum (LAND, Estates, Names, MANA) or DecentralandMarketplacePolygon (Collection item
+    primary sales/minting and secondary NFT trades), with DAO fee and creator royalty distribution, Coupon-based
+    discounts, and MANA "Credits" redemption via CreditsManagerPolygon. This is the CURRENT marketplace for all new
+    Decentraland orders and for primary sales of store collections, superseding the legacy on-chain
+    marketplace-contracts repository.
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/offchain-marketplace-contract
+  role:
+    - other
+  data_domain:
+    - orders
+    - trades
+    - marketplace
+  dependencies:
+    - name: mana
+      relationship: sync
+      protocol: blockchain
+    - name: land
+      relationship: sync
+      protocol: blockchain
+    - name: wearables-contracts
+      relationship: sync
+      protocol: blockchain
+    - name: marketplace-contracts
+      relationship: sync
+      protocol: blockchain
+- name: marketplace-contracts
+  display_name: Marketplace Contracts (Legacy)
+  description: >-
+    Legacy on-chain Decentraland Marketplace smart contract (Solidity). It still holds liquidity — existing orders
+    remain valid and settleable — but no new orders are created here; every new order is now created through
+    offchain-marketplace-contract, which is also used for primary sales of store collections. Treat this repo as
+    read/settle-only for anything new. This GitHub repository is ARCHIVED.
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/marketplace-contracts
+  role:
+    - other
+  data_domain:
+    - orders
+    - marketplace
+  dependencies:
+    - name: mana
+      relationship: sync
+      protocol: blockchain
+    - name: land
+      relationship: sync
+      protocol: blockchain
+    - name: wearables-contracts
+      relationship: sync
+      protocol: blockchain
+- name: bid-contract
+  display_name: Bid Contract (Legacy)
+  description: >-
+    Legacy on-chain bid/offer contract (ERC721Bid) that lets bidders place MANA-denominated bids on ERC-721 tokens
+    (LAND, wearables/emotes) and lets token owners accept them via safeTransferFrom. It still holds liquidity, so
+    pre-existing bids remain valid and settleable, but new bids are no longer created here — new bids go through
+    offchain-marketplace-contract. This GitHub repository is ARCHIVED (settle-only, no active development).
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/bid-contract
+  role:
+    - other
+  data_domain:
+    - bids
+    - offers
+  dependencies:
+    - name: mana
+      relationship: sync
+      protocol: blockchain
+    - name: land
+      relationship: sync
+      protocol: blockchain
+    - name: wearables-contracts
+      relationship: sync
+      protocol: blockchain
+- name: rentals-contract
+  display_name: Rentals Contract
+  description: >-
+    Solidity smart contract enabling on-chain renting of Decentraland LAND and Estates using off-chain signed listings
+    and offers. During the rental period it grants the tenant scene-deploy rights on the asset via the ERC-721
+    setUpdateOperator function, and settles rent payments in an ERC-20 token (MANA) between the tenant, the lessor, and
+    a DAO fee collector.
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/rentals-contract
+  role:
+    - other
+  data_domain:
+    - rentals
+  dependencies:
+    - name: land
+      relationship: sync
+      protocol: blockchain
+    - name: mana
+      relationship: sync
+      protocol: blockchain
+- name: avatars-contract
+  display_name: Avatars Contract (DCL Names / Subdomains)
+  description: >-
+    ARCHIVED repository. Solidity smart contracts implementing Decentraland's DCL Name registration system, exposed as
+    ENS subdomains under the "dcl" domain (e.g. "nacho.dcl.eth"). DCLRegistrar is an ERC-721 contract that mints a token
+    per registered subdomain and writes ownership into the ENS registry, while DCLController / DCLControllerV2 gate
+    registration behind an ERC-20 (MANA) payment. This repository is archived on GitHub and is no longer actively
+    developed.
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/avatars-contract
+  role:
+    - other
+  data_domain:
+    - names
+    - subdomains
+  dependencies:
+    - name: mana
+      relationship: sync
+      protocol: blockchain
+- name: pass-through
+  display_name: Pass-Through Contract (Districts)
+  description: >-
+    Solidity proxy/gating contract built for Decentraland Districts. It sits in front of a configurable target contract
+    (deployed pointing at the EstateRegistry/land contract) and forwards calls to it through a low-level fallback
+    function, while letting the contract owner selectively disable ("gate") specific method signatures for up to two
+    years and re-enable them later. A companion PassThroughManager contract lets a single owner remotely disable/allow
+    methods across PassThrough instances it owns. This GitHub repository is ARCHIVED.
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/pass-through
+  role:
+    - other
+  data_domain:
+    - districts
+  dependencies:
+    - name: land
+      relationship: sync
+      protocol: blockchain
+- name: vestings-builder
+  display_name: Vestings Builder (Vesting Generator)
+  description: >-
+    Deployer/factory tooling for MANA vesting contracts. Provides a Solidity minimal-proxy (EIP-1167) factory and an
+    upgradeable PeriodicTokenVesting implementation that vests an ERC-20 token (typically MANA) to a beneficiary over
+    configurable periods, plus a React frontend (vestings-deployer) that lets a wallet-connected user deploy a single
+    vesting contract or a batch of them (via CSV) without writing code. The original, simpler TokenVesting contract
+    (contractsOld/) is still supported for legacy-style single/batch deployments under the "/old" routes.
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/vestings-builder
+  role:
+    - other
+  data_domain:
+    - vestings
+  dependencies:
+    - name: mana
+      relationship: sync
+      protocol: blockchain
+- name: smart-contract-audits
+  display_name: Smart Contract Audits
+  description: >-
+    A repository collecting third-party security audit reports (PDF and Markdown documents) for Decentraland's smart
+    contracts. It contains no deployable contract code — it is a historical archive making audit coverage and findings
+    for each contract release discoverable.
+  layer: Reference
+  repository: https://github.com/decentraland/smart-contract-audits
+  role:
+    - other
+  data_domain:
+    - security-audits
+  dependencies: []
+- name: contracts
+  display_name: Decentraland Contract Addresses Registry
+  description: >-
+    Static site (default/only branch is `gh-pages`, published via GitHub Pages to the custom domain
+    contracts.decentraland.org per the CNAME file) that is the canonical registry of Decentraland's deployed
+    smart-contract addresses per network. The entire dataset lives in addresses.json (a flat "network -> contract name
+    -> address" map covering mainnet, sepolia, goerli, matic/Polygon, mumbai, amoy, and arbitrum). links.html is a small
+    vanilla-JS page that fetches addresses.json and renders each address as a clickable link to its block explorer
+    (Etherscan/Polygonscan), with a copy-to-clipboard action. There is no package.json, source directory, build tooling,
+    or ABI data in the repo — it is purely address data plus a browsing page. The decentraland/smart-contracts-workspace
+    README explicitly points here as the source of truth for per-network deployed contract addresses.
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/contracts
+  role:
+    - library
+  data_domain:
+    - contract-addresses
+  dependencies: []
+- name: rpc-gateway
+  display_name: Decentraland RPC Gateway
+  description: >-
+    Decentraland's hosted JSON-RPC gateway, reachable at https://rpc.decentraland.org/<network>, used to read from and
+    interact with EVM chains (and the Decentraland contracts deployed on them) without depending on a third-party RPC
+    provider. This is shared platform infrastructure, not a code repository — the endpoint is documented as the
+    preferred RPC in the smart-contracts-workspace AI Agent Context. Any service, dApp, tool, script, or agent that
+    needs to perform a blockchain query (eth_call, eth_getLogs, balance/allowance reads, broadcasting a signed
+    transaction, etc.) against a Decentraland-supported network should route it through this gateway. It is the "how to
+    reach it" half of a blockchain query; pair it with the `contracts` registry, which is the "what address" half.
+  layer: infrastructure
+  repository: ""
+  role:
+    - gateway
+  data_domain: []
+  dependencies: []

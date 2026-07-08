@@ -1,0 +1,173 @@
+schema_version: "1.1"
+
+service:
+  name: pass-through
+  display_name: Pass-Through Contract (Districts)
+  description: Solidity proxy/gating contract built for Decentraland Districts. It sits in front of a configurable target contract (deployed pointing at the EstateRegistry/land contract) and forwards calls to it through a low-level fallback function, while letting the contract owner selectively disable ("gate") specific method signatures for up to two years and re-enable them later. A companion PassThroughManager contract lets a single owner remotely disable/allow methods across PassThrough instances it owns. This GitHub repository is ARCHIVED.
+  owner: smart-contracts
+  repository: https://github.com/decentraland/pass-through
+  language: solidity
+  layer: Smart Contracts
+  role:
+    - other
+  data_domain:
+    - districts
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Pass-Through Contract
+      definition: A proxy contract (PassThrough.sol) that forwards ("passes through") calls it receives to a configurable target contract via its fallback function and an inline-assembly `call`, acting as a permissioned gateway in front of that target.
+
+    - term: Target
+      definition: The address the PassThrough contract forwards calls to. Set to the EstateRegistry address at construction time; can be changed later via setTarget by the operator or owner, provided the new address is a contract and not the PassThrough contract itself.
+
+    - term: Operator
+      definition: An address set at construction that is allowed to trigger fallback forwarding for any method that is not currently disabled, and to call setTarget. Distinct from the contract owner, who can always forward calls regardless of gating.
+
+    - term: Method Gating (Disable/Allow)
+      definition: The core access-control mechanism. The owner can call disableMethod(signature, time) to block a specific function signature (identified by its bytes4 selector) from being forwarded on behalf of the operator, for up to MAX_EXPIRATION_TIME (2 years), and allowMethod(signature) to re-enable it early. The owner is never subject to this gating.
+
+    - term: District
+      definition: The intended deployer/owner context for a PassThrough instance — Decentraland's community land initiative. Districts used this contract to grant an operator limited, revocable control over an EstateRegistry-owned Estate/LAND asset while keeping transfer-related methods disabled by default.
+
+    - term: EstateRegistry
+      definition: The Decentraland contract (part of the land/Estate registry) this contract is designed to sit in front of. Its address is passed into the constructor, stored as `estateRegistry`, set as the initial `target`, and used to restrict `onERC721Received` to only accept tokens sent from that address.
+
+    - term: PassThroughManager
+      definition: A separate, standalone Ownable contract that lets its own owner remotely call disableMethod/allowMethod on any PassThrough contract that the manager itself owns (verified via isOwner()), centralizing administration of method-gating rules across one or more PassThrough deployments. It enforces its own hardcoded MAX_TIME cap (a fixed 2020-12-31 Unix timestamp), independent of PassThroughStorage's rolling 2-year MAX_EXPIRATION_TIME.
+
+  concept_relationships:
+    internal:
+      - from: PassThroughManager
+        to: PassThrough
+        relationship: depends_on
+        description: PassThroughManager calls disableMethod/allowMethod on a target PassThrough contract (via the IPassThrough interface) only after confirming, via isOwner(), that the manager itself is that PassThrough's owner.
+
+      - from: PassThrough
+        to: Method Gating
+        relationship: contains
+        description: Each PassThrough instance keeps its own disableMethods mapping (bytes4 selector to expiration timestamp) that determines whether the operator can currently forward a given method to the target.
+
+      - from: PassThrough
+        to: Target
+        relationship: references
+        description: PassThrough forwards all non-gated fallback calls to its configured target contract address via a low-level assembly `call`, returning or reverting with the target's raw result.
+
+    cross_service:
+      - local_concept: Target / EstateRegistry
+        remote_service: land
+        remote_concept: EstateRegistry (Estate/LAND ERC-721)
+        mapping_type: references
+        description: The constructor takes an `_estateRegistry` address, stores it, and sets it as the initial forwarding target; it also pre-disables EstateRegistry-specific methods (transferLand, transferManyLands, safeTransferManyFrom) and ERC-721 transfer/approval methods, confirming the wrapped target is the land/Estate registry contract.
+
+  invariants:
+    - rule: The contract owner can always trigger fallback forwarding regardless of method gating; only the operator is subject to the disableMethods checks.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: A method can only be disabled for a duration greater than 0 and up to MAX_EXPIRATION_TIME (2 years); disabling and re-allowing are owner-only.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: setTarget requires the new target to be a contract address and different from the PassThrough contract itself, and can only be called by the operator or the owner.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: onERC721Received only accepts token transfers whose sender is the configured estateRegistry address.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: At deployment, a fixed set of ERC-721 transfer/approval methods and EstateRegistry land-transfer methods are pre-disabled for the maximum 2-year period.
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Forward (proxy) arbitrary calls received via its fallback function to a configured target contract, returning or reverting with the target's result
+    - Let the contract owner disable specific method signatures (by selector) for up to two years, blocking the operator from forwarding calls to those methods
+    - Let the contract owner re-enable (allow) a previously disabled method before its expiration
+    - Let the operator or owner repoint the contract at a new target contract address
+    - Pre-disable a fixed set of ERC-721 and EstateRegistry transfer/approval methods at construction time
+    - Accept ERC-721 token transfers only from the configured estateRegistry address via onERC721Received
+    - Allow a PassThroughManager owner to remotely disable/allow methods on any PassThrough contract it owns, without needing per-contract owner keys
+
+  out_of_scope:
+    - Owning or issuing LAND/Estate tokens itself (delegates to the wrapped EstateRegistry/land contract)
+    - General-purpose upgradeability or storage migration beyond the fixed PassThroughStorage layout
+    - Governance or DAO voting logic for Districts (handled elsewhere)
+    - Active feature development — this GitHub repository is archived and receives no new functionality
+
+  owned_entities:
+    - name: DisabledMethod
+      description: A method signature (bytes4 selector) mapped to the on-chain timestamp until which the operator is blocked from forwarding calls to it.
+      persistence: on-chain contract storage (EVM)
+      identity_field: bytes4 method selector
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: land
+      relationship: sync
+      protocol: blockchain
+      purpose: PassThrough forwards (proxies) calls to an EstateRegistry (land/Estate) contract address supplied at deployment and set as the initial target
+      critical: true
+
+  external:
+    - name: Ethereum (EVM-compatible network)
+      purpose: Network where the PassThrough and PassThroughManager contracts are deployed (network config in truffle-config.js; Ropsten/Infura configured for testing)
+      type: blockchain
+
+    - name: OpenZeppelin (openzeppelin-solidity / openzeppelin-eth)
+      purpose: Provides the Ownable access-control base contract and the Address library (isContract check) used by PassThrough
+      type: other
+
+    - name: Truffle
+      purpose: Solidity compilation, migration, and testing framework used by this repository
+      type: other
+
+events:
+  publishes:
+    - name: MethodDisabled
+      description: Emitted when the owner disables a method signature, recording the caller, the bytes4 selector, and the human-readable signature string.
+      channel: on-chain event
+      key_payload_fields:
+        - _caller
+        - _signatureBytes4
+        - _signature
+
+    - name: MethodAllowed
+      description: Emitted when the owner re-enables a previously disabled method signature.
+      channel: on-chain event
+      key_payload_fields:
+        - _caller
+        - _signatureBytes4
+        - _signature
+
+    - name: TargetChanged
+      description: Emitted when the operator or owner repoints the contract at a new target contract address.
+      channel: on-chain event
+      key_payload_fields:
+        - _caller
+        - _oldTarget
+        - _newTarget
+
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: MNEMONIC
+      description: HD wallet mnemonic used by truffle-hdwallet-provider to derive the deployer/signer account for non-local networks.
+      affects: deployment signer account
+
+    - name: INFURA_API_KEY
+      description: Infura API key used to build the RPC endpoint for the infura_ropsten network in truffle-config.js.
+      affects: RPC endpoint for deployment/testing network
+
+adrs: []

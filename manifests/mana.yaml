@@ -1,0 +1,264 @@
+schema_version: "1.1"
+
+service:
+  name: mana
+  display_name: MANA Token & Crowdsale
+  description: Solidity smart contracts for Decentraland's MANA ERC-20 token together with the original 2017 token crowdsale (Dutch auction) and the post-crowdsale continuous issuance contract. MANA is Decentraland's native currency, used for payments, burns, and vesting across the rest of the smart-contracts workspace.
+  owner: smart-contracts
+  repository: https://github.com/decentraland/mana
+  language: solidity
+  layer: Smart Contracts
+  role:
+    - other
+  data_domain:
+    - mana
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: MANA Token
+      definition: The ERC-20 token contract (symbol MANA, 18 decimals) that is Decentraland's native currency. It supports minting, self-burning, and owner-controlled pausing of all transfers (MANAToken.sol).
+      not_to_be_confused_with: The bridged/mirrored MANA token deployed on Polygon (L2) for lower-cost L2 transactions — that deployment is not part of this repository.
+
+    - term: Crowdsale
+      definition: MANACrowdsale.sol, the original 2017 token sale contract. It implements a Dutch auction — the price descends linearly from initialRate to endRate over a fixed block range — with a hard cap on wei raised and finalization logic that mints the foundation's token share.
+
+    - term: Continuous Sale
+      definition: MANAContinuousSale.sol, a perpetual token-issuance contract that takes over MANA minting after the crowdsale is finalized. It caps new issuance to a fixed annual inflation rate (8%), enforced per fixed-size time bucket (12 hours).
+
+    - term: Whitelist
+      definition: A list of buyer addresses (managed by WhitelistedCrowdsale.sol) that are allowed to purchase tokens at a preferential rate before the crowdsale opens to the general public.
+
+    - term: Foundation Share
+      definition: The 60% portion of the final token supply minted to the sale wallet when the crowdsale is finalized, complementing the 40% sold to the public during the sale (TOTAL_SHARE / CROWDSALE_SHARE / FOUNDATION_SHARE constants in MANACrowdsale.sol).
+
+    - term: Preferential Rate
+      definition: A per-buyer or whitelist-wide exchange rate (tokens per wei) that whitelisted buyers pay instead of the auction's descending public rate, settable by the owner before the sale starts.
+
+  concept_relationships:
+    internal:
+      - from: MANACrowdsale
+        to: MANAToken
+        relationship: depends_on
+        description: The crowdsale contract deploys, mints via, and pauses/unpauses the MANAToken during and after the sale.
+
+      - from: MANACrowdsale
+        to: MANAContinuousSale
+        relationship: contains
+        description: MANACrowdsale deploys a MANAContinuousSale contract at construction time and, once finalized, transfers MANAToken minting ownership to it via beginContinuousSale().
+
+      - from: MANAContinuousSale
+        to: MANAToken
+        relationship: depends_on
+        description: After receiving ownership from the finalized crowdsale, the continuous sale contract mints, pauses, and unpauses the MANAToken.
+
+      - from: MANACrowdsale
+        to: WhitelistedCrowdsale
+        relationship: extends
+        description: MANACrowdsale extends WhitelistedCrowdsale so pre-approved buyer addresses can purchase at a preferential rate before the public sale opens.
+
+      - from: MANAToken
+        to: BurnableToken
+        relationship: extends
+        description: MANAToken extends BurnableToken (alongside zeppelin-solidity's PausableToken and MintableToken) so holders can irreversibly destroy their own token balance.
+
+    cross_service:
+      - local_concept: MANAToken
+        remote_service: offchain-marketplace-contract
+        remote_concept: Payment Token
+        mapping_type: used_by
+        description: The current EIP-712 marketplace settles trade payments (including store-collection primary sales) by transferring MANA between counterparties.
+
+      - local_concept: MANAToken
+        remote_service: marketplace-contracts
+        remote_concept: Payment Token
+        mapping_type: used_by
+        description: The legacy on-chain Marketplace settles payments in MANA for pre-existing orders only; no new orders are created there.
+
+      - local_concept: MANAToken
+        remote_service: bid-contract
+        remote_concept: Payment Token
+        mapping_type: used_by
+        description: The legacy bid contract settles payments in MANA for pre-existing bids only; new bids go through the offchain marketplace.
+
+      - local_concept: MANAToken
+        remote_service: avatars-contract
+        remote_concept: Name Registration Fee
+        mapping_type: used_by
+        description: Claiming a Decentraland Name via DCLRegistrar burns MANA as the registration fee.
+
+      - local_concept: MANAToken
+        remote_service: vestings-builder
+        remote_concept: Vested Token
+        mapping_type: used_by
+        description: vestings-builder deploys PeriodicTokenVesting contracts that vest MANA to beneficiaries over time.
+
+  invariants:
+    - rule: At crowdsale finalization, the final token supply must split as 40% sold during the crowdsale and 60% minted to the foundation wallet (TOTAL_SHARE / CROWDSALE_SHARE / FOUNDATION_SHARE).
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Crowdsale token purchases cannot push total wei raised above the hard cap of 86,206 ether (CappedCrowdsale).
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: The crowdsale's initial rate, end rate, and per-buyer preferential rate can only be changed by the owner before the sale's start block.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Continuous-sale token issuance within a 12-hour bucket cannot exceed the annual-inflation-derived issuance cap (8% annual inflation).
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Burning requires a positive value and reduces both the burner's balance and total supply by that amount (BurnableToken.burn).
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: MANA transfers are rejected while the token is paused (PausableToken's whenNotPaused modifier).
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Implement the MANA ERC-20 token contract (symbol MANA, 18 decimals) — Decentraland's native currency
+    - Support minting new MANA supply (MintableToken)
+    - Support holders burning their own MANA balance (BurnableToken)
+    - Support owner-controlled pausing/unpausing of all token transfers (PausableToken)
+    - Implement the original MANA crowdsale as a descending-price Dutch auction with a hard cap (MANACrowdsale)
+    - Support a buyer whitelist allowing preferential pricing before the public sale opens (WhitelistedCrowdsale)
+    - Finalize the crowdsale by minting the foundation's share and handing minting control to the continuous sale contract
+    - Implement a perpetual post-crowdsale issuance contract that mints new MANA at a capped annual inflation rate (MANAContinuousSale)
+
+  out_of_scope:
+    - MANA deployments or bridging on Polygon or other L2 networks (not present in this repo)
+    - Marketplace, bid, collection, rentals, or name-registrar contract logic (owned by offchain-marketplace-contract, marketplace-contracts, bid-contract, wearables-contracts, rentals-contract, and avatars-contract respectively)
+    - MANA vesting schedules and vesting-contract deployment (owned by vestings-builder)
+    - LAND/Estate registry logic (owned by the land repo)
+    - Frontend wallet integration, off-chain price oracles, or fiat on/off-ramps
+
+  owned_entities:
+    - name: MANAToken
+      description: The ERC-20 token contract holding MANA balances, allowances, and total supply.
+      persistence: on-chain (Ethereum Mainnet)
+      identity_field: contract address
+
+    - name: MANACrowdsale
+      description: The contract coordinating the original 2017 MANA token sale (Dutch auction, whitelist, cap, finalization).
+      persistence: on-chain (Ethereum Mainnet)
+      identity_field: contract address
+
+    - name: MANAContinuousSale
+      description: The contract handling perpetual, inflation-capped MANA issuance after the crowdsale was finalized.
+      persistence: on-chain (Ethereum Mainnet)
+      identity_field: contract address
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: Ethereum Mainnet
+      purpose: Deployment network for the MANA token and crowdsale contracts (truffle.js "livenet" network configuration, network_id "1")
+      type: blockchain
+
+    - name: zeppelin-solidity
+      purpose: Supplies the base contract implementations this repo extends — StandardToken, MintableToken, PausableToken, Ownable, SafeMath, Crowdsale, CappedCrowdsale, FinalizableCrowdsale (package.json dependency, v1.2.0; predecessor of OpenZeppelin Contracts)
+      type: other
+
+events:
+  publishes:
+    - name: Transfer
+      description: Standard ERC-20 event emitted whenever MANA moves between addresses (inherited from zeppelin-solidity's StandardToken).
+      channel: on-chain event
+      key_payload_fields:
+        - from
+        - to
+        - value
+
+    - name: Approval
+      description: Standard ERC-20 event emitted when a holder approves a spender's allowance (inherited from zeppelin-solidity's StandardToken).
+      channel: on-chain event
+      key_payload_fields:
+        - owner
+        - spender
+        - value
+
+    - name: Burn
+      description: Emitted when tokens are irreversibly destroyed via BurnableToken.burn.
+      channel: on-chain event
+      key_payload_fields:
+        - burner
+        - value
+
+    - name: Mint
+      description: Emitted when new MANA is minted, whether during the crowdsale or the continuous sale (inherited from zeppelin-solidity's MintableToken).
+      channel: on-chain event
+      key_payload_fields:
+        - to
+        - amount
+
+    - name: MintFinished
+      description: Emitted when minting is permanently disabled on the token (inherited from zeppelin-solidity's MintableToken).
+      channel: on-chain event
+      key_payload_fields: []
+
+    - name: Pause
+      description: Emitted when token transfers are paused by the owner (inherited from zeppelin-solidity's PausableToken).
+      channel: on-chain event
+      key_payload_fields: []
+
+    - name: Unpause
+      description: Emitted when token transfers are unpaused by the owner (inherited from zeppelin-solidity's PausableToken).
+      channel: on-chain event
+      key_payload_fields: []
+
+    - name: TokenPurchase
+      description: Emitted on every crowdsale or continuous-sale token purchase (ContinuousSale.sol / Crowdsale base).
+      channel: on-chain event
+      key_payload_fields:
+        - beneficiary
+        - weiAmount
+        - tokens
+
+    - name: WalletChange
+      description: Emitted when the crowdsale's or continuous sale's funds-collection wallet address is changed by the owner.
+      channel: on-chain event
+      key_payload_fields:
+        - wallet
+
+    - name: PreferentialRateChange
+      description: Emitted when the owner sets a custom purchase rate for a specific whitelisted buyer (MANACrowdsale.setBuyerRate).
+      channel: on-chain event
+      key_payload_fields:
+        - buyer
+        - rate
+
+    - name: InitialRateChange
+      description: Emitted when the owner changes the crowdsale's initial (starting) rate before the sale begins.
+      channel: on-chain event
+      key_payload_fields:
+        - rate
+
+    - name: EndRateChange
+      description: Emitted when the owner changes the crowdsale's end rate before the sale begins.
+      channel: on-chain event
+      key_payload_fields:
+        - rate
+
+    - name: RateChange
+      description: Emitted when the owner changes the continuous sale's issuance rate (MANAContinuousSale.setRate).
+      channel: on-chain event
+      key_payload_fields:
+        - amount
+
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars: []
+
+adrs: []

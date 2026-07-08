@@ -1,0 +1,313 @@
+schema_version: "1.1"
+
+service:
+  name: wearables-contracts
+  display_name: Wearables Contracts (Collection V2 & Collection Store)
+  description: Solidity smart contracts implementing Decentraland's Collection V2 standard — ERC-721 collections of wearables/emotes — plus the Collection Store primary-sale storefront, the Third Party Registry for external creators, and supporting contracts (Rarities, Committee, oracles, and L1<->L2 bridges). These contracts are the on-chain source of truth for which wearable/emote items exist, their rarity/supply, and their approval status.
+  owner: smart-contracts
+  repository: https://github.com/decentraland/wearables-contracts
+  language: solidity
+  layer: Smart Contracts
+  role:
+    - other
+  data_domain:
+    - wearables
+    - emotes
+    - collections
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Collection
+      definition: A group/registry of items (wearables or emotes) deployed as its own ERC-721 contract. Created via the beacon-proxy CollectionFactory so every collection shares a common, upgradeable implementation.
+    - term: Item
+      definition: An entry within a Collection representing one wearable/emote design (e.g. "red_hat"). Has a rarity (max supply), current total supply, price, beneficiary, metadata, and content hash. Items can be minted (issued) many times up to their rarity's max supply.
+      examples:
+        - "red_hat"
+        - "dracula_t_shirt"
+    - term: Token
+      definition: A single ERC-721 emission (mint) of an Item. Its tokenId packs the itemId and the issuedId (emission number, e.g. 1/100) into 32 bytes via encodeTokenId/decodeTokenId.
+    - term: Rarity
+      definition: A named tier (common, uncommon, rare, epic, legendary, mythic, unique) that fixes an Item's maximum supply and the MANA price a creator pays to add an item of that rarity. Managed by the Rarities contract; names and max supplies are immutable once added, only price can change.
+    - term: Collection V2 Roles
+      definition: "Owner (DAO/multisig — approves/rejects collections, can rescue items, transfers creator role): Creator (deployer — adds items, sets minters/managers, mints tokens): Minter (can only mint tokens, global or per-item): Manager (off-chain role allowed to update item content, global or per-item)."
+    - term: Collection Status
+      definition: "A collection moves through: Initialized (constructor called once) -> Completed (no more items can be added, irreversible) -> Approved (tokens can now be minted, reversible by Owner). Editable is a separate off-chain-facing flag controlling whether content can still be updated."
+    - term: CollectionFactory
+      definition: Beacon-proxy factory (BeaconProxyFactory-based) that deploys new Collection V2 contracts deterministically via CREATE2 and keeps a registry of which addresses are legitimate, factory-deployed collections.
+    - term: CollectionManager
+      definition: Entry point creators use to deploy a new collection through the factory. Charges the creator MANA (the acceptedToken) equal to the sum of each item's rarity price, forwarding the fee to a feesCollector, then forwards the creation call to the CollectionFactory via a Forwarder. Also exposes a manageCollection path gated to the Committee for approving/rejecting collections.
+    - term: Collection Store
+      definition: The on-chain primary-sale storefront (CollectionStore) for Collection V2 items. Buyers pay MANA (acceptedToken) for one or more items across one or more collections in a single `buy` call; the store takes a configurable fee (basis of 1,000,000) and mints (issues) the tokens directly to the buyer-specified beneficiaries.
+      not_to_be_confused_with: The offchain-marketplace-contract, which handles secondary trading and is the current settlement path for new orders across the wider marketplace; the Collection Store here is the L2 on-chain primary-sale contract specific to store collections.
+    - term: Third Party Registry
+      definition: Registry (ThirdPartyRegistry, now on V3) of external/"third party" collections not deployed through the standard CollectionFactory. Tracks third parties, their managers, approval status, and purchasable "item slots" (capacity to register items), with slot purchases and programmatic third parties priced in MANA (acceptedToken).
+    - term: Item Slot
+      definition: Purchasable capacity unit in the Third Party Registry that allows a third party to register one additional item. Regular third parties pay per slot; "programmatic" third parties get a fixed number of free base slots and their managers can top up without cost.
+    - term: Committee
+      definition: DAO-controlled set of member addresses (managers.Committee) authorized to approve/reject collections and third parties through CollectionManager.manageCollection and the registries.
+    - term: Rarities
+      definition: Contract (Rarities / RaritiesWithOracle) storing each rarity's name, max supply, and MANA price. RaritiesWithOracle can additionally source live pricing from an IOracle (e.g. ChainlinkOracle) instead of a fixed price.
+    - term: Collections Bridge
+      definition: Pair of contracts (CollectionsBridgeRoot on Ethereum L1, CollectionsBridgeChild on Polygon L2) that lock a legacy V1 collection ERC721 token on one chain and mint/release its bridged representation on the other, using Polygon's FxPortal tunnel for cross-chain messaging.
+    - term: Beacon Proxy Pattern
+      definition: Deployment pattern (EIP-1967-style) where every Collection V2 proxy delegates to a single UpgradeableBeacon's implementation address, so upgrading the beacon upgrades all collections created after that point simultaneously. Collections deployed before a given implementation change keep behaving per that implementation's logic at the time of proxy creation.
+
+  concept_relationships:
+    internal:
+      - from: Collection
+        to: Item
+        relationship: has_many
+        description: A Collection is a registry of one or more Items, each with its own rarity, price, and metadata.
+      - from: Item
+        to: Token
+        relationship: has_many
+        description: Each Item can be minted (issued) multiple times up to its rarity's max supply, producing one Token (ERC-721 tokenId) per mint.
+      - from: CollectionFactory
+        to: Collection
+        relationship: has_many
+        description: The CollectionFactory deploys and keeps a registry of every Collection V2 proxy created through it via CREATE2.
+      - from: CollectionManager
+        to: CollectionFactory
+        relationship: depends_on
+        description: CollectionManager charges the MANA creation fee and then forwards the actual deployment call to the CollectionFactory through a Forwarder contract.
+      - from: CollectionStore
+        to: Collection
+        relationship: depends_on
+        description: CollectionStore calls issueTokens on a Collection V2 contract to mint purchased items after transferring MANA to the item's beneficiary and the fee owner.
+      - from: ThirdPartyRegistry
+        to: Item Slot
+        relationship: has_many
+        description: A Third Party's capacity to register items is tracked as a balance of purchased/consumed item slots inside the registry.
+      - from: Rarities
+        to: Item
+        relationship: references
+        description: An Item's rarity name is looked up in the Rarities contract to determine its max supply and MANA price at creation time.
+      - from: Committee
+        to: Collection
+        relationship: references
+        description: Committee members are authorized (via CollectionManager.manageCollection) to approve or reject Collections and Third Parties.
+
+    cross_service:
+      - local_concept: acceptedToken (CollectionManager / CollectionStore / ThirdPartyRegistry)
+        remote_service: mana
+        remote_concept: MANA Token
+        mapping_type: references
+        description: All three contracts are deployed pointing at the MANA ERC-20 token as their acceptedToken — used for collection creation fees, primary item purchases, and third-party item slot fees.
+      - local_concept: Collection Item (ERC-721 token)
+        remote_service: offchain-marketplace-contract
+        remote_concept: Traded Asset
+        mapping_type: references
+        description: Collection V2 items minted here are the ERC-721 asset that the offchain-marketplace-contract trades, including primary sales of store collections which settle through that marketplace rather than the Collection Store for orders originating there.
+      - local_concept: Collection Item (ERC-721 token)
+        remote_service: marketplace-contracts
+        remote_concept: Traded Asset
+        mapping_type: references
+        description: Legacy on-chain Marketplace still settles pre-existing orders for collection items minted by this contract, though no new orders are created there.
+      - local_concept: Collection Item (ERC-721 token)
+        remote_service: bid-contract
+        remote_concept: Bid Asset
+        mapping_type: references
+        description: Legacy bid contract still settles pre-existing bids paid in MANA against collection items minted by this contract.
+
+  invariants:
+    - rule: A collection's tokens can only be minted (issued) once the collection is Approved.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: Once a collection is marked Completed, no new items can be added; there is no rollback.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: An item's id and rarity never change after creation; only price, beneficiary, and metadata may be edited afterward.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: A creator must pay MANA equal to the sum of the rarity price of every item being added when deploying a collection through CollectionManager.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: CollectionStore only completes a purchase if the caller-supplied price exactly matches the item's on-chain price, preventing price-change front-running.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: An item using a rarity name not registered in the Rarities contract cannot be added to a collection.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: Third parties must have available item slots before new items can be registered/consumed against them.
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Define and deploy Collection V2 ERC-721 contracts for Decentraland wearables and emotes via a beacon-proxy CollectionFactory
+    - Manage collection items: rarity, max supply, current supply, price, beneficiary, metadata, and content hash
+    - Enforce the collection lifecycle (Initialized -> Completed -> Approved) and role-based permissions (Owner, Creator, Minter, Manager)
+    - Charge MANA fees for collection creation (CollectionManager), proportional to each item's rarity price
+    - Operate the Collection Store, the on-chain primary-sale storefront for store collection items, paid in MANA, with a configurable protocol fee
+    - Operate the Third Party Registry (V1-V3) for external creators' collections, including third-party approval, managers, and MANA-priced item slots
+    - Maintain the Rarities / RaritiesWithOracle contracts defining rarity tiers, max supplies, and MANA prices (optionally sourced from a Chainlink oracle)
+    - Maintain the Committee contract, the DAO-controlled group authorized to approve/reject collections and third parties
+    - Bridge legacy V1 collection ERC-721 tokens between Ethereum L1 and Polygon L2 via a FxPortal-based tunnel (CollectionsBridgeRoot/Child)
+    - Provide legacy V1 collection & factory contracts (ERC721Collection, ERC721CollectionFactory), superseded by V2 but still referenced for bridging
+
+  out_of_scope:
+    - Off-chain order matching, EIP-712 signature creation/verification for trades (handled by offchain-marketplace-contract)
+    - Secondary market trading/settlement of collection items (handled by offchain-marketplace-contract and the legacy marketplace/bid contracts)
+    - LAND/Estate parcel registry and ownership (handled by land)
+    - MANA token issuance, minting, or crowdsale logic (handled by mana)
+    - Off-chain storage/serving of item content (models, thumbnails, representations) — handled by the Decentraland content-server
+    - Catalyst server registration and address lookup (handled by catalyst-contracts)
+    - DCL name/subdomain registration (handled by avatars-contract)
+
+  owned_entities:
+    - name: Collection V2
+      description: An ERC-721 contract instance (beacon proxy) representing a group of wearable/emote items.
+      persistence: blockchain (Polygon/Ethereum contract storage)
+      identity_field: contract address
+    - name: Item
+      description: A wearable/emote design within a Collection, with rarity, supply, price, beneficiary, and metadata.
+      persistence: blockchain (Collection contract storage)
+      identity_field: itemId
+    - name: Third Party
+      description: An external creator's registered collection entity inside the Third Party Registry, with managers and item slots.
+      persistence: blockchain (ThirdPartyRegistry contract storage)
+      identity_field: thirdPartyId
+    - name: Rarity
+      description: A named supply/price tier used when adding items to a collection.
+      persistence: blockchain (Rarities contract storage)
+      identity_field: name
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: mana
+      relationship: sync
+      protocol: blockchain
+      purpose: CollectionManager, CollectionStore, and the Third Party Registry all transfer/charge MANA (their configured acceptedToken) for collection creation fees, primary item purchases, and third-party item slot fees.
+      critical: true
+
+  external:
+    - name: Ethereum Mainnet
+      purpose: L1 deployment network for legacy V1 collections/factory and the root side of the Collections Bridge (CollectionsBridgeRoot).
+      type: blockchain
+    - name: Polygon (Matic) Network
+      purpose: Primary L2 deployment network for Collection V2, CollectionManager, CollectionStore, Third Party Registry, and the child side of the Collections Bridge.
+      type: blockchain
+    - name: Polygon Mumbai / Amoy Testnets
+      purpose: L2 testnet deployment targets used for staging/testing before mainnet/Polygon releases.
+      type: blockchain
+    - name: OpenZeppelin Contracts / Contracts-Upgradeable
+      purpose: Base ERC-721, Ownable, SafeMath, and BeaconProxy/UpgradeableBeacon implementations used throughout the contracts.
+      type: other
+    - name: fx-portal-contracts (Polygon FxPortal)
+      purpose: Cross-chain messaging tunnel (FxBaseRootTunnel/FxBaseChildTunnel) used by CollectionsBridgeRoot/CollectionsBridgeChild to relay deposit/withdraw messages between L1 and L2.
+      type: other
+    - name: Chainlink Data Feeds
+      purpose: Price oracle consumed by ChainlinkOracle/IDataFeed, used by RaritiesWithOracle to source live rarity pricing instead of a fixed MANA price.
+      type: other
+
+events:
+  publishes:
+    - name: ProxyCreated
+      description: Emitted by the beacon-proxy CollectionFactory when a new Collection V2 contract is deployed via CREATE2.
+      channel: on-chain event
+      key_payload_fields:
+        - _address
+        - _salt
+    - name: AddItem
+      description: Emitted when a new item is added to a collection.
+      channel: on-chain event
+      key_payload_fields:
+        - _itemId
+        - _item
+    - name: Issue
+      description: Emitted when a token is minted (issued) for an item.
+      channel: on-chain event
+      key_payload_fields:
+        - _beneficiary
+        - _tokenId
+        - _itemId
+        - _issuedId
+    - name: Complete
+      description: Emitted when a collection is marked as completed, permanently preventing further item additions.
+      channel: on-chain event
+      key_payload_fields: []
+    - name: SetApproved
+      description: Emitted when a collection's approved status changes, enabling or disabling minting.
+      channel: on-chain event
+      key_payload_fields:
+        - _previousValue
+        - _newValue
+    - name: Bought
+      description: Emitted by the Collection Store when one or more items are purchased in a primary sale.
+      channel: on-chain event
+      key_payload_fields:
+        - _itemsToBuy
+    - name: ThirdPartyAdded
+      description: Emitted when a new third party is registered in the Third Party Registry.
+      channel: on-chain event
+      key_payload_fields:
+        - _thirdPartyId
+        - _metadata
+        - _isApproved
+        - _itemSlots
+        - _isProgrammatic
+    - name: ThirdPartyItemSlotsBought
+      description: Emitted when a third party purchases additional item slots, paid in MANA.
+      channel: on-chain event
+      key_payload_fields:
+        - _thirdPartyId
+        - _price
+        - _value
+    - name: ItemSlotsConsumed
+      description: Emitted when item slots are consumed to register items against a third party.
+      channel: on-chain event
+      key_payload_fields:
+        - _thirdPartyId
+        - _qty
+        - _signer
+    - name: ItemReviewed
+      description: Emitted when a third party's item is approved/rejected during curation review.
+      channel: on-chain event
+      key_payload_fields:
+        - _thirdPartyId
+        - _itemId
+        - _value
+    - name: AddRarity
+      description: Emitted when a new rarity tier is added to the Rarities contract.
+      channel: on-chain event
+      key_payload_fields:
+        - _rarity
+    - name: UpdatePrice
+      description: Emitted when a rarity's MANA price is updated.
+      channel: on-chain event
+      key_payload_fields:
+        - _name
+        - _price
+    - name: MemberSet
+      description: Emitted when a Committee member is added or removed.
+      channel: on-chain event
+      key_payload_fields:
+        - _member
+        - _value
+
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: COMMITTEE_MEMBERS
+      description: Comma-separated list of addresses used to seed the initial Committee members on deployment.
+      affects: Committee contract deployment
+    - name: MNEMONIC
+      description: Wallet mnemonic used to derive the signer account for deployment transactions.
+      affects: deployment signer / network configuration
+    - name: RPC_URL_MUMBAI
+      description: RPC endpoint URL for the Polygon Mumbai testnet, used by the Hardhat network configuration.
+      affects: Mumbai network connectivity for deployments
+    - name: ETHERSCAN_API_KEY
+      description: API key used by hardhat-etherscan to verify deployed contract source code on block explorers.
+      affects: contract verification
+
+adrs: []

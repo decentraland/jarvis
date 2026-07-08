@@ -1,0 +1,253 @@
+schema_version: "1.1"
+
+service:
+  name: bid-contract
+  display_name: Bid Contract (Legacy)
+  description: Legacy on-chain bid/offer contract (ERC721Bid) that lets bidders place MANA-denominated bids on ERC-721 tokens (LAND, wearables/emotes) and lets token owners accept them via safeTransferFrom. It still holds liquidity, so pre-existing bids remain valid and settleable, but new bids are no longer created here — new bids go through offchain-marketplace-contract. This GitHub repository is ARCHIVED (settle-only, no active development).
+  owner: smart-contracts
+  repository: https://github.com/decentraland/bid-contract
+  language: solidity
+  layer: Smart Contracts
+  role:
+    - other
+  data_domain:
+    - bids
+    - offers
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Bid
+      definition: An on-chain offer made by a bidder to buy a specific ERC-721 token (identified by tokenAddress + tokenId) for a MANA price, valid until an expiration time. Stored on-chain in the ERC721BidStorage mappings and identified by a bytes32 bid id.
+      examples:
+        - "bidder calls placeBid(tokenAddress, tokenId, price, duration) to create a Bid"
+      not_to_be_confused_with: An Order/Offer in offchain-marketplace-contract, which is an EIP-712 signed message that never touches the chain until settlement — this contract's Bids are written to on-chain storage when placed.
+    - term: Offer
+      definition: Used interchangeably with Bid in this contract's domain — a standing proposal by a bidder to purchase a given ERC-721 token at a set price.
+    - term: Legacy vs Offchain Marketplace
+      definition: This contract is the legacy, deprecated path for bidding on ERC-721 tokens. It still holds liquidity from bids placed before the migration (existing bids remain valid and can be accepted), but the Decentraland platform routes all NEW bid creation through offchain-marketplace-contract instead. Treat this repo as settle-only for anything new.
+    - term: ERC-721 Receiver Flow (Accepting a Bid)
+      definition: The only way to accept a Bid. The token owner calls the ERC-721 token's safeTransferFrom(owner, bidContractAddress, tokenId, bidId), passing the target bid id as the transfer's data payload. The Bid contract's onERC721Received hook then validates the bid, transfers MANA from the bidder to the seller (minus fees/royalties), and forwards the token to the bidder.
+    - term: MANA Payment
+      definition: Bids are denominated and paid in MANA (ERC-20). Bidders must approve the Bid contract to move MANA on their behalf before a bid can be accepted; the contract pulls MANA via transferFrom at acceptance time.
+    - term: Fingerprint (Composable Tokens)
+      definition: An extra bytes parameter used when bidding on composable ERC-721 tokens (tokens whose traits can change). If the token's fingerprint changes after a bid is placed, the bid becomes invalid, protecting the bidder from buying a token whose attributes changed underneath the bid.
+    - term: Fees Collector Cut / Royalties Cut
+      definition: Per-million cuts (out of 1,000,000) deducted from the bid price at acceptance time — feesCollectorCutPerMillion goes to a configured fees collector address, royaltiesCutPerMillion is looked up per-token via an IRoyaltiesManager and paid to the token's royalties receiver.
+
+  concept_relationships:
+    internal:
+      - from: Bid
+        to: ERC-721 Token
+        relationship: references
+        description: A Bid references a specific ERC-721 token by tokenAddress and tokenId; a token can have multiple bids but only one active bid per bidder.
+      - from: Bid
+        to: MANA Payment
+        relationship: depends_on
+        description: Accepting a Bid depends on the bidder having sufficient MANA balance and allowance for the Bid contract at the time of acceptance.
+      - from: Bid
+        to: RoyaltiesManager
+        relationship: references
+        description: On acceptance, the contract queries the configured IRoyaltiesManager for the token's royalties receiver to route the royalties cut.
+    cross_service:
+      - local_concept: Bid
+        remote_service: offchain-marketplace-contract
+        remote_concept: Order/Trade
+        mapping_type: superset_of
+        description: offchain-marketplace-contract is the current system for creating new bids/orders (via off-chain EIP-712 signatures settled on-chain); this contract's Bid concept is the legacy, on-chain-created equivalent that is no longer used for new bids but still settles pre-existing ones.
+      - local_concept: MANA payment
+        remote_service: mana
+        remote_concept: MANA Token (ERC-20)
+        mapping_type: references
+        description: The Bid contract holds a reference to the deployed MANA ERC-20 token address and moves MANA between bidder and seller on bid acceptance.
+      - local_concept: ERC-721 Token
+        remote_service: land
+        remote_concept: LAND Parcel / Estate (ERC-721)
+        mapping_type: references
+        description: Bids can target LAND/Estate tokens; the Bid contract calls back into the LAND contract's ownerOf/transferFrom/safeTransferFrom flow to settle accepted bids.
+      - local_concept: ERC-721 Token
+        remote_service: wearables-contracts
+        remote_concept: Collection Item (ERC-721)
+        mapping_type: references
+        description: Bids can target wearable/emote Collection V2 items; the Bid contract settles pre-existing bids on these tokens the same way as any other ERC-721.
+
+  invariants:
+    - rule: A bid must last between MIN_BID_DURATION (1 minute) and MAX_BID_DURATION (182 days).
+      enforced_at: domain_layer
+      severity: hard
+    - rule: A bidder can have only one active bid per token; placing a new bid for the same token replaces the previous one.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: A bid can only be accepted via the target ERC-721 token's safeTransferFrom to this contract, with the bid id passed as data; the contract must be the message sender's recipient (onERC721Received).
+      enforced_at: domain_layer
+      severity: hard
+    - rule: A bid becomes invalid if it has expired, if a bid for the same token was already accepted, or (for composable tokens) if the token's fingerprint changed since the bid was placed.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: When the contract is paused, placing, cancelling, and accepting bids are all disabled.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: New bids should not be created against this legacy contract — new bid/offer creation happens in offchain-marketplace-contract; this contract is settle-only for pre-existing bids.
+      enforced_at: domain_layer
+      severity: soft
+
+  responsibilities:
+    - Store and manage on-chain Bids (offers) for ERC-721 tokens priced in MANA
+    - Validate and settle bid acceptance via the ERC-721 safeTransferFrom / onERC721Received flow, transferring MANA to the seller and the token to the bidder
+    - Enforce bid duration limits, one-bid-per-bidder-per-token, expiration, and (for composable tokens) fingerprint validity
+    - Deduct and route a fees-collector cut and a per-token royalties cut (via IRoyaltiesManager) from the bid price at acceptance
+    - Allow bid cancellation and batch removal of expired bids
+    - Support pausing of bid placement, cancellation, and acceptance
+    - Preserve settlement of bids that were placed before the migration to offchain-marketplace-contract
+
+  out_of_scope:
+    - Creating new bids/offers as the primary marketplace flow — this is now done in offchain-marketplace-contract
+    - Listing/selling tokens via publications (handled by the separate legacy Marketplace contract, marketplace-contracts)
+    - Off-chain signature-based (EIP-712) order creation or relaying
+    - Minting, deploying, or managing the underlying ERC-721 collections (LAND, wearables) or the MANA token itself
+    - Wallet management or transaction signing
+    - Active feature development — the repository is archived on GitHub
+
+  owned_entities:
+    - name: Bid
+      description: An on-chain record of a bidder's offer to buy a specific ERC-721 token for a MANA price until an expiration time, keyed by a bytes32 bid id.
+      persistence: on-chain contract storage (EVM)
+      identity_field: bid id (bytes32), also addressable via tokenAddress + tokenId + bidIndex
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: mana
+      relationship: sync
+      protocol: blockchain
+      purpose: settle pre-existing bids (MANA ERC-20 transferFrom from bidder to seller, minus fees/royalties)
+      critical: true
+    - name: land
+      relationship: sync
+      protocol: blockchain
+      purpose: settle pre-existing bids (ERC-721 LAND/Estate transfer on bid acceptance)
+      critical: true
+    - name: wearables-contracts
+      relationship: sync
+      protocol: blockchain
+      purpose: settle pre-existing bids (ERC-721 Collection item transfer on bid acceptance)
+      critical: true
+
+  external:
+    - name: Ethereum Mainnet
+      purpose: L1 network where the Bid contract can be deployed and where LAND/MANA settlement historically occurs
+      type: blockchain
+    - name: Polygon (MATIC)
+      purpose: L2 network deployment target for the Bid contract (per deploy script MANA address mapping)
+      type: blockchain
+    - name: Polygon Mumbai
+      purpose: Legacy L2 testnet deployment target
+      type: blockchain
+    - name: Goerli
+      purpose: Legacy L1 testnet deployment target
+      type: blockchain
+    - name: OpenZeppelin Contracts
+      purpose: Base ERC-20/ERC-721 interfaces and utilities used by contracts and mocks
+      type: other
+    - name: Hardhat
+      purpose: Development, compilation, testing, and deployment framework for the Solidity contracts
+      type: other
+
+events:
+  publishes:
+    - name: BidCreated
+      description: Emitted when a new bid is placed for an ERC-721 token, carrying the bid id, token address/id, bidder, price, expiration, and fingerprint.
+      channel: on-chain event
+      key_payload_fields:
+        - _id
+        - _tokenAddress
+        - _tokenId
+        - _bidder
+        - _price
+        - _expiresAt
+        - _fingerprint
+    - name: BidAccepted
+      description: Emitted when a bid is accepted through the ERC-721 receiver flow, carrying the bid id, token, bidder, seller, final price, and fee deducted.
+      channel: on-chain event
+      key_payload_fields:
+        - _id
+        - _tokenAddress
+        - _tokenId
+        - _bidder
+        - _seller
+        - _price
+        - _fee
+    - name: BidCancelled
+      description: Emitted when a bid is cancelled by its bidder (or removed as expired), carrying the bid id, token address/id, and bidder.
+      channel: on-chain event
+      key_payload_fields:
+        - _id
+        - _tokenAddress
+        - _tokenId
+        - _bidder
+    - name: ChangedFeesCollectorCutPerMillion
+      description: Emitted when the owner updates the fees-collector cut applied to accepted bids.
+      channel: on-chain event
+      key_payload_fields:
+        - _feesCollectorCutPerMillion
+    - name: ChangedRoyaltiesCutPerMillion
+      description: Emitted when the owner updates the royalties cut applied to accepted bids.
+      channel: on-chain event
+      key_payload_fields:
+        - _royaltiesCutPerMillion
+    - name: FeesCollectorSet
+      description: Emitted when the owner updates the address that receives the fees-collector cut.
+      channel: on-chain event
+      key_payload_fields:
+        - _oldFeesCollector
+        - _newFeesCollector
+    - name: RoyaltiesManagerSet
+      description: Emitted when the owner updates the IRoyaltiesManager contract used to look up per-token royalties receivers.
+      channel: on-chain event
+      key_payload_fields:
+        - _oldRoyaltiesManager
+        - _newRoyaltiesManager
+
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: MNEMONIC
+      description: HD wallet mnemonic used to derive the deployer/signer accounts for deployment.
+      affects: deployment signer account
+    - name: PRIV_KEY
+      description: Fallback single private key used as the deployment account when MNEMONIC is not set.
+      affects: deployment signer account
+    - name: INFURA_API_KEY
+      description: API key for Infura, used to build the default deploy RPC URL.
+      affects: RPC endpoint for deployment network
+    - name: RPC_URL_${NETWORK}
+      description: Per-network RPC endpoint URL (e.g., RPC_URL_MATIC) used by the "deploy" Hardhat network.
+      affects: RPC endpoint for deployment network
+    - name: NETWORK
+      description: Selects the target deploy network (e.g., MUMBAI, MATIC, GOERLI, LOCALHOST, BSC_TESTNET) used by scripts/deploy.ts to pick the accepted MANA token address.
+      affects: deployment target network and MANA token address used
+    - name: OWNER
+      description: Address passed as the contract owner when deploying ERC721Bid.
+      affects: deployed contract's owner
+    - name: FEE_COLLECTOR
+      description: Address passed as the fees collector when deploying ERC721Bid.
+      affects: deployed contract's fees collector
+    - name: ROYALTIES_MANAGER
+      description: Address of the IRoyaltiesManager implementation passed when deploying ERC721Bid.
+      affects: deployed contract's royalties manager
+    - name: ETHERSCAN_API_KEY
+      description: API key used by hardhat-etherscan to verify deployed contracts.
+      affects: contract verification
+    - name: REPORT_GAS
+      description: Toggles the Hardhat gas reporter plugin during tests.
+      affects: gas reporting output during test runs
+
+adrs: []

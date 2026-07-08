@@ -1,0 +1,318 @@
+schema_version: "1.1"
+
+service:
+  name: offchain-marketplace-contract
+  display_name: Off-Chain Marketplace (Trades)
+  description: EIP-712 signature-based Decentraland Marketplace (Solidity/Foundry). Users sign "Trades" off-chain describing the Assets they will send and the Assets they want to receive; any counterparty can then settle the Trade on-chain via DecentralandMarketplaceEthereum (LAND, Estates, Names, MANA) or DecentralandMarketplacePolygon (Collection item primary sales/minting and secondary NFT trades), with DAO fee and creator royalty distribution, Coupon-based discounts, and MANA "Credits" redemption via CreditsManagerPolygon. This is the CURRENT marketplace for all new Decentraland orders and for primary sales of store collections, superseding the legacy on-chain marketplace-contracts repository.
+  owner: smart-contracts
+  repository: https://github.com/decentraland/offchain-marketplace-contract
+  language: solidity
+  layer: Smart Contracts
+  role:
+    - other
+  data_domain:
+    - orders
+    - trades
+    - marketplace
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Trade
+      definition: The core entity of this marketplace — an off-chain, EIP-712-signed message in which a signer defines the Assets they are willing to send and the Assets they want to receive in exchange, plus a set of Checks constraining when/how/by whom it can be accepted. A Trade is never stored on-chain in full; only its signer, signature and cancellation/index status are tracked on-chain.
+      examples:
+        - A LAND owner signs a Trade offering their parcel (sent) in exchange for 100 MANA (received) — a public sell order.
+        - A collector signs a Trade offering 50 MANA (sent) in exchange for a specific wearable (received) — a bid.
+      not_to_be_confused_with: Order in the legacy marketplace-contracts repository, which is created and stored fully on-chain.
+
+    - term: Asset
+      definition: An item referenced inside a Trade's `sent` or `received` array — identified by an asset type (ERC20, ERC721, USD-pegged MANA, or Decentraland Collection Item), a contract address, a value (amount or token ID), an optional `extra` field for custom data (e.g., an Estate fingerprint), and the beneficiary address that ultimately receives it.
+
+    - term: Off-chain signature (EIP-712)
+      definition: The typed-data signature standard used to let a Trade's (or Coupon's) signer authorize its terms without submitting a transaction. Any counterparty can later present that signature on-chain to `accept()` the Trade and trigger settlement.
+
+    - term: Settlement
+      definition: The on-chain execution of a signed Trade — verifying its Checks and signature, transferring every `sent` and `received` Asset between signer and caller/beneficiaries, and deducting DAO fees and/or creator royalties from ERC20 legs. Emits the `Traded` event.
+
+    - term: Checks
+      definition: The set of validations attached to a Trade or Coupon that constrain its usability — number of uses, expiration/effective timestamps, signer- and contract-level signature indexes (for bulk cancellation), a merkle-root allow-list of addresses permitted to accept it, and a list of arbitrary External Checks.
+
+    - term: External Check
+      definition: An optional, staticcall-based validation performed against another contract when accepting a Trade or applying a Coupon (e.g., requiring the caller to hold a balance of a specific NFT collection). Natively supports `balanceOf`/`ownerOf` and otherwise falls back to calling the provided selector, expecting a boolean result.
+
+    - term: Coupon
+      definition: A signed, off-chain object that an authorized party (e.g., a collection creator) can apply to a Trade at acceptance time to modify its terms — for example, `CollectionDiscountCoupon` applies a merkle-proof-gated percentage or flat discount to Collection item purchases. Coupons are validated and applied through `CouponManager`, whose allowed Coupon implementations are configured by the Marketplace owner.
+
+    - term: Trade Id
+      definition: A derived identifier (hash of the Trade's salt, the accepting caller, and the received assets) used to invalidate every other pending Trade that shares it once one of them is accepted. This is the primitive dApps use to build auctions on top of the marketplace without any on-chain auction logic.
+
+    - term: Credit
+      definition: An off-chain-issued, signed voucher (MANA value, expiration, salt) redeemable through `CreditsManagerPolygon.useCredits()` to pay for a Trade, a legacy Marketplace order, or a CollectionStore primary-sale purchase, without the user spending MANA directly from their wallet.
+      not_to_be_confused_with: MANA itself — a Credit is a claim redeemable for MANA-denominated payment, tracked and rate-limited by CreditsManagerPolygon; it is not a token.
+
+    - term: Legacy Marketplace
+      definition: The older, fully on-chain marketplace (see the separate marketplace-contracts repository) that this repository supersedes for all new order/Trade creation. This repo's `CreditsManagerPolygon` still integrates with it (via `ILegacyMarketplace`) purely so users can redeem Credits against orders still settleable there.
+
+  concept_relationships:
+    internal:
+      - from: Trade
+        to: Asset
+        relationship: has_many
+        description: A Trade carries a `sent` array and a `received` array of Assets that are exchanged atomically when the Trade is accepted.
+
+      - from: Trade
+        to: Checks
+        relationship: has_one
+        description: Every Trade embeds one Checks struct governing its expiration, uses, signature indexes, allow-list and external checks.
+
+      - from: CouponManager
+        to: Coupon
+        relationship: depends_on
+        description: CouponManager validates a Coupon's signature and Checks, confirms its implementation contract is authorized, then calls its `applyCoupon` to modify the Trade before the Marketplace settles it.
+
+      - from: CreditsManagerPolygon
+        to: DecentralandMarketplacePolygon
+        relationship: depends_on
+        description: CreditsManagerPolygon calls `accept()` on this repo's Polygon Marketplace as one of its allow-listed external-call targets, letting users pay "Listing" Trades using Credits instead of MANA from their wallet.
+
+    cross_service:
+      - local_concept: Asset (ERC20 / USD-pegged MANA)
+        remote_service: mana
+        remote_concept: MANA ERC-20 token
+        mapping_type: references
+        description: MANA is the primary ERC-20 accepted in Trades on both the Ethereum and Polygon marketplaces; USD-pegged MANA assets are converted to a MANA amount via Chainlink aggregators before transfer.
+
+      - local_concept: Asset (ERC721 — LAND / Estate / Names)
+        remote_service: land
+        remote_concept: LAND / Estate NFT
+        mapping_type: references
+        description: DecentralandMarketplaceEthereum trades LAND, Estates (composable ERC-721, with fingerprint verification via IComposable) and Names by calling safeTransferFrom on the land registry contract.
+
+      - local_concept: Asset (ERC721 Collection Item, ASSET_TYPE_COLLECTION_ITEM)
+        remote_service: wearables-contracts
+        remote_concept: Collection V2 Item
+        mapping_type: references
+        description: DecentralandMarketplacePolygon mints Collection items directly via ICollection.issueTokens for primary (store) sales, and transfers already-minted Collection NFTs for secondary sales, resolving creator royalties via IRoyaltiesManager.
+
+      - local_concept: Trade
+        remote_service: marketplace-contracts
+        remote_concept: Order (legacy)
+        mapping_type: equivalent
+        description: A Trade is the modern equivalent of the legacy Order — both represent a listing/offer that gets settled on-chain — but this repository has fully superseded marketplace-contracts for creating new orders; the legacy contract now only settles or cancels pre-existing orders.
+
+  invariants:
+    - rule: A Trade or Coupon signature can only be cancelled (via `cancelSignature`) by the address that originally signed it.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: On DecentralandMarketplacePolygon, minting a Collection Item (primary sale) requires the Trade's signer or the accepting caller to be the collection's registered creator.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: On DecentralandMarketplaceEthereum, every ERC20/USD-pegged-MANA leg of a Trade pays the configured fee rate to the fee collector; there is no royalty mechanism on Ethereum.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: On DecentralandMarketplacePolygon, minting Collection Items always pays fees to the fee collector, while trading (secondary sale) already-minted Decentraland Collection NFTs pays royalties to the item's creator(s) instead.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: CreditsManagerPolygon only allows Credits to be consumed against "Listing" Trades — Trades with exactly one MANA Asset received by the signer and one or more Decentraland items/NFTs sent by the signer.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Cancelling an already-cancelled signature does not revert (gas optimization); off-chain consumers must tolerate duplicate SignatureCancelled events for the same signature.
+      enforced_at: domain_layer
+      severity: soft
+
+  responsibilities:
+    - Implement Marketplace.sol — verify a signed Trade's EIP-712 signature and Checks (expiration, uses, indexes, allow-list, external checks), atomically transfer all sent/received Assets, and emit `Traded`.
+    - Implement DecentralandMarketplaceEthereum — Decentraland-specific asset handling for LAND, Estates (composable fingerprint verification), Names, MANA and other ERC20s on Ethereum, deducting DAO fees on ERC20 legs.
+    - Implement DecentralandMarketplacePolygon — Decentraland-specific asset handling for Collection Item primary sales (minting via `issueTokens`) and secondary NFT trades on Polygon, computing DAO fees and/or creator royalties, and supporting native meta-transactions.
+    - Implement CouponManager and CollectionDiscountCoupon — let authorized parties (e.g. collection creators) apply signed, merkle-proof-gated discounts to a Trade at acceptance time.
+    - Support Trade/Coupon cancellation via per-signature cancellation and bulk signer/contract signature-index increments.
+    - Implement CreditsManagerPolygon — let users redeem off-chain-signed MANA "Credits" to pay for purchases on this marketplace, the legacy marketplace-contracts, or the CollectionStore, with hourly rate limiting, pausability, and admin revocation/denial controls.
+    - Implement RegisterNameCrossChainExecutor — let a Polygon user pay MANA (directly or via Credits) to register a Decentraland NAME on Ethereum through the Coral cross-chain bridge, capping the bridge fee in USD terms via a Chainlink MANA/USD aggregator.
+    - Serve as the CURRENT marketplace for all new Decentraland orders/listings and for primary sales of store collections.
+
+  out_of_scope:
+    - Owning or issuing the underlying assets traded (LAND/Estates, MANA, Collection items) — owned by the land, mana, and wearables-contracts repositories respectively.
+    - Creating or executing new orders on the legacy on-chain marketplace (marketplace-contracts); this repo only integrates with it, read/settle-wise, through CreditsManagerPolygon's Credit redemption flow.
+    - Storing, indexing, or serving Trade data off-chain — signed Trades and their metadata live in backend/UI systems, not in this contract.
+    - Auction scheduling/backend bookkeeping — the contract only provides the Trade Id primitive; auction logic is implemented by client/backend systems.
+    - Wallet UX and signature creation flows — the `ui/` folder in this repo is a minimal reference example only, not a production frontend.
+
+  owned_entities:
+    - name: Credit (consumption state)
+      description: On-chain bookkeeping of how much of a signed Credit's value has been spent and whether it has been revoked or a user denied from using it. The Credit's terms (value, expiration, salt) are defined off-chain and only referenced on-chain by their hash.
+      persistence: blockchain storage (CreditsManagerPolygon spentValue / isRevoked / isDenied mappings)
+      identity_field: keccak256 hash of the Credit struct
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: mana
+      relationship: sync
+      protocol: blockchain
+      purpose: Transfer MANA (and USD-pegged MANA, converted via Chainlink aggregators) as the ERC-20 payment leg of Trades, and as the token redeemed through CreditsManagerPolygon Credits.
+      critical: true
+
+    - name: land
+      relationship: sync
+      protocol: blockchain
+      purpose: Transfer LAND parcels, Estates (composable ERC-721 with fingerprint verification) and Names as Trade assets on DecentralandMarketplaceEthereum.
+      critical: true
+
+    - name: wearables-contracts
+      relationship: sync
+      protocol: blockchain
+      purpose: Mint (primary/store sale) and transfer (secondary sale) Collection V2 wearable/emote items as Trade assets on DecentralandMarketplacePolygon, and resolve creator royalties via IRoyaltiesManager.
+      critical: true
+
+    - name: marketplace-contracts
+      relationship: sync
+      protocol: blockchain
+      purpose: CreditsManagerPolygon calls the legacy Marketplace's `executeOrder`/`safeExecuteOrder` so users can redeem Credits against orders still settleable on the legacy contract.
+      critical: false
+
+  external:
+    - name: Ethereum Mainnet
+      purpose: Network where DecentralandMarketplaceEthereum (and optionally CouponManager) are deployed and LAND/Estate/Name Trades settle.
+      type: blockchain
+
+    - name: Polygon
+      purpose: Network where DecentralandMarketplacePolygon, CouponManager, CollectionDiscountCoupon, CreditsManagerPolygon and RegisterNameCrossChainExecutor are deployed.
+      type: blockchain
+
+    - name: OpenZeppelin Contracts
+      purpose: Base ERC-20/ERC-721 interfaces, AccessControl, Pausable, ReentrancyGuard, SafeERC20, ECDSA/MessageHashUtils and MerkleProof utilities used throughout the contracts.
+      type: other
+
+    - name: Chainlink Price Feeds
+      purpose: On-chain MANA/ETH, ETH/USD and MANA/USD aggregators used to convert USD-pegged MANA Trades and to cap RegisterNameCrossChainExecutor's cross-chain bridge fee in USD terms.
+      type: other
+
+    - name: Coral
+      purpose: Cross-chain bridge contract used by RegisterNameCrossChainExecutor to fund and relay a name-registration call from Polygon to the Ethereum name registry.
+      type: other
+
+events:
+  publishes:
+    - name: Traded
+      description: Emitted when a signed Trade is successfully verified and settled; carries the accepting caller, the hashed signature (for off-chain matching) and the full Trade struct.
+      channel: on-chain event
+      key_payload_fields:
+        - _caller
+        - _signature
+        - _trade
+
+    - name: SignatureCancelled
+      description: Emitted when a Trade or Coupon signature is cancelled by its signer via `cancelSignature`. May be emitted more than once for an already-cancelled signature; off-chain consumers must handle duplicates.
+      channel: on-chain event
+      key_payload_fields:
+        - _caller
+        - _signature
+
+    - name: SignerSignatureIndexIncreased
+      description: Emitted when a signer bulk-invalidates all of their previously signed Trades/Coupons by incrementing their personal signature index.
+      channel: on-chain event
+      key_payload_fields:
+        - _caller
+        - _newValue
+
+    - name: CouponApplied
+      description: Emitted when a Coupon is successfully validated and applied to a Trade being accepted through CouponManager.
+      channel: on-chain event
+      key_payload_fields:
+        - _caller
+        - _tradeSignature
+        - _couponSignature
+        - _coupon
+
+    - name: CreditsUsed
+      description: Emitted after CreditsManagerPolygon's `useCredits` completes, summarizing the total MANA transferred out of the contract for the external call and the total value covered by redeemed Credits.
+      channel: on-chain event
+      key_payload_fields:
+        - _sender
+        - _manaTransferred
+        - _creditedValue
+
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: OWNER
+      description: Address granted DEFAULT_ADMIN_ROLE on CreditsManagerPolygon at deployment.
+      affects: deployment
+    - name: CREDITS_SIGNER
+      description: Address granted CREDITS_SIGNER_ROLE, authorized to sign redeemable Credits.
+      affects: deployment
+    - name: PAUSER
+      description: Address granted PAUSER_ROLE on CreditsManagerPolygon.
+      affects: deployment
+    - name: USER_DENIER
+      description: Address granted USER_DENIER_ROLE, able to deny specific users from using Credits.
+      affects: deployment
+    - name: CREDITS_REVOKER
+      description: Address granted CREDITS_REVOKER_ROLE, able to revoke previously issued Credits.
+      affects: deployment
+    - name: CUSTOM_EXTERNAL_CALL_SIGNER
+      description: Address granted EXTERNAL_CALL_SIGNER_ROLE, authorized to sign custom external calls redeemable with Credits.
+      affects: deployment
+    - name: CUSTOM_EXTERNAL_CALL_REVOKER
+      description: Address granted EXTERNAL_CALL_REVOKER_ROLE, able to revoke signed custom external calls.
+      affects: deployment
+    - name: MAX_MANA_CREDITED_PER_HOUR
+      description: Cap on the total MANA value that can be credited (consumed from Credits) per hour across all users.
+      affects: runtime rate limiting
+    - name: PRIMARY_SALES_ALLOWED
+      description: Toggles whether Credits can be used to pay for primary (minting) sales.
+      affects: runtime behavior
+    - name: SECONDARY_SALES_ALLOWED
+      description: Toggles whether Credits can be used to pay for secondary (resale) Trades.
+      affects: runtime behavior
+    - name: MANA_TOKEN
+      description: Address of the MANA ERC-20 contract used by CreditsManagerPolygon and RegisterNameCrossChainExecutor.
+      affects: deployment
+    - name: LEGACY_MARKETPLACE
+      description: Address of the legacy Marketplace contract (marketplace-contracts) that CreditsManagerPolygon is allowed to call on behalf of Credit users.
+      affects: deployment
+    - name: COLLECTION_STORE
+      description: Address of the CollectionStore contract (wearables-contracts) that CreditsManagerPolygon is allowed to call for primary sales.
+      affects: deployment
+    - name: COLLECTION_FACTORY
+      description: Address of the Collection factory contract (wearables-contracts) used to validate that an ERC-721 target is a genuine Decentraland collection.
+      affects: deployment
+    - name: COLLECTION_FACTORY_V3
+      description: Address of the CollectionFactoryV3 contract (wearables-contracts), used the same way as COLLECTION_FACTORY.
+      affects: deployment
+    - name: MARKETPLACE
+      description: Address of this repository's DecentralandMarketplacePolygon contract, allow-listed as a CreditsManagerPolygon external-call target.
+      affects: deployment
+    - name: EXECUTOR_OWNER
+      description: Address granted DEFAULT_ADMIN_ROLE on RegisterNameCrossChainExecutor at deployment.
+      affects: deployment
+    - name: CREDITS_MANAGER
+      description: Address of the deployed CreditsManagerPolygon contract, the only caller authorized to invoke RegisterNameCrossChainExecutor's `execute()`.
+      affects: deployment
+    - name: CORAL
+      description: Address of the Coral cross-chain bridge contract used to relay name-registration calls to Ethereum.
+      affects: deployment
+    - name: MAX_USD_FEE
+      description: Maximum bridge fee, expressed in USD (18 decimals), payable in MANA for a single name registration.
+      affects: runtime rate limiting
+    - name: MANA_USD_AGGREGATOR
+      description: Chainlink MANA/USD price feed address used to value the bridge fee against the USD cap.
+      affects: deployment
+    - name: MANA_USD_AGGREGATOR_TOLERANCE
+      description: Maximum staleness (in seconds) tolerated for the MANA/USD aggregator result before it is considered outdated.
+      affects: runtime validation
+
+adrs: []

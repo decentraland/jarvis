@@ -1,0 +1,219 @@
+schema_version: "1.1"
+
+service:
+  name: marketplace-contracts
+  display_name: Marketplace Contracts (Legacy)
+  description: Legacy on-chain Decentraland Marketplace smart contract (Solidity). It still holds liquidity — existing orders remain valid and settleable — but no new orders are created here; every new order is now created through offchain-marketplace-contract, which is also used for primary sales of store collections. Treat this repo as read/settle-only for anything new. This GitHub repository is ARCHIVED.
+  owner: smart-contracts
+  repository: https://github.com/decentraland/marketplace-contracts
+  language: solidity
+  layer: Smart Contracts
+  role:
+    - other
+  data_domain:
+    - orders
+    - marketplace
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Order
+      definition: An on-chain listing created by an NFT owner to sell a specific ERC-721 asset (LAND, Estate, or wearable/emote item) for a fixed price in the accepted ERC-20 token (MANA). Stored in the orderByAssetId mapping keyed by NFT contract address and asset ID.
+
+    - term: Marketplace (legacy)
+      definition: This contract itself — the original on-chain marketplace where sellers create orders and buyers execute them directly on-chain. Superseded by offchain-marketplace-contract for all new activity; this contract remains only to let pre-existing orders be executed or cancelled.
+      not_to_be_confused_with: offchain-marketplace-contract, the current EIP-712 signature-based marketplace where new orders and trades are created.
+
+    - term: Publication fee
+      definition: A flat fee (in wei of the accepted ERC-20 token) charged to a seller when creating an order, paid to the contract owner (Marketplace.sol) or to a configurable feesCollector address (MarketplaceV2.sol).
+
+    - term: Owner cut / Fees collector cut
+      definition: A percentage (expressed per-million, i.e. parts per 1,000,000) of the sale price deducted from a successful order execution and sent to the contract owner (Marketplace.sol, ownerCutPerMillion) or to the feesCollector address (MarketplaceV2.sol, feesCollectorCutPerMillion).
+
+    - term: Royalties cut
+      definition: MarketplaceV2-only. A percentage (per-million) of the sale price paid to the royalties receiver of a Collection V2 item, resolved via RoyaltiesManager.getRoyaltiesReceiver, which reads the item's beneficiary (or falls back to the collection creator).
+
+    - term: Fingerprint verification
+      definition: An optional check performed on execution (safeExecuteOrder) for NFT contracts implementing verifyFingerprint (IERC721Verifiable), used historically to validate composable/estate-like assets before transfer.
+
+    - term: RoyaltiesManager
+      definition: A small on-chain helper contract (contracts/managers/RoyaltiesManager.sol) queried by MarketplaceV2 to determine who should receive the royalties share for a Collection V2 item — the item's beneficiary, or the collection creator if no beneficiary is set.
+
+  concept_relationships:
+    internal:
+      - from: Order
+        to: NFT asset
+        relationship: references
+        description: Each Order references a specific ERC-721 asset by (nftAddress, assetId) and is stored in orderByAssetId; only one active order can exist per asset at a time.
+
+      - from: MarketplaceV2
+        to: RoyaltiesManager
+        relationship: depends_on
+        description: MarketplaceV2 calls RoyaltiesManager.getRoyaltiesReceiver at order execution time to compute and pay the royalties share for Collection V2 items.
+
+    cross_service:
+      - local_concept: Order
+        remote_service: offchain-marketplace-contract
+        remote_concept: Trade
+        mapping_type: superset_of
+        description: This contract's on-chain Order is the legacy equivalent of a Trade in offchain-marketplace-contract. New orders/trades are created exclusively in offchain-marketplace-contract; this contract only settles or cancels orders that were created before the migration.
+
+      - local_concept: nftAddress asset (LAND/Estate)
+        remote_service: land
+        remote_concept: LAND / Estate NFT
+        mapping_type: references
+        description: Orders for LAND/Estate reference token IDs owned by the land ERC-721 registry; execution transfers ownership via that contract's ERC-721 interface.
+
+      - local_concept: nftAddress asset (item)
+        remote_service: wearables-contracts
+        remote_concept: Collection V2 Item
+        mapping_type: references
+        description: Orders for wearables/emotes reference Collection V2 ERC-721 items; MarketplaceV2's RoyaltiesManager reads item/creator data from the Collection V2 contract via decodeTokenId/items/creator.
+
+      - local_concept: acceptedToken
+        remote_service: mana
+        remote_concept: MANA ERC-20 token
+        mapping_type: references
+        description: The ERC-20 token accepted for payment, publication fees, and cuts is MANA, deployed and owned by the mana repository.
+
+  invariants:
+    - rule: Only the current owner of an ERC-721 asset can create an order for it, and the Marketplace contract must be approved (via approve or setApprovalForAll) to transfer that asset.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: An order's expiresAt must be more than 1 minute in the future when created.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Only one active order can exist per (nftAddress, assetId) pair; creating a new one overwrites any prior order for that asset.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: An order can only be cancelled by its seller or the contract owner.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: An order can only be executed if it has not expired, the price matches exactly, the buyer is not the seller, and the seller still owns the asset.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: In MarketplaceV2, the sum of feesCollectorCutPerMillion and royaltiesCutPerMillion must be less than 1,000,000 (100%).
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: No new orders should be created through this contract going forward; new order creation must go through offchain-marketplace-contract.
+      enforced_at: domain_layer
+      severity: soft
+
+  responsibilities:
+    - Store and expose pre-existing on-chain Orders (seller, NFT address, asset ID, price, expiration) created before the migration to the offchain marketplace
+    - Allow execution (settlement) of pre-existing orders: transfer the ERC-721 asset to the buyer and the ERC-20 payment (minus fees/royalties) to the seller
+    - Allow cancellation of pre-existing orders by the seller or contract owner
+    - Charge and distribute a configurable publication fee and a percentage-based cut (owner cut in V1, fees collector cut + royalties cut in V2) on settlement
+    - (MarketplaceV2) Resolve and pay royalties to Collection V2 item beneficiaries/creators via RoyaltiesManager
+    - Support pausing of order creation/cancellation/execution via an owner-controlled circuit breaker
+
+  out_of_scope:
+    - Creating new orders/listings for any asset going forward (all new orders go through offchain-marketplace-contract)
+    - Primary sales of store collections (handled by offchain-marketplace-contract)
+    - Bids/offers (handled by the separate legacy bid-contract, also settle-only)
+    - Off-chain signature validation or EIP-712 trade signing (handled by offchain-marketplace-contract)
+    - Ongoing feature development — this repository is archived and receives no new functionality
+
+  owned_entities:
+    - name: Order
+      description: An on-chain sell listing for a single ERC-721 asset at a fixed MANA price with an expiration timestamp.
+      persistence: blockchain storage (orderByAssetId mapping)
+      identity_field: "(nftAddress, assetId) composite key; order also carries its own keccak256-derived id"
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: mana
+      relationship: sync
+      protocol: blockchain
+      purpose: settle pre-existing orders
+      critical: true
+
+    - name: land
+      relationship: sync
+      protocol: blockchain
+      purpose: settle pre-existing orders
+      critical: true
+
+    - name: wearables-contracts
+      relationship: sync
+      protocol: blockchain
+      purpose: settle pre-existing orders
+      critical: true
+
+  external:
+    - name: Ethereum Mainnet
+      purpose: Network where the legacy Marketplace contract (proxy) is deployed and holds remaining liquidity
+      type: blockchain
+
+    - name: OpenZeppelin Contracts
+      purpose: Base ERC-20/ERC-721 interfaces, SafeMath, and Address utility library used by the contracts
+      type: other
+
+adrs: []
+
+events:
+  publishes:
+    - name: OrderCreated
+      description: Emitted when a new order is published for an NFT asset (legacy path; no longer expected to be used for new activity).
+      channel: on-chain event
+      key_payload_fields:
+        - id
+        - assetId
+        - seller
+        - nftAddress
+        - priceInWei
+        - expiresAt
+
+    - name: OrderSuccessful
+      description: Emitted when an existing order is executed and settled — the NFT and payment change hands.
+      channel: on-chain event
+      key_payload_fields:
+        - id
+        - assetId
+        - seller
+        - nftAddress
+        - totalPrice
+        - buyer
+
+    - name: OrderCancelled
+      description: Emitted when an order is cancelled by its seller or the contract owner before execution.
+      channel: on-chain event
+      key_payload_fields:
+        - id
+        - assetId
+        - seller
+        - nftAddress
+
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: MNEMONIC
+      description: HD wallet mnemonic used to derive the deployer/signer accounts for Hardhat deployment scripts.
+      affects: deployment
+    - name: PRIV_KEY
+      description: Fallback private key used for deployment when MNEMONIC is not set.
+      affects: deployment
+    - name: NETWORK
+      description: Selects which network-specific RPC_URL_<NETWORK> variable to use for the Hardhat "deploy" network config.
+      affects: deployment
+    - name: INFURA_API_KEY
+      description: Infura API key referenced for RPC access during deployment/testing (documented in .env.example).
+      affects: deployment
+    - name: ETHERSCAN_API_KEY
+      description: API key used by the hardhat-etherscan plugin to verify deployed contract source code.
+      affects: deployment

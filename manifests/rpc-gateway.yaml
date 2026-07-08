@@ -1,0 +1,128 @@
+schema_version: "1.1"
+
+service:
+  name: rpc-gateway
+  display_name: Decentraland RPC Gateway
+  description: Decentraland's hosted JSON-RPC gateway, reachable at https://rpc.decentraland.org/<network>, used to read from and interact with EVM chains (and the Decentraland contracts deployed on them) without depending on a third-party RPC provider. This is shared platform infrastructure, not a code repository — the endpoint is documented as the preferred RPC in the smart-contracts-workspace AI Agent Context. Any service, dApp, tool, script, or agent that needs to perform a blockchain query (eth_call, eth_getLogs, balance/allowance reads, broadcasting a signed transaction, etc.) against a Decentraland-supported network should route it through this gateway. It is the "how to reach it" half of a blockchain query; pair it with the `contracts` registry, which is the "what address" half.
+  owner: infrastructure
+  repository: ""
+  language: ""
+  layer: infrastructure
+  role:
+    - gateway
+  data_domain: []
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: RPC Gateway
+      definition: A single hosted JSON-RPC entry point at https://rpc.decentraland.org/<network> that relays requests to a blockchain node for the given network. Use it instead of a third-party provider (e.g. Infura/Alchemy) for any on-chain read or write.
+
+    - term: JSON-RPC
+      definition: The standard request/response protocol EVM nodes expose. The gateway accepts these calls over HTTPS POST; callers send a method name plus params and receive the node's response.
+      examples:
+        - "eth_call — read a view/pure function (e.g. balanceOf, ownerOf) without sending a transaction"
+        - "eth_getLogs — read historical events emitted by a contract"
+        - "eth_getBalance / eth_blockNumber — basic chain reads"
+        - "eth_sendRawTransaction — broadcast a client-signed transaction"
+
+    - term: Network
+      definition: The path segment that selects the target chain. Supported values are mainnet, sepolia, polygon, amoy, arbitrum, optimism, avalanche, binance, and fantom.
+      not_to_be_confused_with: "the `contracts` registry network keys, which use \"matic\" for Polygon; this gateway uses \"polygon\"."
+
+    - term: L1 Network
+      definition: Ethereum Layer 1 endpoints — mainnet (production) and sepolia (testnet) — where core Decentraland contracts (LAND, Estate, MANA, DCL names) live.
+
+    - term: L2 Network
+      definition: Layer 2 / sidechain endpoints — polygon and amoy (testnet) — where collections, marketplace, and third-party registry contracts live. The gateway can additionally reach arbitrum, optimism, avalanche, binance, and fantom.
+
+  concept_relationships:
+    internal: []
+
+    cross_service:
+      - local_concept: Network endpoint
+        remote_service: contracts
+        remote_concept: Contract Address
+        mapping_type: references
+        description: The gateway is the "how to reach it" half of a blockchain query; the `contracts` registry is the "what address" half. An agent looks up the deployed address in `contracts` (addresses.json) and then calls it through the matching network endpoint of this gateway.
+
+      - local_concept: RPC Gateway
+        remote_service: (any Decentraland service, dApp, or tool doing on-chain reads/writes)
+        remote_concept: Blockchain access
+        mapping_type: referenced_by
+        description: This is the default, general-purpose blockchain-access tool for the whole platform. Any component that needs to query or transact on a supported network should route through this gateway rather than hardcoding a provider URL.
+
+  invariants:
+    - rule: The network path segment must be one of the supported networks (mainnet, sepolia, polygon, amoy, arbitrum, optimism, avalanche, binance, fantom)
+      enforced_at: api_validation
+      severity: hard
+
+  responsibilities:
+    - Provide a single canonical JSON-RPC endpoint per supported network for reading from and interacting with on-chain contracts
+    - Serve as the default, general-purpose blockchain-query tool for any Decentraland service, dApp, script, or agent
+    - Remove the need for callers to hold third-party RPC provider credentials for common queries
+
+  out_of_scope:
+    - Storing or resolving contract addresses (use the `contracts` registry / addresses.json)
+    - Contract ABIs or decoding of call data / event logs (callers bring their own ABIs)
+    - Indexing, caching, or GraphQL/subgraph access (a separate concern from raw JSON-RPC)
+    - Wallet / key management or transaction signing (callers sign; the gateway only relays)
+
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: Ethereum Mainnet
+      purpose: L1 production JSON-RPC (https://rpc.decentraland.org/mainnet)
+      type: blockchain
+
+    - name: Ethereum Sepolia
+      purpose: L1 testnet JSON-RPC (https://rpc.decentraland.org/sepolia)
+      type: blockchain
+
+    - name: Polygon
+      purpose: L2 production JSON-RPC (https://rpc.decentraland.org/polygon)
+      type: blockchain
+
+    - name: Polygon Amoy
+      purpose: L2 testnet JSON-RPC (https://rpc.decentraland.org/amoy)
+      type: blockchain
+
+    - name: Arbitrum
+      purpose: JSON-RPC (https://rpc.decentraland.org/arbitrum)
+      type: blockchain
+
+    - name: Optimism
+      purpose: JSON-RPC (https://rpc.decentraland.org/optimism)
+      type: blockchain
+
+    - name: Avalanche
+      purpose: JSON-RPC (https://rpc.decentraland.org/avalanche)
+      type: blockchain
+
+    - name: BNB Smart Chain
+      purpose: JSON-RPC (https://rpc.decentraland.org/binance)
+      type: blockchain
+
+    - name: Fantom
+      purpose: JSON-RPC (https://rpc.decentraland.org/fantom)
+      type: blockchain
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars: []
+
+adrs: []

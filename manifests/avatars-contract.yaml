@@ -1,0 +1,284 @@
+schema_version: "1.1"
+
+service:
+  name: avatars-contract
+  display_name: Avatars Contract (DCL Names / Subdomains)
+  description: >-
+    ARCHIVED repository. Solidity smart contracts implementing Decentraland's DCL Name
+    registration system, exposed as ENS subdomains under the "dcl" domain (e.g.
+    "nacho.dcl.eth"). DCLRegistrar is an ERC-721 contract that mints a token per
+    registered subdomain and writes ownership into the ENS registry, while
+    DCLController / DCLControllerV2 gate registration behind an ERC-20 (MANA)
+    payment. This repository is archived on GitHub and is no longer actively developed.
+  owner: smart-contracts
+  repository: https://github.com/decentraland/avatars-contract
+  language: solidity
+  layer: Smart Contracts
+  role:
+    - other
+  data_domain:
+    - names
+    - subdomains
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: DCL Name
+      definition: >-
+        A human-readable identifier (e.g. "nacho") registered by a user as a subdomain
+        of "dcl.eth", used to identify avatars in Decentraland. Implemented as an
+        ERC-721 token whose token ID is the keccak256 hash of the lowercased name.
+      examples:
+        - "nacho.dcl.eth"
+
+    - term: Subdomain
+      definition: >-
+        An ENS name under the domain owned by this system (topdomain "eth", domain
+        "dcl"). DCLRegistrar creates subdomains by calling setSubnodeOwner on the ENS
+        registry and mints a matching ERC-721 token to the beneficiary.
+
+    - term: DCLRegistrar
+      definition: >-
+        ERC-721 contract (contracts/ens/DCLRegistrar.sol) that owns the "dcl.eth" domain
+        in the ENS registry, mints one NFT per registered subdomain, tracks a reverse
+        map of token ID to subdomain string, and restricts registration/renewal to
+        addresses added as "controllers" (e.g. DCLController / DCLControllerV2).
+
+    - term: DCLController
+      definition: >-
+        Original controller contract (contracts/ens/DCLController.sol) that charges a
+        fixed price of 100 MANA (in wei units, "100 ether") to register a name. It
+        pulls MANA via transferFrom and then calls burn(PRICE) on the accepted token,
+        permanently destroying the collected MANA.
+
+    - term: DCLControllerV2
+      definition: >-
+        Newer controller contract (contracts/ens/DCLControllerV2.sol) that also charges
+        100 MANA per name via transferFrom, but instead of burning it, sends the payment
+        to a configurable feeCollector address. It does not call burn(). Deployed on
+        mainnet per the repo README (address recorded there).
+
+    - term: Controller
+      definition: >-
+        An address authorized on DCLRegistrar (via addController/removeController) to
+        call register/renew/reclaim on behalf of users. Only DCLController-type
+        contracts are expected to hold this role.
+
+    - term: MANA Burn
+      definition: >-
+        In DCLController (V1), the ERC-20 accepted token's burn(uint256) function is
+        invoked on the collected registration fee, permanently removing that MANA from
+        circulation. Note: DCLControllerV2 changed this behavior to forward the fee to
+        a feeCollector address instead of burning it.
+      not_to_be_confused_with: >-
+        DCLControllerV2's fee-collector flow, which does not burn MANA.
+
+  concept_relationships:
+    internal:
+      - from: DCLRegistrar
+        to: DCL Name
+        relationship: has_many
+        description: >-
+          DCLRegistrar mints and owns the ERC-721 tokens that represent each
+          registered DCL Name/subdomain.
+      - from: DCLController
+        to: DCLRegistrar
+        relationship: depends_on
+        description: >-
+          DCLController and DCLControllerV2 call registrar.register(...) on
+          DCLRegistrar as an authorized controller after collecting payment.
+      - from: DCLControllerV2
+        to: DCLRegistrar
+        relationship: depends_on
+        description: >-
+          DCLControllerV2 is the successor to DCLController; it must be added as a
+          controller on DCLRegistrar to be able to register names.
+
+    cross_service:
+      - local_concept: DCL Name
+        remote_service: mana
+        remote_concept: MANA Token
+        mapping_type: derived_from
+        description: >-
+          Registering a DCL Name requires paying 100 MANA (constant PRICE = 100 ether)
+          via the mana ERC-20 contract's transferFrom, collected by DCLController /
+          DCLControllerV2.
+
+  invariants:
+    - rule: A DCL Name must be between 2 and 15 characters and contain only a-z and 0-9 characters.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: A subdomain can only be registered once; registration requires the ENS node to have no owner and the ERC-721 token ID to not already exist.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: Only addresses explicitly added as controllers on DCLRegistrar can register, renew, or reclaim subdomains.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: DCLRegistrar must own the "dcl.eth" domain in both the ENS registry and the ENS base registrar before it can register subdomains.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: Registering a name via DCLController (V1) requires the caller to hold at least PRICE (100 MANA) and to have granted this contract sufficient ERC-20 allowance.
+      enforced_at: domain_layer
+      severity: hard
+    - rule: DCLController (V1) enforces a maximum gas price on registration transactions (default 20 gwei, owner-adjustable, minimum 1 gwei).
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Register DCL Names as ENS subdomains under "dcl.eth" and mint a corresponding ERC-721 token to the beneficiary (DCLRegistrar).
+    - Maintain a reverse lookup from ERC-721 token ID to the human-readable subdomain string.
+    - Manage the set of authorized controller addresses allowed to register/reclaim subdomains.
+    - Allow reclaiming ENS ownership of a subdomain/domain after an ERC-721 transfer so the ENS registry record matches the current NFT owner.
+    - Charge a fixed price (100 MANA) per name registration and collect payment via ERC-20 transferFrom (DCLController / DCLControllerV2).
+    - Burn the collected MANA payment on registration (DCLController V1 only).
+    - Forward the collected MANA payment to a configurable fee collector address on registration (DCLControllerV2, does not burn).
+    - Support one-time migration of legacy (v1) names into the DCLRegistrar contract.
+    - Allow the domain owner to update the ENS registry/base registrar addresses, resolver, and base URI used for token metadata.
+
+  out_of_scope:
+    - Avatar wearables, emotes, or appearance data (not handled by this repository despite the "avatars-contract" name; it is scoped to name/subdomain registration).
+    - ENS registry and ENS base registrar implementation (external protocol contracts this repo depends on, not owned by it).
+    - MANA token implementation (owned by the separate mana repository/contract).
+    - Off-chain indexing, resolution, or display of DCL Names (handled by other Decentraland services).
+    - Ongoing feature development — this repository is archived and no longer actively maintained.
+
+  owned_entities:
+    - name: DCL Name (Subdomain)
+      description: >-
+        An ERC-721 token (managed by DCLRegistrar) representing a registered
+        "<name>.dcl.eth" subdomain, whose token ID is the keccak256 hash of the
+        lowercased name.
+      persistence: on-chain (Ethereum/ENS)
+      identity_field: tokenId (keccak256 hash of the lowercased subdomain label)
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: mana
+      relationship: sync
+      protocol: blockchain
+      purpose: >-
+        DCLController (V1) burns MANA and DCLControllerV2 transfers MANA to a fee
+        collector as the payment (fixed price of 100 MANA) required to register a DCL Name.
+      critical: true
+
+  external:
+    - name: ENS Registry
+      purpose: >-
+        DCLRegistrar reads/writes subdomain ownership (setSubnodeOwner, setOwner,
+        setResolver, owner, resolver) on the external ENS Registry contract to create
+        and manage "dcl.eth" subdomains.
+      type: blockchain
+    - name: ENS Base Registrar
+      purpose: >-
+        DCLRegistrar depends on the external ENS Base Registrar (IBaseRegistrar) to
+        own/register/renew/reclaim the top-level "dcl.eth" domain itself.
+      type: blockchain
+    - name: OpenZeppelin Contracts
+      purpose: >-
+        Base contract library used for ERC-721 (ERC721Full), Ownable access control,
+        and the Address utility.
+      type: other
+    - name: Ethereum Mainnet
+      purpose: Production network where DCLRegistrar and DCLController/DCLControllerV2 are deployed.
+      type: blockchain
+    - name: Ethereum Ropsten / Goerli
+      purpose: Legacy and historical testnets referenced in the repo for deployments prior to archival.
+      type: blockchain
+
+events:
+  publishes:
+    - name: NameRegistered
+      description: Emitted by DCLRegistrar when a new subdomain is registered and its ERC-721 token minted.
+      channel: on-chain event
+      key_payload_fields:
+        - _caller
+        - _beneficiary
+        - _labelHash
+        - _subdomain
+        - _createdDate
+
+    - name: NameBought
+      description: >-
+        Emitted by DCLController / DCLControllerV2 when a name purchase completes,
+        recording the price paid and the beneficiary.
+      channel: on-chain event
+      key_payload_fields:
+        - _caller
+        - _beneficiary
+        - _price
+        - _name
+
+    - name: Reclaimed
+      description: Emitted by DCLRegistrar when ownership of a subdomain is re-synced to the ENS registry.
+      channel: on-chain event
+      key_payload_fields:
+        - _caller
+        - _owner
+        - _tokenId
+
+    - name: DomainReclaimed
+      description: Emitted by DCLRegistrar when the contract owner reclaims ownership of the "dcl.eth" domain itself in the ENS registry.
+      channel: on-chain event
+      key_payload_fields:
+        - _tokenId
+
+    - name: DomainTransferred
+      description: Emitted by DCLRegistrar when the contract owner transfers ownership of the "dcl.eth" domain to a new address.
+      channel: on-chain event
+      key_payload_fields:
+        - _newOwner
+        - _tokenId
+
+    - name: ControllerAdded
+      description: Emitted by DCLRegistrar when an address is authorized as a controller allowed to register/reclaim subdomains.
+      channel: on-chain event
+      key_payload_fields:
+        - _controller
+
+    - name: ControllerRemoved
+      description: Emitted by DCLRegistrar when a controller's authorization is revoked.
+      channel: on-chain event
+      key_payload_fields:
+        - _controller
+
+    - name: MigrationFinished
+      description: Emitted by DCLRegistrar when the one-time migration of legacy v1 names is marked complete.
+      channel: on-chain event
+      key_payload_fields: []
+
+    - name: FeeCollectorChanged
+      description: Emitted by DCLControllerV2 when the address that receives registration fees is updated.
+      channel: on-chain event
+      key_payload_fields:
+        - _oldFeeCollector
+        - _newFeeCollector
+
+    - name: MaxGasPriceChanged
+      description: Emitted by DCLController (V1) when the owner updates the maximum allowed gas price for registration transactions.
+      channel: on-chain event
+      key_payload_fields:
+        - _oldMaxGasPrice
+        - _newMaxGasPrice
+
+  consumes: []
+
+configuration:
+  feature_flags: []
+  key_env_vars:
+    - name: ETHERSCAN_KEY
+      description: API key used to verify contract source code on Etherscan.
+      affects: deployment/verification tooling
+    - name: RPC_URL
+      description: JSON-RPC endpoint URL used by deployment scripts/tooling.
+      affects: deployment
+    - name: NETWORK
+      description: Target network selector (e.g. GOERLI, MAINNET) used by the deploy script to pick MANA, registrar, fee collector, and owner addresses.
+      affects: deployment
+
+adrs: []

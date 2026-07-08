@@ -1,0 +1,239 @@
+schema_version: "1.1"
+
+service:
+  name: rentals-contract
+  display_name: Rentals Contract
+  description: Solidity smart contract enabling on-chain renting of Decentraland LAND and Estates using off-chain signed listings and offers. During the rental period it grants the tenant scene-deploy rights on the asset via the ERC-721 setUpdateOperator function, and settles rent payments in an ERC-20 token (MANA) between the tenant, the lessor, and a DAO fee collector.
+  owner: smart-contracts
+  repository: https://github.com/decentraland/rentals-contract
+  language: solidity
+  layer: Smart Contracts
+  role:
+    - other
+  data_domain:
+    - rentals
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Rental
+      definition: A time-bound arrangement, initialized on-chain, in which a lessor's LAND or Estate is transferred into custody of the Rentals contract and the tenant is granted update-operator rights over it for a set number of days in exchange for an upfront ERC-20 (MANA) payment.
+
+    - term: Listing
+      definition: A set of rental conditions (price per day, min/max days, expiration, nonces, optional target address) signed off-chain by the asset owner (lessor). A prospective tenant calls acceptListing with the Listing and a signature to start the rental.
+
+    - term: Offer
+      definition: The inverse of a Listing — rental conditions (price per day, rental days, operator, fingerprint) signed off-chain by a prospective tenant. The asset owner accepts it via acceptOffer or by sending the asset to the Rentals contract via ERC-721 safeTransferFrom with the Offer encoded as data.
+
+    - term: Lessor
+      definition: The owner of the LAND or Estate who lists it (or accepts an Offer) to earn rent. While a rental is inactive, the lessor can reclaim the asset via claim or accept a new Listing/Offer to re-rent it.
+
+    - term: Tenant
+      definition: The user who accepts a Listing (or whose Offer is accepted) and pays rent upfront in the ERC-20 token. The tenant designates the operator address that receives scene-deploy rights for the rental period.
+
+    - term: Operator (Update Operator)
+      definition: The address granted permission, via the asset's setUpdateOperator (or setManyLandUpdateOperator for LAND inside an Estate), to deploy scenes on the rented LAND/Estate for the duration of the rental. Chosen by the tenant and can be changed mid-rental via setOperator.
+
+    - term: Fingerprint
+      definition: A hash representing the current composition of an Estate (which LAND parcels it contains), supplied in a Listing/Offer and verified on-chain at rental time to prevent the lessor from front-running the tenant by removing LAND from the Estate before the rental starts.
+
+    - term: Nonces (contractNonce, signerNonce, assetNonce)
+      definition: Three-tier invalidation mechanism for off-chain signatures. contractNonce (owner-only) invalidates all signatures contract-wide; signerNonce invalidates all signatures from a given signer; assetNonce invalidates signatures from a signer for a specific asset. A Listing/Offer's nonces must match all three current values to be valid.
+
+    - term: Fee Collector
+      definition: The address (DAO) that receives a configurable cut of every rental payment, deducted from the price paid by the tenant before the remainder is transferred to the lessor.
+
+    - term: Extension
+      definition: Accepting a new Listing or Offer for an asset that is currently rented, where the lessor and tenant match the ongoing rental, which extends the existing rental's end date rather than starting a new one.
+
+  concept_relationships:
+    internal:
+      - from: Rental
+        to: Listing
+        relationship: references
+        description: A Rental is initialized by a tenant accepting a lessor-signed Listing via acceptListing.
+
+      - from: Rental
+        to: Offer
+        relationship: references
+        description: A Rental is initialized by a lessor accepting a tenant-signed Offer via acceptOffer or via ERC-721 safeTransferFrom.
+
+      - from: Rental
+        to: Operator
+        relationship: has_one
+        description: Each active Rental designates one operator address holding update-operator (scene-deploy) rights on the asset for the rental period.
+
+    cross_service:
+      - local_concept: Rental
+        remote_service: land
+        remote_concept: LAND/Estate ownership and update operator
+        mapping_type: derived_from
+        description: The Rentals contract calls setUpdateOperator (and setManyLandUpdateOperator for LAND within an Estate) on the land contract to grant/revoke scene-deploy rights for the duration of a rental, and transfers the LAND/Estate ERC-721 into its own custody while the rental is active.
+
+      - local_concept: rent payment
+        remote_service: mana
+        remote_concept: MANA ERC-20 token
+        mapping_type: references
+        description: Rent is paid upfront by the tenant in an ERC-20 token (MANA on Decentraland deployments), transferred via transferFrom to the lessor and to the DAO fee collector.
+
+  invariants:
+    - rule: An asset cannot be rented again while a rental on it is currently active (unless the new Listing/Offer is an extension by the same lessor and tenant).
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: The tenant and the signer of the Listing/Offer being accepted must not be the same address.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: A Listing/Offer's three nonces (contract, signer, asset) must match the contract's current values or the signature is rejected.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: An asset can only be claimed back by the original lessor, and only once its rental period has ended.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: The fee (per MAX_FEE of 1,000,000) deducted from rent cannot exceed MAX_FEE.
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Rental duration cannot exceed MAX_RENTAL_DAYS (36,525 days / 100 years).
+      enforced_at: domain_layer
+      severity: hard
+
+    - rule: Core rental functions (acceptListing, acceptOffer, onERC721Received offer path, claim, setUpdateOperator, setManyLandUpdateOperator) are disabled while the contract is paused.
+      enforced_at: domain_layer
+      severity: hard
+
+  responsibilities:
+    - Let LAND/Estate owners (lessors) rent out their assets using off-chain signed Listings, verified and settled on-chain.
+    - Let prospective tenants make off-chain signed Offers to rent a LAND/Estate, acceptable by the owner via acceptOffer or ERC-721 safeTransferFrom.
+    - Hold the rented ERC-721 asset in custody for the duration of the rental and return it to the lessor via claim once the rental ends.
+    - Grant the tenant-designated operator address scene-deploy rights via the asset's setUpdateOperator / setManyLandUpdateOperator during the rental period.
+    - Collect and distribute rent payments upfront in an ERC-20 token (MANA), splitting a configurable fee to a DAO fee collector.
+    - Support extending an ongoing rental by accepting a new Listing/Offer between the same lessor and tenant.
+    - Provide multi-tier nonce bumping (contract/signer/asset) to invalidate off-chain signatures.
+    - Support EIP-1271 signature verification for contract-owned signers in addition to standard ECDSA/EOA signatures.
+    - Support meta-transactions (NativeMetaTransaction) so relayed transactions resolve to the correct signer.
+    - Allow the contract owner to pause/unpause core rental functionality and to update the fee and fee collector.
+
+  out_of_scope:
+    - Storage or distribution of off-chain Listings/Offers and their signatures (handled by an external off-chain system, e.g. a marketplace backend).
+    - LAND/Estate ownership, coordinates, and ERC-721 mechanics themselves (owned by the land contract).
+    - MANA token issuance, balances, and ERC-20 mechanics (owned by the mana contract).
+    - Automatically clearing an operator's scene-deploy rights when a rental ends (must be done manually via setOperator, claim, or a new rental).
+    - Off-chain UI/marketplace logic for browsing or negotiating rentals.
+
+  owned_entities:
+    - name: Rental
+      description: On-chain record (per asset contract address + token id) tracking the lessor, tenant, and end date of an active or past rental.
+      persistence: on-chain (contract storage)
+      identity_field: contractAddress + tokenId
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services:
+    - name: land
+      relationship: sync
+      protocol: blockchain
+      purpose: Grant/revoke scene-deploy rights on rented LAND/Estates via ERC-721 setUpdateOperator and setManyLandUpdateOperator, and hold custody of the ERC-721 asset for the duration of the rental.
+      critical: true
+
+    - name: mana
+      relationship: sync
+      protocol: blockchain
+      purpose: Transfer rent payments (ERC-20 transferFrom) from tenant to lessor and to the DAO fee collector when a rental starts or is accepted.
+      critical: true
+
+  external:
+    - name: Ethereum (mainnet / Goerli)
+      purpose: Blockchain network the Rentals contract is deployed to (per .openzeppelin/mainnet.json and .openzeppelin/goerli.json deployment manifests), consistent with LAND/Estates being L1 assets.
+      type: blockchain
+
+    - name: OpenZeppelin Contracts / Contracts Upgradeable
+      purpose: Base implementations for IERC20, IERC721Receiver, IERC1271, ReentrancyGuardUpgradeable, PausableUpgradeable, ECDSAUpgradeable, and the transparent upgradeable proxy pattern used to deploy and upgrade the contract.
+      type: other
+
+    - name: "@dcl/common-contracts"
+      purpose: Shared Decentraland Solidity mixins for meta-transactions (NativeMetaTransaction) and signature-nonce verification (ContractIndexVerifiable, SignerIndexVerifiable, AssetIndexVerifiable).
+      type: other
+
+    - name: EIP-712 / EIP-1271
+      purpose: Typed-data hashing (EIP-712) for signing Listings/Offers off-chain, and contract-signature verification (EIP-1271) to allow smart-contract wallets to act as signers.
+      type: other
+
+events:
+  publishes:
+    - name: AssetRented
+      description: Emitted when a rental is started (via acceptListing, acceptOffer, or safeTransferFrom offer path) or extended, containing the asset, lessor, tenant, operator, rental days, price per day, whether it was an extension, the transaction sender, and the signature used.
+      channel: on-chain event
+      key_payload_fields:
+        - _contractAddress
+        - _tokenId
+        - _lessor
+        - _tenant
+        - _operator
+        - _rentalDays
+        - _pricePerDay
+        - _isExtension
+        - _sender
+        - _signature
+
+    - name: AssetClaimed
+      description: Emitted when a lessor claims back an asset after its rental period has ended.
+      channel: on-chain event
+      key_payload_fields:
+        - _contractAddress
+        - _tokenId
+        - _sender
+
+    - name: FeeUpdated
+      description: Emitted when the contract owner updates the rental fee (value per MAX_FEE deducted and sent to the fee collector).
+      channel: on-chain event
+      key_payload_fields:
+        - _from
+        - _to
+        - _sender
+
+    - name: FeeCollectorUpdated
+      description: Emitted when the contract owner updates the address that receives rental fees.
+      channel: on-chain event
+      key_payload_fields:
+        - _from
+        - _to
+        - _sender
+
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars:
+    - name: RPC
+      description: RPC endpoint URL used by Hardhat to connect to the target network for deployment/upgrade scripts.
+      affects: deployment
+    - name: PRIVATE_KEY
+      description: Private key of the deployer account used to sign deployment/upgrade transactions.
+      affects: deployment
+    - name: ETHERSCAN_API_KEY
+      description: API key used by the hardhat-etherscan plugin to verify deployed contract source code.
+      affects: deployment
+    - name: OWNER
+      description: Address set as the owner of the Rentals contract on initialization (can pause/unpause, set fee/fee collector, bump the contract nonce).
+      affects: deployment
+    - name: TOKEN
+      description: Address of the ERC-20 token (MANA) used for rent payments, set once at contract initialization.
+      affects: deployment
+    - name: FEE_COLLECTOR
+      description: Address that receives the fee cut of rental payments, set at contract initialization.
+      affects: deployment
+    - name: FEE
+      description: Initial fee value (per MAX_FEE of 1,000,000) deducted from rental payments and sent to the fee collector.
+      affects: deployment
+
+adrs: []

@@ -328,6 +328,58 @@ nodes:
   display_name: Worlds Content Server
   layer: content
   repository: https://github.com/decentraland/worlds-content-server
+- name: land
+  display_name: LAND & Estate Registry
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/land
+- name: mana
+  display_name: MANA Token & Crowdsale
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/mana
+- name: wearables-contracts
+  display_name: Wearables Contracts (Collection V2 & Collection Store)
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/wearables-contracts
+- name: offchain-marketplace-contract
+  display_name: Off-Chain Marketplace (Trades)
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/offchain-marketplace-contract
+- name: marketplace-contracts
+  display_name: Marketplace Contracts (Legacy)
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/marketplace-contracts
+- name: bid-contract
+  display_name: Bid Contract (Legacy)
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/bid-contract
+- name: rentals-contract
+  display_name: Rentals Contract
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/rentals-contract
+- name: avatars-contract
+  display_name: Avatars Contract (DCL Names / Subdomains)
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/avatars-contract
+- name: pass-through
+  display_name: Pass-Through Contract (Districts)
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/pass-through
+- name: vestings-builder
+  display_name: Vestings Builder (Vesting Generator)
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/vestings-builder
+- name: smart-contract-audits
+  display_name: Smart Contract Audits
+  layer: Reference
+  repository: https://github.com/decentraland/smart-contract-audits
+- name: contracts
+  display_name: Decentraland Contract Addresses Registry
+  layer: Smart Contracts
+  repository: https://github.com/decentraland/contracts
+- name: rpc-gateway
+  display_name: Decentraland RPC Gateway
+  layer: infrastructure
+  repository: ""
 edges:
 - from: aang-renderer
   to: catalyst
@@ -1068,6 +1120,107 @@ edges:
   relationship: sync
   protocol: HTTP
   description: Validates community membership for world access control
+- from: wearables-contracts
+  to: mana
+  relationship: sync
+  protocol: blockchain
+  description: >-
+    CollectionManager, CollectionStore, and the Third Party Registry all transfer/charge MANA (their configured
+    acceptedToken) for collection creation fees, primary item purchases, and third-party item slot fees.
+- from: offchain-marketplace-contract
+  to: mana
+  relationship: sync
+  protocol: blockchain
+  description: >-
+    Transfer MANA (and USD-pegged MANA, converted via Chainlink aggregators) as the ERC-20 payment leg of Trades, and as
+    the token redeemed through CreditsManagerPolygon Credits.
+- from: offchain-marketplace-contract
+  to: land
+  relationship: sync
+  protocol: blockchain
+  description: >-
+    Transfer LAND parcels, Estates (composable ERC-721 with fingerprint verification) and Names as Trade assets on
+    DecentralandMarketplaceEthereum.
+- from: offchain-marketplace-contract
+  to: wearables-contracts
+  relationship: sync
+  protocol: blockchain
+  description: >-
+    Mint (primary/store sale) and transfer (secondary sale) Collection V2 wearable/emote items as Trade assets on
+    DecentralandMarketplacePolygon, and resolve creator royalties via IRoyaltiesManager.
+- from: offchain-marketplace-contract
+  to: marketplace-contracts
+  relationship: sync
+  protocol: blockchain
+  description: >-
+    CreditsManagerPolygon calls the legacy Marketplace's `executeOrder`/`safeExecuteOrder` so users can redeem Credits
+    against orders still settleable on the legacy contract.
+- from: marketplace-contracts
+  to: mana
+  relationship: sync
+  protocol: blockchain
+  description: settle pre-existing orders
+- from: marketplace-contracts
+  to: land
+  relationship: sync
+  protocol: blockchain
+  description: settle pre-existing orders
+- from: marketplace-contracts
+  to: wearables-contracts
+  relationship: sync
+  protocol: blockchain
+  description: settle pre-existing orders
+- from: bid-contract
+  to: mana
+  relationship: sync
+  protocol: blockchain
+  description: settle pre-existing bids (MANA ERC-20 transferFrom from bidder to seller, minus fees/royalties)
+- from: bid-contract
+  to: land
+  relationship: sync
+  protocol: blockchain
+  description: settle pre-existing bids (ERC-721 LAND/Estate transfer on bid acceptance)
+- from: bid-contract
+  to: wearables-contracts
+  relationship: sync
+  protocol: blockchain
+  description: settle pre-existing bids (ERC-721 Collection item transfer on bid acceptance)
+- from: rentals-contract
+  to: land
+  relationship: sync
+  protocol: blockchain
+  description: >-
+    Grant/revoke scene-deploy rights on rented LAND/Estates via ERC-721 setUpdateOperator and setManyLandUpdateOperator,
+    and hold custody of the ERC-721 asset for the duration of the rental.
+- from: rentals-contract
+  to: mana
+  relationship: sync
+  protocol: blockchain
+  description: >-
+    Transfer rent payments (ERC-20 transferFrom) from tenant to lessor and to the DAO fee collector when a rental starts
+    or is accepted.
+- from: avatars-contract
+  to: mana
+  relationship: sync
+  protocol: blockchain
+  description: >-
+    DCLController (V1) burns MANA and DCLControllerV2 transfers MANA to a fee collector as the payment (fixed price of
+    100 MANA) required to register a DCL Name.
+- from: pass-through
+  to: land
+  relationship: sync
+  protocol: blockchain
+  description: >-
+    PassThrough forwards (proxies) calls to an EstateRegistry (land/Estate) contract address supplied at deployment and
+    set as the initial target
+- from: vestings-builder
+  to: mana
+  relationship: sync
+  protocol: blockchain
+  description: >-
+    Deployed PeriodicTokenVesting / TokenVesting contracts vest and transfer MANA to beneficiaries over time; the token
+    address is passed in at initialization (not hardcoded on-chain), and the frontend defaults that field to the MANA
+    contract address per network.
 event_flows:
 - publisher: archipelago-workers
   event_name: island_changed

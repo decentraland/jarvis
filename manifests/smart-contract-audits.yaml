@@ -1,0 +1,127 @@
+schema_version: "1.1"
+
+service:
+  name: smart-contract-audits
+  display_name: Smart Contract Audits
+  description: A repository collecting third-party security audit reports (PDF and Markdown documents) for Decentraland's smart contracts. It contains no deployable contract code — it is a historical archive making audit coverage and findings for each contract release discoverable.
+  owner: smart-contracts
+  repository: https://github.com/decentraland/smart-contract-audits
+  language: "n/a"
+  layer: Reference
+  role:
+    - other
+  data_domain:
+    - security-audits
+  ai-agent-context: ""
+
+domain:
+  glossary:
+    - term: Security Audit
+      definition: An independent review of a smart contract's source code performed by a third-party security firm or researcher to find vulnerabilities, bugs, and deviations from best practices, usually before or shortly after a contract version is deployed.
+
+    - term: Audit Report
+      definition: The document produced by an auditor for a specific contract and deployment/release, stored as a PDF or Markdown file under reports/ and linked from the README.
+      examples:
+        - reports/LANDRegistry_04-01-2022_Certik.pdf
+        - reports/Rentals_FacundoSpagnuolo_10_05_2022.md
+
+    - term: Well Known Issue
+      definition: A previously identified, accepted limitation or risk in a deployed Decentraland smart contract or app that is documented for transparency rather than treated as an open finding requiring a fix.
+      examples:
+        - smart_contracts_well_known_issues.md
+        - app_well_known_issues.md
+      not_to_be_confused_with: An open finding in an Audit Report awaiting remediation.
+
+    - term: Audited Contract
+      definition: A Decentraland smart contract family that has one or more audit reports in this repository. The README organizes reports by contract family and links each to the corresponding release tag in the contract's own repository.
+      examples:
+        - LAND Registry
+        - Estate Registry
+        - Offchain Marketplace
+        - Marketplace
+        - Bids
+        - DCL Names
+        - Collections (Third Party Registry / wearables)
+        - LAND Second Auction
+        - PassThrough
+        - Burners
+        - Rentals
+        - Common Contracts
+        - Periodic Token Vesting
+        - Credits Manager
+
+    - term: Audit Firm / Auditor
+      definition: The individual security researcher or firm that authored an audit report. This repository contains reports from multiple firms and independent researchers, reflecting different audits of the same or different contracts over time.
+      examples:
+        - LevelK
+        - Nomic Labs
+        - Quantstamp
+        - Pessimistic
+        - Certik
+        - Nethermind
+        - OpenZeppelin
+        - Agustin Aguilar
+        - Facundo Spagnuolo
+        - Xinghui Chen
+        - Fernando Zavallia
+
+  concept_relationships:
+    internal:
+      - from: Audit Report
+        to: Audited Contract
+        relationship: references
+        description: Each audit report documents the security review of one specific smart contract at a given deployment or release version.
+
+      - from: Audit Report
+        to: Audit Firm / Auditor
+        relationship: references
+        description: Each audit report is authored by one auditing firm or independent security researcher.
+
+      - from: Well Known Issue
+        to: Audited Contract
+        relationship: references
+        description: Well-known issue documents record accepted risks or limitations for a specific contract or application area, separate from the formal per-release audit reports.
+
+    cross_service: []
+
+  invariants: []
+
+  responsibilities:
+    - Host and organize third-party security audit reports (PDF and Markdown files) for Decentraland smart contracts under reports/
+    - Index audit reports by contract family and deployment/release in the README, linking each to the corresponding GitHub release tag in the contract's own repository
+    - Document well-known, accepted issues in deployed smart contracts (smart_contracts_well_known_issues.md) and in apps/websites (app_well_known_issues.md)
+    - Make audit history and coverage discoverable for engineers, auditors, and the community
+
+  out_of_scope:
+    - Performing security audits (audits are conducted externally by third-party firms and independent researchers, not by this repository)
+    - Smart contract source code or deployment (contracts live in their own repositories, e.g. land, wearables-contracts, marketplace-contracts, bid-contract, offchain-marketplace-contract, avatars-contract, aux-contracts, land-auction, pass-through)
+    - Contract addresses or ABIs (tracked in other repositories such as catalyst-contracts)
+    - Fixing or remediating audit findings (remediation happens in the respective contract repositories)
+
+  owned_entities:
+    - name: Audit Report
+      description: A third-party security audit document (PDF or Markdown) covering a specific Decentraland smart contract at a given deployment or release.
+      persistence: git repository (flat files under reports/)
+      identity_field: file path
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external: []
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  feature_flags: []
+
+  key_env_vars: []
+
+adrs: []

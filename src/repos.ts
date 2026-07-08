@@ -81,6 +81,20 @@ export const workspaces: Record<string, Repo[]> = {
     { url: 'https://github.com/decentraland/aang-renderer', lastCommit: 'da4fef953a4f0a3b236af246563fd9b7c3e7b390' },
     { url: 'https://github.com/decentraland/launcher-rust', lastCommit: 'dcf43cde60a835ff59accac65a8c8244a484904d' },
   ],
+  'https://github.com/decentraland/smart-contracts-workspace': [
+    { url: 'https://github.com/decentraland/land', lastCommit: 'b8be6d57f4dc484803b5511ddeb2096909e7bd88' },
+    { url: 'https://github.com/decentraland/offchain-marketplace-contract', lastCommit: '9bad55c73c860311ea058a549f1c15f3b4d9f2f9' },
+    { url: 'https://github.com/decentraland/wearables-contracts', lastCommit: '8d83943c55f5c355d954e0087d46af158f946fbe' },
+    { url: 'https://github.com/decentraland/avatars-contract', lastCommit: '51e2c3bcde1bc9eb1c9d07189b57bf15606405bd' },
+    { url: 'https://github.com/decentraland/mana', lastCommit: 'd92bba7f43d8c2cfa50549056604ae0c8f3fa251' },
+    { url: 'https://github.com/decentraland/rentals-contract', lastCommit: 'b51989f015ac73022b74d08c61a83f2eae4404fa' },
+    { url: 'https://github.com/decentraland/bid-contract', lastCommit: 'ef7def6ce1b6eb80fb85dad60f8e239e7798e9f8' },
+    { url: 'https://github.com/decentraland/marketplace-contracts', lastCommit: '32d17b06b1f5df0abe376fb93be12258f6707a8a' },
+    { url: 'https://github.com/decentraland/pass-through', lastCommit: 'c26c999386ecebb3764c8d662db4899b6e49ccd1' },
+    { url: 'https://github.com/decentraland/vestings-builder', lastCommit: 'c580ab40b021d3d8cf4a2d06ef672eb240973d1a' },
+    { url: 'https://github.com/decentraland/smart-contract-audits', lastCommit: '8f6ee53d4324037f1efe49fe438c4851a948abef' },
+    { url: 'https://github.com/decentraland/contracts', lastCommit: '87ec7257aaef181f695113ff8dc148242bcba4dc' },
+  ],
 }
 
 export const standalone: Repo[] = [
