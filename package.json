@@ -1,6 +1,10 @@
 {
   "name": "@dcl/jarvis",
   "version": "0.0.0-development",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/decentraland/jarvis.git"
+  },
   "description": "Decentraland services and UI manifests",
   "type": "module",
   "files": [
