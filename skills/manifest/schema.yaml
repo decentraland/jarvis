@@ -191,3 +191,24 @@ adrs:
   title: string
   url: string
   relevance: strin
+
+# ============================================================
+# REVIEW GUIDANCE (optional)
+# ============================================================
+# Instructions for an AI agent reviewing a pull request in this
+# repository. This section is human-curated: only fill it in
+# when a maintainer stated the rule, never infer it from code,
+# and never drop entries that already exist.
+#
+# Each rule scopes a set of paths, the documents that must be
+# read before reviewing a diff that touches them (authoritative,
+# the same way `docs/ai-agent-context.md` is), and what the
+# review has to evaluate and report on.
+review:
+  - name: string                  # Short identifier for the rule (e.g., "dwh-next-modelling")
+    paths:                        # Rule applies when the PR touches any of these globs
+      - string                    # Repo-relative glob (e.g., "dwh-next/**")
+    must_read:                    # Read these before reviewing — they override code inference
+      - string                    # Repo-relative path to a file or directory
+    evaluate:                     # What the review must check for and report
+      - string
