@@ -66,6 +66,7 @@ For each repo, follow this exact order:
 - Prefer information from `docs/` files over inference from code — if a doc describes an API endpoint, use that description rather than guessing from route handlers
 - For `configuration.key_env_vars`, ONLY list env vars found in `.env.default`, `config.requireString()`, `config.getString()`, or `process.env`. Never invent env var names — this is a common source of hallucination.
 - When updating an existing manifest, treat it as curated truth for fields not covered by `docs/ai-agent-context.md`. For fields that `ai-agent-context.md` covers (responsibilities, out_of_scope, glossary, domain descriptions), always sync from that file — it is the source of truth. Exception: `key_env_vars` should always be replaced with code-verified values since existing ones may have been hallucinated.
+- For `review`, only write rules that a maintainer stated explicitly — in the repo's `CLAUDE.md`/`AGENTS.md`, a `CONTRIBUTING.md`, a `docs/` file, or an existing manifest. Never infer a review rule from code, and omit the section entirely when nothing states one. Every path in `paths` and `must_read` must exist in the repo.
 - For URL fields (`ai-agent-context`, `openapi_url`, `schema_url`, `repository`), only use URLs that point to files confirmed to exist in the repo. Check `docs/` directory listing to verify. If a file doesn't exist, leave the field as an empty string `""` — never guess or construct URLs for files that may not exist.
 
 ## Update Mode
@@ -84,7 +85,8 @@ When `manifests/<name>.yaml` already exists:
 3. **Preserve all other existing sections** — do not remove or rewrite content not covered by `ai-agent-context.md` and not contradicted by code
 4. **Add missing fields** — if exploration reveals fields the existing manifest lacks (e.g., missing dependencies, missing events, missing env vars), add them
 5. **Update stale fields** — if the code clearly contradicts the manifest (e.g., a dependency was removed, a field value is wrong), update it
-6. **Never downgrade** — do not remove domain glossary entries, concept relationships, invariants, or other rich content just because you didn't find them in code. These may have been manually curated.
+6. **Never downgrade** — do not remove domain glossary entries, concept relationships, invariants, `review` rules, or other rich content just because you didn't find them in code. These may have been manually curated.
+   - `review` in particular is hand-written and cannot be re-derived from code: carry every existing entry over verbatim. Only extend it when the repo's docs state a new rule, and only drop an entry when the paths it scopes no longer exist.
 7. **Merge dependencies** — for `dependencies.services`, union the existing list with newly discovered dependencies. Do not drop existing ones unless the code proves they no longer exist.
 8. **Schema compliance** — Compare the existing manifest against `skills/manifest/schema.yaml`. If the schema has fields that the manifest is missing, add them by exploring the codebase. Update `schema_version` to match the schema's version.
 

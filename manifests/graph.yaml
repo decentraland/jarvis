@@ -218,6 +218,10 @@ nodes:
   display_name: MetaMorph
   layer: support
   repository: https://github.com/decentraland/metamorph
+- name: monodata
+  display_name: Decentraland Data Platform (monodata)
+  layer: data
+  repository: https://github.com/decentraland/monodata
 - name: notifications-workers
   display_name: Notifications Workers
   layer: feature-servers
@@ -1221,6 +1225,84 @@ edges:
     Deployed PeriodicTokenVesting / TokenVesting contracts vest and transfer MANA to beneficiaries over time; the token
     address is passed in at initialization (not hardcoded on-chain), and the frontend defaults that field to the MANA
     contract address per network.
+- from: monodata
+  to: catalyst
+  relationship: sync
+  protocol: HTTP
+  description: Ingests the peer content-server scene deployment feed (Genesis City scene spine) via the
+    tap-decentraland-api-peer-eu1 Meltano tap
+- from: monodata
+  to: atlas-server
+  relationship: sync
+  protocol: HTTP
+  description: Ingests the Genesis City map tile snapshot from the public tiles API via the tap-decentraland-api Meltano
+    tap
+- from: monodata
+  to: worlds-content-server
+  relationship: async
+  protocol: HTTP
+  description: Ingests world content-server entity files synced to S3 and auto-loaded by Snowpipe
+- from: monodata
+  to: places
+  relationship: both
+  protocol: HTTP
+  description: Ingests place metadata and scene check logs from the Postgres replica; the places-feed export writes scene
+    rankings back to the places API
+- from: monodata
+  to: badges
+  relationship: both
+  protocol: HTTP
+  description: Ingests badge state from the Postgres replica; the badges-feed export POSTs warehouse-computed badge backfills
+- from: monodata
+  to: marketplace-server
+  relationship: sync
+  protocol: HTTP
+  description: Ingests marketplace catalog, items, wearables, emotes, trades, orders and sales from the Postgres replica
+- from: monodata
+  to: credits-server
+  relationship: sync
+  protocol: HTTP
+  description: Ingests shop credit orders and item orders from the Postgres replica
+- from: monodata
+  to: builder-server
+  relationship: sync
+  protocol: HTTP
+  description: Ingests collection, item and scene authoring data from the Postgres replica
+- from: monodata
+  to: events
+  relationship: sync
+  protocol: HTTP
+  description: Ingests the events platform database from the Postgres replica
+- from: monodata
+  to: notifications-workers
+  relationship: sync
+  protocol: HTTP
+  description: Ingests notification delivery records from the Postgres replica
+- from: monodata
+  to: social-service-ea
+  relationship: sync
+  protocol: HTTP
+  description: Ingests social graph and friendship data from the Postgres replica
+- from: monodata
+  to: exploration-games
+  relationship: sync
+  protocol: HTTP
+  description: Ingests exploration game participation data from the Postgres replica
+- from: monodata
+  to: quests
+  relationship: sync
+  protocol: HTTP
+  description: Ingests quest definitions and player progress from the Postgres replica
+- from: monodata
+  to: rewards
+  relationship: sync
+  protocol: HTTP
+  description: Ingests reward campaigns and dispensers from the Postgres replica
+- from: monodata
+  to: bot-detection-service
+  relationship: sync
+  protocol: HTTP
+  description: Ingests bot detection verdicts from the Postgres replica, used to filter non-human traffic out of marts
 event_flows:
 - publisher: archipelago-workers
   event_name: island_changed
@@ -1396,3 +1478,58 @@ event_flows:
   consumers:
   - places
   - asset-bundle-registry
+- publisher: account
+  event_name: segment.account
+  channel: segment
+  consumers:
+  - monodata
+- publisher: auth
+  event_name: segment.auth
+  channel: segment
+  consumers:
+  - monodata
+- publisher: builder
+  event_name: segment.builder
+  channel: segment
+  consumers:
+  - monodata
+- publisher: creator-hub
+  event_name: segment.creators-hub
+  channel: segment
+  consumers:
+  - monodata
+- publisher: governance-ui
+  event_name: segment.dao
+  channel: segment
+  consumers:
+  - monodata
+- publisher: unity-explorer
+  event_name: segment.explorer_v2
+  channel: segment
+  consumers:
+  - monodata
+- publisher: landing
+  event_name: segment.landing
+  channel: segment
+  consumers:
+  - monodata
+- publisher: launcher-rust
+  event_name: segment.launcher
+  channel: segment
+  consumers:
+  - monodata
+- publisher: marketplace
+  event_name: segment.marketplace
+  channel: segment
+  consumers:
+  - monodata
+- publisher: marketplace-server
+  event_name: segment.marketplace_server
+  channel: segment
+  consumers:
+  - monodata
+- publisher: js-sdk-toolchain
+  event_name: segment.sdk
+  channel: segment
+  consumers:
+  - monodata

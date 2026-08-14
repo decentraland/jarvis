@@ -923,6 +923,69 @@ services:
   - service
   data_domain: []
   dependencies: []
+- name: monodata
+  display_name: Decentraland Data Platform (monodata)
+  description: Monorepo for the Decentraland data platform — the Snowflake data warehouse (legacy dwh serving DCL.PROD and
+    the dwh-next rebuild materializing into DCL_NEXT), Meltano/Snowpipe extraction and ingest, Airflow orchestration, reverse-ETL
+    exports back into product surfaces, a read-only warehouse MCP, Metabase-as-code BI, and the Pulumi infrastructure behind
+    it.
+  layer: data
+  repository: https://github.com/decentraland/monodata
+  role:
+  - storage
+  - worker
+  data_domain:
+  - analytics
+  - warehouse-marts
+  - metrics
+  - clickstream
+  - identity-resolution
+  dependencies:
+  - name: catalyst
+    relationship: sync
+    protocol: HTTP
+  - name: atlas-server
+    relationship: sync
+    protocol: HTTP
+  - name: worlds-content-server
+    relationship: async
+    protocol: HTTP
+  - name: places
+    relationship: both
+    protocol: HTTP
+  - name: badges
+    relationship: both
+    protocol: HTTP
+  - name: marketplace-server
+    relationship: sync
+    protocol: HTTP
+  - name: credits-server
+    relationship: sync
+    protocol: HTTP
+  - name: builder-server
+    relationship: sync
+    protocol: HTTP
+  - name: events
+    relationship: sync
+    protocol: HTTP
+  - name: notifications-workers
+    relationship: sync
+    protocol: HTTP
+  - name: social-service-ea
+    relationship: sync
+    protocol: HTTP
+  - name: exploration-games
+    relationship: sync
+    protocol: HTTP
+  - name: quests
+    relationship: sync
+    protocol: HTTP
+  - name: rewards
+    relationship: sync
+    protocol: HTTP
+  - name: bot-detection-service
+    relationship: sync
+    protocol: HTTP
 - name: notifications-workers
   display_name: Notifications Workers
   description: Manages user notifications across the Decentraland platform. Split into Processor and Inbox workers for scalability.

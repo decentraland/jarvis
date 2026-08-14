@@ -98,4 +98,5 @@ export const workspaces: Record<string, Repo[]> = {
 }
 
 export const standalone: Repo[] = [
+  { url: 'https://github.com/decentraland/monodata', lastCommit: null },
 ]
