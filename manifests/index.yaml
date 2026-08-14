@@ -941,11 +941,20 @@ services:
   - clickstream
   - identity-resolution
   dependencies:
-  - name: places
-    relationship: sync
-    protocol: HTTP
   - name: catalyst
     relationship: sync
+    protocol: HTTP
+  - name: atlas-server
+    relationship: sync
+    protocol: HTTP
+  - name: worlds-content-server
+    relationship: async
+    protocol: HTTP
+  - name: places
+    relationship: both
+    protocol: HTTP
+  - name: badges
+    relationship: both
     protocol: HTTP
   - name: marketplace-server
     relationship: sync
@@ -953,10 +962,28 @@ services:
   - name: credits-server
     relationship: sync
     protocol: HTTP
-  - name: badges
+  - name: builder-server
     relationship: sync
     protocol: HTTP
   - name: events
+    relationship: sync
+    protocol: HTTP
+  - name: notifications-workers
+    relationship: sync
+    protocol: HTTP
+  - name: social-service-ea
+    relationship: sync
+    protocol: HTTP
+  - name: exploration-games
+    relationship: sync
+    protocol: HTTP
+  - name: quests
+    relationship: sync
+    protocol: HTTP
+  - name: rewards
+    relationship: sync
+    protocol: HTTP
+  - name: bot-detection-service
     relationship: sync
     protocol: HTTP
 - name: notifications-workers

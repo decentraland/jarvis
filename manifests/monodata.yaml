@@ -211,36 +211,87 @@ db:
   schema_url: ""
 
 dependencies:
+  # This list is every service the platform actually ingests from or writes
+  # back to, derived from the Meltano taps (extraction/extract/), the dbt
+  # source declarations and the export feeds. It is deliberately not "every
+  # Decentraland repo": services whose behaviour reaches the warehouse only as
+  # a Segment event stream are declared under events.consumes instead, so this
+  # stays a graph of real data paths.
   services:
-    - name: "places"
-      relationship: "sync"
-      protocol: "HTTP"
-      purpose: "Source for place metadata and scene check logs; the places-feed export writes scene rankings back to the places API"
-      critical: false
     - name: "catalyst"
       relationship: "sync"
       protocol: "HTTP"
-      purpose: "Source for the Catalyst peer content-server scene deployment feed (Genesis City scene spine)"
+      purpose: "Source for the peer content-server scene deployment feed (Genesis City scene spine), via the tap-decentraland-api-peer-eu1 Meltano tap"
+      critical: false
+    - name: "atlas-server"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Source for the Genesis City map tile snapshot (tiles endpoint of the public API), via the tap-decentraland-api Meltano tap"
+      critical: false
+    - name: "worlds-content-server"
+      relationship: "async"
+      protocol: "HTTP"
+      purpose: "Source for world content-server entity files, synced from S3 and auto-ingested by Snowpipe (s3_world_entities), the spine for world scenes"
+      critical: false
+    - name: "places"
+      relationship: "both"
+      protocol: "HTTP"
+      purpose: "Source for place metadata and scene check logs (Postgres replica); the places-feed export writes scene rankings back to the places API"
+      critical: false
+    - name: "badges"
+      relationship: "both"
+      protocol: "HTTP"
+      purpose: "Source for badge state (Postgres replica); target of the badges-feed export, which POSTs warehouse-computed badge backfills"
       critical: false
     - name: "marketplace-server"
       relationship: "sync"
       protocol: "HTTP"
-      purpose: "Source for marketplace catalog, items, trades, orders and sales (marketplace database replica)"
+      purpose: "Source for marketplace catalog, items, wearables, emotes, trades, orders and sales (Postgres replica)"
       critical: false
     - name: "credits-server"
       relationship: "sync"
       protocol: "HTTP"
-      purpose: "Source for shop credit orders and item orders"
+      purpose: "Source for shop credit orders and item orders (Postgres replica) — the authoritative record of credit spend"
       critical: false
-    - name: "badges"
+    - name: "builder-server"
       relationship: "sync"
       protocol: "HTTP"
-      purpose: "Target of the badges-feed export, which POSTs warehouse-computed badge backfills"
+      purpose: "Source for collection, item and scene authoring data (Postgres replica)"
       critical: false
     - name: "events"
       relationship: "sync"
       protocol: "HTTP"
-      purpose: "Source imported by the Meltano events tap"
+      purpose: "Source for the events platform (Postgres replica)"
+      critical: false
+    - name: "notifications-workers"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Source for notification delivery records (Postgres replica)"
+      critical: false
+    - name: "social-service-ea"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Source for social graph and friendship data (Postgres replica)"
+      critical: false
+    - name: "exploration-games"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Source for exploration game participation data (Postgres replica)"
+      critical: false
+    - name: "quests"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Source for quest definitions and player progress (Postgres replica)"
+      critical: false
+    - name: "rewards"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Source for reward campaigns and dispensers (Postgres replica)"
+      critical: false
+    - name: "bot-detection-service"
+      relationship: "sync"
+      protocol: "HTTP"
+      purpose: "Source for bot detection verdicts (Postgres replica), used to filter non-human traffic out of marts"
       critical: false
 
   external:
@@ -292,10 +343,94 @@ dependencies:
     - name: "OpenSea"
       purpose: "NFT market data source imported via Meltano"
       type: "api"
+    - name: "Snapshot"
+      purpose: "DAO voting source, read through the governance snapshot API configured on the tap-decentraland-api tap"
+      type: "api"
+    - name: "Aragon"
+      purpose: "DAO on-chain governance source, read through the governance aragon API configured on the tap-decentraland-api tap"
+      type: "api"
+    - name: "Cloudflare"
+      purpose: "Edge log source landed in S3 and auto-ingested by Snowpipe"
+      type: "storage"
+    - name: "BambooHR"
+      purpose: "HR system imported by the legacy warehouse lane for internal reporting"
+      type: "api"
+    - name: "Lever"
+      purpose: "Recruiting system imported by the legacy warehouse lane for internal reporting"
+      type: "api"
 
 events:
   publishes: []
-  consumes: []
+
+  # Every product surface that reaches the warehouse as an event stream rather
+  # than through an ingested datastore. Domain names match the dbt source names
+  # under dwh-next/models/staging/segment/; each domain is a separate Segment
+  # source with its own warehouse schema.
+  consumes:
+    - name: "segment.account"
+      source_service: "account"
+      description: "Wallet and MANA management on the Account app — connect, approve, deposit, transfer, withdraw, sign in/out"
+      channel: "segment"
+    - name: "segment.auth"
+      source_service: "auth"
+      description: "Sign-in dapp for Decentraland products — wallet, email and social login, OTP, ToS, onboarding funnel"
+      channel: "segment"
+    - name: "segment.blog"
+      source_service: "blog"
+      description: "Decentraland Blog — pageviews, newsletter, ad interactions, A/B experiments. No repository in this manifest set"
+      channel: "segment"
+    - name: "segment.builder"
+      source_service: "builder"
+      description: "Decentraland Builder web app"
+      channel: "segment"
+    - name: "segment.creators-hub"
+      source_service: "creator-hub"
+      description: "Creator Hub desktop editor — project and scene lifecycle, world deploys and permissions, sign-in"
+      channel: "segment"
+    - name: "segment.dao"
+      source_service: "governance-ui"
+      description: "DAO governance app — wallet connect, voting with MANA/LAND/ESTATE, proposal creation"
+      channel: "segment"
+    - name: "segment.dao-explorers"
+      source_service: "legacy-mobile-explorer"
+      description: "Legacy mobile Explorer client — scene navigation, social, login, install attribution. No repository in this manifest set"
+      channel: "segment"
+    - name: "segment.explorer_v2"
+      source_service: "unity-explorer"
+      description: "Explorer V2 desktop/web client — session bootstrap, login, in-world activity, performance. The largest domain by model count"
+      channel: "segment"
+    - name: "segment.landing"
+      source_service: "landing"
+      description: "decentraland.org — the primary top-of-funnel: download funnels, jump-in, onboarding"
+      channel: "segment"
+    - name: "segment.launcher"
+      source_service: "launcher-rust"
+      description: "Desktop launcher — download, install and launch funnel, self-update"
+      channel: "segment"
+    - name: "segment.lovable-landing"
+      source_service: "lovable-landing"
+      description: "Secondary marketing landing site — pageviews, email capture, download and jump-in. No repository in this manifest set"
+      channel: "segment"
+    - name: "segment.marketplace"
+      source_service: "marketplace"
+      description: "Marketplace web app — catalog browse and search, buy funnel, bidding, creator publishing"
+      channel: "segment"
+    - name: "segment.marketplace_server"
+      source_service: "marketplace-server"
+      description: "Marketplace backend catalog-search API — server-side events, no visitor identity"
+      channel: "segment"
+    - name: "segment.sdk"
+      source_service: "js-sdk-toolchain"
+      description: "SDK CLI (@dcl/sdk-commands) — scaffold, preview, build, export and deploy scenes. Identity is dev_id, not a wallet"
+      channel: "segment"
+    - name: "segment.shop"
+      source_service: "shop"
+      description: "Decentraland Shop storefront — catalog, cart and checkout, credit pack purchases, outfits, creator listings. Behaviour only; the money is authoritative in the credits-server marts"
+      channel: "segment"
+    - name: "dwh.generic_events"
+      source_service: "any backend service"
+      description: "Generic DWH events HTTP API (API Gateway + Lambda, shared API-key header) that forwards each request onto a Kinesis Firehose stream Snowpipe auto-ingests. Any backend service can emit here without its own tap"
+      channel: "https+snowpipe"
 
 configuration:
   feature_flags: []
