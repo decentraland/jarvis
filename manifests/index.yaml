@@ -1202,11 +1202,10 @@ services:
   dependencies: []
 - name: sdk-multiplayer-server
   display_name: SDK Multiplayer Server
-  description: 'Runs the server-side logic of authoritative multiplayer scenes (e.g. Flag Tag, Sky Chaser). Consumes LiveKit
-    room events from SQS and decides when to spawn or terminate a scene''s server based on room membership. Every authoritative
-    scene runs inside one shared Bevy headless engine process.
-
-    '
+  description: Runs the server-side logic of authoritative multiplayer scenes. Consumes LiveKit room events from SQS and
+    spawns or terminates each scene's server on the backend selected by SCENE_WORKER_BACKEND — exactly bevy-engine runs
+    one shared Bevy headless engine; unset or any other value runs the default one Hammurabi fork per scene, also the rollback
+    path.
   layer: real-time
   repository: https://github.com/decentraland/sdk-multiplayer-server
   role:

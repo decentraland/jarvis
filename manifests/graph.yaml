@@ -990,12 +990,12 @@ edges:
   to: pulse
   relationship: sync
   protocol: other
-  description: The Bevy engine receives the deployment's Pulse endpoint (PULSE_SERVER)
+  description: Bevy backend only (SCENE_WORKER_BACKEND=bevy-engine). The Bevy engine receives the deployment's Pulse endpoint (PULSE_SERVER)
 - from: sdk-multiplayer-server
   to: realm-provider
   relationship: sync
   protocol: HTTP
-  description: The Bevy engine is started with --realm https://realm-provider.<base-domain>/main (scenes' getRealm().baseUrl)
+  description: Bevy backend only (SCENE_WORKER_BACKEND=bevy-engine). The Bevy engine is started with --realm https://realm-provider.<base-domain>/main (scenes' getRealm().baseUrl)
 - from: sdk-multiplayer-server
   to: worlds-content-server
   relationship: sync
