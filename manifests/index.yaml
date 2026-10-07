@@ -1202,9 +1202,11 @@ services:
   dependencies: []
 - name: sdk-multiplayer-server
   display_name: SDK Multiplayer Server
-  description: Runs the server-side logic of authoritative multiplayer scenes. Consumes LiveKit room events from SQS and
-    spawns or terminates each scene's server on the configured engine — the shared Bevy headless engine, or one Hammurabi
-    fork per scene as the rollback backend.
+  description: 'Runs the server-side logic of authoritative multiplayer scenes (e.g. Flag Tag, Sky Chaser). Consumes LiveKit
+    room events from SQS and decides when to spawn or terminate a scene''s server based on room membership. Every authoritative
+    scene runs inside one shared Bevy headless engine process.
+
+    '
   layer: real-time
   repository: https://github.com/decentraland/sdk-multiplayer-server
   role:
@@ -1217,9 +1219,6 @@ services:
   - name: worlds-content-server
     relationship: sync
     protocol: HTTP
-  - name: comms-gatekeeper
-    relationship: sync
-    protocol: HTTP
   - name: world-storage-service
     relationship: sync
     protocol: HTTP
@@ -1230,8 +1229,8 @@ services:
     relationship: sync
     protocol: other
   - name: comms-gatekeeper
-    relationship: async
-    protocol: SNS/SQS
+    relationship: both
+    protocol: HTTP
 - name: snapshots-fetcher
   display_name: '@dcl/snapshots-fetcher'
   description: Component library for fetching and synchronizing entity snapshots from Catalyst content servers. Downloads
