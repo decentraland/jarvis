@@ -7,10 +7,13 @@ service:
   name: sdk-multiplayer-server
   display_name: SDK Multiplayer Server
   description: >
-    Orchestrates Hammurabi child processes for authoritative multiplayer scenes. 
-    Consumes LiveKit room events from SQS and decides when to spawn or terminate 
-    a Hammurabi process for a given scene based on room membership.
-  owner: protocol-squad
+    Runs the server-side logic of authoritative multiplayer scenes (e.g. Flag Tag,
+    Sky Chaser). Consumes LiveKit room events from SQS and decides when to spawn or
+    terminate a scene's server based on room membership. The scene engine is
+    selectable per deployment: the Bevy headless engine (one shared engine process
+    running every authoritative scene, the default after the Bevy rollout) or the legacy
+    Hammurabi backend (one forked child process per scene), kept as the rollback path.
+  owner: regenesis-labs
   repository: https://github.com/decentraland/sdk-multiplayer-server
   language: typescript
   layer: real-time
@@ -24,6 +27,50 @@ service:
 # ============================================================
 domain:
   glossary:
+    - term: Scene Worker Backend
+      definition: >
+        The engine that executes authoritative scene code. `bevy-engine` runs ONE
+        shared Bevy headless engine process (`@dcl-regenesislabs/bevy-headless-server`,
+        built from decentraland/bevy-explorer) hosting every authoritative scene;
+        any other value keeps the legacy one-Hammurabi-fork-per-scene backend.
+        Switching backends is a config change plus restart, no deploy; scene
+        storage does not depend on the engine, so nothing is lost switching back
+        and forth.
+      not_to_be_confused_with: >
+        The scene runtime used by clients (Unity/Bevy/mobile explorers). This is
+        only the server-side copy of the scene that holds authoritative state.
+    - term: Bevy Headless Engine
+      definition: >
+        Headless build of decentraland/bevy-explorer, published by hand through the
+        bevy-explorer `publish-headless.yml` GitHub Action. A new engine version
+        reaches production only after a PR bumps it here, it is tested on .zone, and
+        then promoted to .org. Local preview (SDK `sdk-commands`) runs the same
+        released engine version, so creators test against what production runs.
+    - term: Engine Crash Attribution
+      definition: >
+        On the bevy backend a fast, unexpected engine death is blamed on the single
+        scene added to that engine incarnation that never reached `scene-live`. Two
+        attributed crashes quarantine that scene behind a 10-minute cooldown
+        (Slack-notified) so one poison scene cannot keep every co-tenant down.
+        Engine-level outages log stable `ALERT bevy-engine-*` markers.
+    - term: Storage Delegation
+      definition: >
+        A short-lived (default 60 min), scene-scoped credential minted by this
+        orchestrator from the authoritative key — an ephemeral key plus a root-signed
+        claim binding it to world + sceneId + base parcel. Scene workers use it to
+        sign requests to the world-storage-service (leaderboards, saved progress)
+        without ever holding the authoritative key, and renew it over IPC.
+    - term: Comms Adapter
+      definition: >
+        A short-lived, room-scoped token the orchestrator obtains from
+        comms-gatekeeper (`POST /get-server-scene-adapter`) and hands to a scene
+        worker so it can join the scene's LiveKit room as the authoritative server.
+        The authoritative private key is never passed to a worker.
+    - term: Permanent Startup Failure
+      definition: >
+        Worker exit code 78 (sysexits EX_CONFIG), e.g. the scene entity is no longer
+        part of the world after a redeploy. Such a worker is not respawned; the next
+        join retries once.
     - term: Hammurabi Process
       definition: >
         A child process spawned by sdk-multiplayer-server that runs the Hammurabi 
@@ -38,9 +85,9 @@ domain:
         Used as the process key — one Hammurabi process per sceneId.
     - term: Grace Period
       definition: >
-        A 5-minute countdown that starts when the last user leaves a room. If no one 
-        rejoins within this window, the Hammurabi process is terminated. Joining during 
-        the grace period cancels the countdown.
+        A countdown (default 1 minute, `ROOM_GRACE_PERIOD_MS`) that starts when the
+        last user leaves a room. If no one rejoins within this window, the scene's
+        server is terminated. Joining during the grace period cancels the countdown.
     - term: Process Generation
       definition: >
         A counter that increments each time a Hammurabi process is spawned for the 
@@ -53,8 +100,11 @@ domain:
     - term: logsPermissions
       definition: >
         An array of Ethereum addresses in scene/world entity metadata that specifies 
-        which addresses are allowed to view logs via the /logs endpoint. Used for 
-        scene/world developer debugging.
+        which addresses are allowed to view logs via the /logs endpoint (for worlds,
+        the owner and deployment collaborators are also allowed). Creators read these
+        logs with `npm run server-logs` (SDK `sdk-server-logs`). Scene logs are only
+        reachable through this creator-permissioned stream — there is no operator log
+        endpoint, not even for admins.
 
   concept_relationships:
     internal:
@@ -100,8 +150,39 @@ domain:
         description: >
           Room events (USER_JOINED_ROOM, USER_LEFT_ROOM) originate from LiveKit 
           webhooks processed by comms-gatekeeper and published to SNS/SQS.
+      - local_concept: Comms Adapter
+        remote_service: comms-gatekeeper
+        remote_concept: Server Scene Adapter
+        mapping_type: equivalent
+        description: >
+          Minted by comms-gatekeeper's POST /get-server-scene-adapter, signed with
+          the authoritative server key held by this orchestrator.
+      - local_concept: Storage Delegation
+        remote_service: world-storage-service
+        remote_concept: Authoritative Server Address
+        mapping_type: derived_from
+        description: >
+          The world-storage-service trusts claims signed by AUTHORITATIVE_SERVER_ADDRESS,
+          which must be the (EOA) address of this orchestrator's authoritative key.
+          The base parcel in the claim pins the storage placeId.
 
   invariants:
+    - rule: >
+        The authoritative private key is never passed to a scene worker; workers only
+        receive a room-scoped comms adapter and a scene-scoped storage delegation
+      enforced_at: domain_layer
+      severity: hard
+    - rule: >
+        Scene workers receive an allowlisted environment, never the parent's full
+        environment (which holds cloud credentials)
+      enforced_at: domain_layer
+      severity: hard
+    - rule: >
+        For world events the world name is taken from the fetched entity's own
+        worldConfiguration.name; a spawn is refused when the event's untrusted
+        realmName disagrees with it
+      enforced_at: domain_layer
+      severity: hard
     - rule: >
         A Hammurabi process must only be spawned for scenes/worlds where 
         authoritativeMultiplayer is explicitly set to true in the entity metadata
@@ -123,25 +204,31 @@ domain:
 
   responsibilities:
     - Consume LiveKit room events (USER_JOINED_ROOM, USER_LEFT_ROOM) from SQS queue
-    - Track participant counts per room to determine when to spawn or terminate processes
+    - Track participant counts per room to determine when to spawn or terminate scene servers
     - Fetch scene/world entity metadata from Catalyst or Worlds Content Server
-    - Spawn Hammurabi child processes for scenes with authoritativeMultiplayer enabled
-    - Manage process lifecycle including grace periods for empty rooms
-    - Provide Server-Sent Events (SSE) log streaming for scene/world developers
-    - Pass environment variables to child processes (sceneId, content server URL, private key, etc.)
-    - Monitor resource usage (CPU, memory) of spawned processes for observability
-    - Notify Slack of process spawn/terminate events (optional)
+    - Run authoritative scenes on the configured backend (shared Bevy headless engine, or one Hammurabi fork per scene)
+    - Manage scene lifecycle including grace periods, crash respawn with backoff, crash-loop budgets and poison-scene quarantine
+    - Mint room-scoped comms adapters (via comms-gatekeeper) and scene-scoped world storage delegations for workers
+    - Provide Server-Sent Events (SSE) log streaming (/logs) and per-scene resource stats (/stats) for scene/world developers
+    - Expose admin-only debug endpoints (list, spawn, kill, stats)
+    - Export engine and per-scene resource metrics to Prometheus (never labeled by sceneId)
+    - Notify Slack of spawn/terminate/failure events and engine-level outages (optional)
 
   out_of_scope:
-    - Running scene logic directly (delegated to Hammurabi child processes)
+    - Running scene logic in the orchestrator process itself (delegated to the Bevy engine process or Hammurabi child processes)
+    - Persisting scene data such as leaderboards or saved progress (owned by world-storage-service)
     - Managing LiveKit rooms or webhooks (handled by comms-gatekeeper)
-    - Storing or persisting scene state (Hammurabi processes are stateless)
     - Load balancing or distributing processes across multiple instances
     - Cross-instance deduplication of process spawning
-    - Automatic restart of crashed Hammurabi processes
     - Validation of scene/world permissions beyond entity metadata
 
   owned_entities:
+    - name: Bevy Engine Process
+      description: >
+        Single shared headless engine process hosting every authoritative scene when
+        the bevy-engine backend is selected
+      persistence: in-memory
+      identity_field: none
     - name: Hammurabi Process
       description: >
         Child process instance running the Hammurabi headless bot for a specific scene
@@ -154,7 +241,8 @@ domain:
       identity_field: sceneId
     - name: Log Buffer
       description: >
-        Ring buffer storing the last 1000 log lines per scene for SSE streaming
+        Ring buffer storing up to 10,000 log lines (4 MiB) per scene for SSE
+        streaming; kept for 24 hours after the scene terminates
       persistence: in-memory
       identity_field: sceneId
 
@@ -162,7 +250,7 @@ domain:
 # API REFERENCE
 # ============================================================
 api:
-  openapi_url: ""
+  openapi_url: https://github.com/decentraland/sdk-multiplayer-server/blob/main/docs/openapi.yaml
 
 # ============================================================
 # DB Schema
@@ -186,9 +274,40 @@ dependencies:
       relationship: sync
       protocol: HTTP
       purpose: >
-        Fetch world entity metadata for .dcl.eth realms. Endpoints: 
-        GET /world/{name}/about, GET /contents/{entityId}
+        Fetch world entity metadata and permissions for .dcl.eth realms. Endpoints: 
+        GET /world/{name}/about, GET /world/{name}/scenes, GET /world/{name}/permissions,
+        GET /contents/{entityId}
       critical: true
+    - name: comms-gatekeeper
+      relationship: sync
+      protocol: HTTP
+      purpose: >
+        Mint each scene's room-scoped comms adapter so the worker can join the
+        LiveKit room as the authoritative server. Endpoint: POST /get-server-scene-adapter
+      critical: true
+    - name: world-storage-service
+      relationship: sync
+      protocol: HTTP
+      purpose: >
+        Scene workers read and write scene storage (leaderboards, saved progress)
+        using the storage delegation minted by this orchestrator. A storage outage
+        breaks saving without stopping scenes.
+      critical: false
+    - name: realm-provider
+      relationship: sync
+      protocol: HTTP
+      purpose: >
+        The Bevy engine is started with --realm https://realm-provider.<base-domain>/main;
+        scenes see it as getRealm().baseUrl, which the SDK uses to pick the .zone/.org
+        storage service.
+      critical: false
+    - name: pulse
+      relationship: sync
+      protocol: other
+      purpose: >
+        The Bevy engine receives the deployment's Pulse endpoint (PULSE_SERVER) for
+        the in-progress Pulse migration.
+      critical: false
     - name: comms-gatekeeper
       relationship: async
       protocol: SNS/SQS
@@ -204,8 +323,14 @@ dependencies:
     - name: AWS SNS
       purpose: Event publishing layer from comms-gatekeeper to SQS
       type: messaging
+    - name: Bevy Headless Server Package
+      purpose: NPM package (@dcl-regenesislabs/bevy-headless-server) built from decentraland/bevy-explorer; the default engine after the Bevy rollout
+      type: other
     - name: Hammurabi Server Package
-      purpose: NPM package (@dcl/hammurabi-server) providing the headless bot runtime
+      purpose: NPM package (@dcl/hammurabi-server) providing the legacy per-scene runtime, kept as the rollback backend
+      type: other
+    - name: LiveKit
+      purpose: Scene workers join each scene's LiveKit room as the authoritative participant
       type: other
     - name: Slack
       purpose: Optional notifications for process spawn/terminate events
@@ -243,17 +368,26 @@ configuration:
     - name: RESOURCE_MONITOR_ENABLED
       description: Enable or disable resource monitoring for child processes
       default: "false"
+    - name: SCENE_WORKER_BACKEND
+      description: >
+        `bevy-engine` selects the shared Bevy headless engine; any other value (or
+        unset) keeps one Hammurabi fork per scene. Set explicitly per deployment and
+        never defaulted. This is the rollback lever (config change + restart).
+      default: "unset (hammurabi)"
 
   key_env_vars:
     - name: HTTP_SERVER_PORT
-      description: Port for HTTP server
+      description: Port for HTTP server (default 3000)
       affects: Server startup and health check endpoints
     - name: HTTP_SERVER_HOST
       description: Host address for HTTP server
       affects: Server binding
     - name: ENV
-      description: Environment (dev or prod) determines content server URLs
-      affects: Catalyst and Worlds Content Server URL selection
+      description: >
+        dev or prd. prd selects .org content servers and engine base domain; dev
+        selects .zone and allows unauthenticated /debug; unset behaves like dev for
+        content servers but keeps /debug locked down
+      affects: Content server URLs, engine --base-domain, /debug auth
     - name: AWS_SQS_QUEUE_URL
       description: SQS queue URL for room events (omit for in-memory queue in local dev)
       affects: Queue consumer configuration
@@ -267,16 +401,61 @@ configuration:
       description: URL for Catalyst load balancer (defaults based on ENV)
       affects: Scene entity metadata fetching
     - name: AUTHORITATIVE_SERVER_PRIVATE_KEY
-      description: Private key passed to Hammurabi processes for comms-gatekeeper auth
-      affects: Child process authentication with LiveKit
+      description: Root key held only by the orchestrator, never passed to workers
+      affects: Minting comms adapters and storage delegations
+    - name: STORAGE_DELEGATION_TTL_MINUTES
+      description: TTL of each world storage delegation (default 60)
+      affects: Worker storage credential lifetime
+    - name: SCENE_WORKER_BACKEND
+      description: bevy-engine for the shared Bevy engine; otherwise Hammurabi forks
+      affects: Which engine runs authoritative scenes
+    - name: BEVY_ENGINE_BIN
+      description: Explicit engine binary override; default resolves the npm package
+      affects: Bevy engine binary selection
+    - name: BEVY_ENGINE_PREVIEW
+      description: Adds --preview for local-preview scenes; never enable on deployed environments
+      affects: Bevy engine startup flags
+    - name: ENABLE_LOCAL_SCENE_SPAWN
+      description: Enables /debug/spawn-local (dev machines only)
+      affects: Debug endpoints
+    - name: ECHO_SCENE_LOGS
+      description: Echo scene worker logs to the orchestrator's own output
+      affects: Logging
+    - name: ROOM_GRACE_PERIOD_MS
+      description: How long an empty room waits before its server is terminated (default 60000)
+      affects: Scene termination
+    - name: WORKER_MAX_OLD_SPACE_MB
+      description: Node heap cap per Hammurabi scene worker
+      affects: Per-scene memory containment
+    - name: MAX_CONCURRENT_SCENE_WORKERS
+      description: Ceiling on concurrent scene workers
+      affects: Spawn capacity
+    - name: DENIED_WORLD_NAMES
+      description: Comma-separated world names excluded from event-driven spawning
+      affects: Spawning
     - name: ADMINS
-      description: Comma-separated list of admin addresses for debug endpoints
+      description: Comma-separated admin addresses for debug endpoints
       affects: Authorization for /debug endpoints
     - name: SLACK_WEBHOOK
-      description: Slack webhook URL for process spawn/terminate notifications
+      description: Slack webhook URL for spawn/terminate/failure and engine-outage notifications
       affects: Slack notification delivery
 
 # ============================================================
 # ADRs
 # ============================================================
 adrs: []
+
+# ============================================================
+# REVIEW GUIDANCE
+# ============================================================
+review:
+  - name: "multiplayer-server-architecture"
+    paths:
+      - "src/**"
+    must_read:
+      - "CLAUDE.md"
+      - "docs/ai-agent-context.md"
+      - "docs/bevy-engine-packaging-and-testing.md"
+    evaluate:
+      - "Per CLAUDE.md, scene workers must receive an allowlisted environment and never the authoritative private key; flag any change that forwards the parent environment or the key to a worker."
+      - "Per CLAUDE.md, SCENE_WORKER_BACKEND must be set explicitly per deployment and never defaulted in .env.default; flag a change that defaults or silently flips the backend."

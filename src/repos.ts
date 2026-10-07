@@ -40,7 +40,7 @@ export const workspaces: Record<string, Repo[]> = {
     { url: 'https://github.com/decentraland/urn-resolver', lastCommit: '4a9a47e1a7ed95f34f702d46e76a8923a507987f' },
     { url: 'https://github.com/decentraland/snapshots-fetcher', lastCommit: 'f0e68c43cf98f7f04c0e8869d9be7a6daa5c7f75' },
     { url: 'https://github.com/decentraland/profile-images', lastCommit: '7d296060967579845bcea4289c3dd2a0c32103c9' },
-    { url: 'https://github.com/decentraland/sdk-multiplayer-server', lastCommit: '2ba6c483105b2949d0545620510fb0ea250eb90a' },
+    { url: 'https://github.com/decentraland/sdk-multiplayer-server', lastCommit: '0dde15acd5a6d5c20dafeace69a2cfdeaf091cc4' },
     { url: 'https://github.com/decentraland/hammurabi', lastCommit: '5e220e47d5ff492256f6afb2b37fa65500ba4aa7' },
     { url: 'https://github.com/decentraland/pulse', lastCommit: 'c725817419d893b4e9afa4d55643852cee483db4' },
     { url: 'https://github.com/decentraland/comms-message-sfu', lastCommit: '884d9678555ead867e866fb6329185dd4b992156' },

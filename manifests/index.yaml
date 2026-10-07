@@ -1202,10 +1202,9 @@ services:
   dependencies: []
 - name: sdk-multiplayer-server
   display_name: SDK Multiplayer Server
-  description: 'Orchestrates Hammurabi child processes for authoritative multiplayer scenes.  Consumes LiveKit room events
-    from SQS and decides when to spawn or terminate  a Hammurabi process for a given scene based on room membership.
-
-    '
+  description: Runs the server-side logic of authoritative multiplayer scenes. Consumes LiveKit room events from SQS and
+    spawns or terminates each scene's server on the configured engine — the shared Bevy headless engine, or one Hammurabi
+    fork per scene as the rollback backend.
   layer: real-time
   repository: https://github.com/decentraland/sdk-multiplayer-server
   role:
@@ -1218,6 +1217,18 @@ services:
   - name: worlds-content-server
     relationship: sync
     protocol: HTTP
+  - name: comms-gatekeeper
+    relationship: sync
+    protocol: HTTP
+  - name: world-storage-service
+    relationship: sync
+    protocol: HTTP
+  - name: realm-provider
+    relationship: sync
+    protocol: HTTP
+  - name: pulse
+    relationship: sync
+    protocol: other
   - name: comms-gatekeeper
     relationship: async
     protocol: SNS/SQS
