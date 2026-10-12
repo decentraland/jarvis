@@ -279,6 +279,10 @@ nodes:
   display_name: SDK Multiplayer Server
   layer: real-time
   repository: https://github.com/decentraland/sdk-multiplayer-server
+- name: signatures-server
+  display_name: Signatures Server
+  layer: feature-servers
+  repository: https://github.com/decentraland/signatures-server
 - name: snapshots-fetcher
   display_name: '@dcl/snapshots-fetcher'
   layer: shared-library

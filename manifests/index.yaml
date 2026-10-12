@@ -1230,6 +1230,17 @@ services:
   - name: comms-gatekeeper
     relationship: both
     protocol: HTTP
+- name: signatures-server
+  display_name: Signatures Server
+  description: REST API that stores and validates signed LAND/Estate rental listings. Creates listings signed by the
+    lessor, verifies them against the marketplace and rentals subgraphs, and serves rental listing and pricing queries
+    to the atlas and marketplace servers.
+  layer: feature-servers
+  repository: https://github.com/decentraland/signatures-server
+  role:
+  - gateway
+  data_domain:
+  - rentals
 - name: snapshots-fetcher
   display_name: '@dcl/snapshots-fetcher'
   description: Component library for fetching and synchronizing entity snapshots from Catalyst content servers. Downloads

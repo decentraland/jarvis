@@ -1,0 +1,127 @@
+schema_version: "1.1"
+
+service:
+  name: signatures-server
+  display_name: Signatures Server
+  description: REST API that stores and validates signed LAND/Estate rental listings. Creates listings signed by the lessor, verifies them against the marketplace and rentals subgraphs and the rentals contract, and serves rental listing and pricing queries to its consumers.
+  owner: core-engineering
+  repository: https://github.com/decentraland/signatures-server
+  language: typescript
+  layer: feature-servers
+  role:
+    - gateway
+  data_domain:
+    - rentals
+
+domain:
+  glossary:
+    - term: Rental Listing
+      definition: A lessor-signed offer to rent out a LAND or Estate, with price, duration and target tenant/operator, tracked against the rentals contract and the subgraphs.
+
+    - term: Rental Signature
+      definition: The lessor's off-chain signature over a rental listing, created with a Decentraland auth chain and verified before the listing is trusted.
+
+  concept_relationships:
+    internal:
+      - from: Rental Signature
+        to: Rental Listing
+        relationship: validates
+        description: A listing is only accepted and stored once its signature is verified
+
+    cross_service:
+      - local_concept: Rental Listing
+        remote_service: rentals-contract
+        remote_concept: Rental
+        mapping_type: equivalent
+        description: Off-chain rental listings mirror the on-chain rental state once a rental starts
+
+  invariants:
+    - rule: Listing creation must be signed by the lessor's own wallet, never by a scene acting on their behalf
+      enforced_at: api_validation
+      severity: hard
+
+  responsibilities:
+    - Create and store signed LAND/Estate rental listings
+    - Verify rental signatures against the lessor's wallet
+    - Reconcile listing state against the marketplace and rentals subgraphs
+    - Serve rental listing and pricing queries to other services
+
+  out_of_scope:
+    - Holding custody of rented LAND/Estates (handled on-chain by the rentals contract)
+    - Rent payment settlement (handled on-chain by the rentals contract)
+
+  owned_entities:
+    - name: Rental Listing
+      description: A signed rental offer for a LAND or Estate, with its current status
+      persistence: postgres
+      identity_field: id
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+
+  external:
+    - name: PostgreSQL
+      purpose: Stores rental listings and their signatures
+      type: storage
+
+    - name: The Graph
+      purpose: Marketplace and rentals subgraphs, used to verify and reconcile rental listings
+      type: api
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: HTTP_SERVER_PORT
+      description: HTTP server port for API endpoints
+      affects: Server listening port
+
+    - name: HTTP_SERVER_HOST
+      description: HTTP server host address
+      affects: Server binding configuration
+
+    - name: CORS_ORIGIN
+      description: Allowed CORS origins
+      affects: Cross-origin request security
+
+    - name: CORS_METHODS
+      description: Allowed CORS methods
+      affects: Cross-origin request handling
+
+    - name: PG_COMPONENT_PSQL_CONNECTION_STRING
+      description: PostgreSQL connection string for the rentals database
+      affects: Database connection
+
+    - name: MARKETPLACE_SUBGRAPH_URL
+      description: The Graph subgraph URL for marketplace data
+      affects: Listing verification and reconciliation
+
+    - name: RENTALS_SUBGRAPH_URL
+      description: The Graph subgraph URL for LAND rentals
+      affects: Listing verification and reconciliation
+
+    - name: CHAIN_NAME
+      description: Blockchain network the service operates against
+      affects: Contract and subgraph network selection
+
+    - name: MAX_CONCURRENT_RENTAL_UPDATES
+      description: Cap on concurrent rental listing reconciliation jobs
+      affects: Indexer/job concurrency
+
+    - name: LOG_LEVEL
+      description: Logging verbosity
+      affects: Observability
+
+adrs:
+  - id: ADR-44
+    title: Signed Fetch Authentication
+    url: https://adr.decentraland.org/adr/ADR-44
+    relevance: Rental listing creation is authenticated with a Decentraland auth chain signature
