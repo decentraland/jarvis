@@ -45,6 +45,7 @@ export const workspaces: Record<string, Repo[]> = {
     { url: 'https://github.com/decentraland/pulse', lastCommit: 'c725817419d893b4e9afa4d55643852cee483db4' },
     { url: 'https://github.com/decentraland/comms-message-sfu', lastCommit: '884d9678555ead867e866fb6329185dd4b992156' },
     { url: 'https://github.com/decentraland/linker-server', lastCommit: 'e0068b1c5c315977fe1d70217ebb250b20f3becc' },
+    { url: 'https://github.com/decentraland/signatures-server', lastCommit: '0e4e64862e931143d4d69f2a5d5c8063014c46d3' },
     { url: 'https://github.com/decentraland/deployments-to-sqs', lastCommit: '8b97fae8df875a90d88c26629b15c14ab72ebb27' },
     { url: 'https://github.com/decentraland/asset-bundle-converter', lastCommit: '75d21113a78d5542a18e5cd8cb82782b340a813b' },
     { url: 'https://github.com/decentraland/world-storage-service', lastCommit: '15d05b505f8e4f65d7419f4045aa4cf657cce882' },
