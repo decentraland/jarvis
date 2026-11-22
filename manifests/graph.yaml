@@ -117,6 +117,14 @@ nodes:
   display_name: Decentraland dApps Template
   layer: feature-servers
   repository: https://github.com/decentraland/dapps-template
+- name: dcl-one
+  display_name: Decentraland Public Monorepo
+  layer: platform
+  repository: https://github.com/decentraland/dcl-one
+- name: dcl-two
+  display_name: Decentraland Private Monorepo
+  layer: platform
+  repository: https://github.com/decentraland/dcl-two
 - name: decentraland-crypto-middleware
   display_name: Decentraland Crypto Middleware
   layer: shared-library

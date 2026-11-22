@@ -46,6 +46,13 @@ This will:
 
 Repos that haven't changed since the last run are skipped (tracked via `lastCommit` in `src/repos.ts`).
 
+`dcl-one` and `dcl-two` are registered as standalone repositories, alongside
+`monodata`, and use the same per-repository manifest format. Their manifests
+describe the monorepos; existing component manifests retain their own identities.
+The `dcl-two` catalogue distinguishes components present in its tree from entries
+that still point to separate repositories. Reading its source requires access to
+that private repository.
+
 ### Authentication (OAuth)
 
 All Anthropic auth uses OAuth — there is no API key path.

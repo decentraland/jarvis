@@ -499,6 +499,40 @@ services:
   - library
   data_domain: []
   dependencies: []
+- name: dcl-one
+  display_name: Decentraland Public Monorepo
+  description: >-
+    Public monorepo for Decentraland services, web apps, Explorer, Creator Hub, the protocol and the creator
+    SDK. Contains the source, shared database schema, build tooling and tests for those components; the
+    backend areas run behind the Catalyst application.
+  layer: platform
+  repository: https://github.com/decentraland/dcl-one
+  role:
+    - gateway
+    - client
+    - library
+    - worker
+    - storage
+  data_domain:
+    - content
+    - worlds
+    - discovery
+    - social
+    - shop
+  dependencies: []
+- name: dcl-two
+  display_name: Decentraland Private Monorepo
+  description: >-
+    Private monorepo for Decentraland components kept private for privacy, anti-abuse or detection reasons.
+    Its catalogue covers data pipelines, services, detection and moderation, shared libraries, infrastructure,
+    internal tools and operations agents, and distinguishes components present in the tree from those still
+    maintained in their own repositories.
+  layer: platform
+  repository: https://github.com/decentraland/dcl-two
+  role:
+    - other
+  data_domain: []
+  dependencies: []
 - name: decentraland-crypto-middleware
   display_name: Decentraland Crypto Middleware
   description: Multi-framework authentication middleware for verifying requests signed with @decentraland/SignedFetch. Provides

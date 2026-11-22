@@ -56,6 +56,7 @@ For each repo, follow this exact order:
    d. **Only list env vars you found in the code** — never invent env var names based on what "seems likely". If `.env.default` doesn't exist and no config calls are found, leave `key_env_vars` empty.
 ## Rules
 
+- Manifests are public output, including those generated from private repositories. Describe purpose, domain concepts, responsibilities, public contracts and high-level dependencies. Never include credential values, personal data, private infrastructure addresses, or abuse-detection signals, heuristics, thresholds and bypass conditions. Configuration names and their general purpose are appropriate; sensitive operational values are not. Apply this boundary in update mode too, before preserving existing content.
 - Be precise and factual — only fill in fields you can confirm from the code, docs, or configuration files
 - Infer from code when documentation is missing (e.g., detect language from package.json/go.mod/Cargo.toml, detect API endpoints from route definitions, detect events from queue/topic names in code)
 - Use the exact field names from the schema — do not rename or restructure fields

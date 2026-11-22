@@ -1,0 +1,62 @@
+schema_version: "1.1"
+
+service:
+  name: dcl-two
+  display_name: Decentraland Private Monorepo
+  description: >-
+    Private monorepo for Decentraland components kept private for privacy,
+    anti-abuse or detection reasons. Its catalogue covers data pipelines,
+    services, detection and moderation, shared libraries, infrastructure,
+    internal tools and operations agents, and distinguishes components present
+    in the tree from those still maintained in their own repositories.
+  owner: decentraland
+  repository: https://github.com/decentraland/dcl-two
+  language: rust
+  layer: platform
+  role:
+    - other
+  data_domain: []
+  ai-agent-context: https://github.com/decentraland/dcl-two/blob/main/README.md
+
+domain:
+  glossary:
+    - term: Private component
+      definition: >-
+        A service, pipeline, library or tool whose implementation requires
+        repository access. A public catalogue description does not provide
+        access to its source or operational data.
+    - term: Catalogue entry
+      definition: >-
+        A component listed in the repository README. An entry marked here
+        links to code in the tree; an entry marked to import still points
+        to its own repository.
+  concept_relationships:
+    internal: []
+    cross_service: []
+  invariants: []
+  responsibilities:
+    - Catalogue private components and identify their current source location.
+    - Host the private components present in the tree.
+    - Organize private data, services, detection, libraries, infrastructure, tools and operations agents.
+  out_of_scope:
+    - Public application and SDK implementations maintained in dcl-one.
+    - Experiments, scenes, games, templates and documentation workspaces.
+    - Licensed or large binary packs maintained in separate repositories.
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: ""
+
+dependencies:
+  services: []
+  external: []
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars: []

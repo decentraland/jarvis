@@ -1,0 +1,106 @@
+schema_version: "1.1"
+
+service:
+  name: dcl-one
+  display_name: Decentraland Public Monorepo
+  description: >-
+    Public monorepo for Decentraland services, web apps, Explorer, Creator Hub,
+    the protocol and the creator SDK. Contains the source, shared database schema,
+    build tooling and tests for those components; the backend areas run behind
+    the Catalyst application.
+  owner: decentraland
+  repository: https://github.com/decentraland/dcl-one
+  language: rust
+  layer: platform
+  role:
+    - gateway
+    - client
+    - library
+    - worker
+    - storage
+  data_domain:
+    - content
+    - worlds
+    - discovery
+    - social
+    - shop
+  ai-agent-context: https://github.com/decentraland/dcl-one/blob/main/AGENTS.md
+
+domain:
+  glossary:
+    - term: Catalyst
+      definition: >-
+        Backend application in services/catalyst that hosts APIs for content,
+        communications, worlds, shop, social and discovery.
+    - term: Explorer
+      definition: >-
+        The client used to play Decentraland. Its source lives in
+        rendering/bevy-explorer, while apps/bevy-explorer contains integration
+        and packaging.
+    - term: Creator Hub
+      definition: >-
+        Desktop content-creation application in apps/creator-hub, including
+        the Inspector and asset packs.
+    - term: Protocol
+      definition: >-
+        The shared .proto contract and @dcl/protocol package in library/protocol.
+        The creator SDK in library/js-sdk-toolchain builds alongside it.
+  concept_relationships:
+    internal:
+      - from: Creator Hub
+        to: Protocol
+        relationship: depends_on
+        description: Creator tools use the SDK and protocol to produce Decentraland scenes.
+    cross_service: []
+  invariants:
+    - rule: library code depends only on other library code.
+      enforced_at: module_dependencies
+      severity: hard
+    - rule: library/protocol/proto is the only source directory for .proto files.
+      enforced_at: tooling/proto-source-check.py
+      severity: hard
+    - rule: Guest scene code reaches storage through a scoped host API rather than the shared database pool.
+      enforced_at: host_api
+      severity: hard
+  responsibilities:
+    - Serve the website, sign-in, profiles, discovery, Shop, creator pages and documentation.
+    - Host the Catalyst backend areas and their shared PostgreSQL schema.
+    - Build and package Explorer, its HUD and the avatar preview renderer.
+    - Provide the desktop Creator Hub, scene CLI, protocol and creator SDK.
+    - Maintain self-contained builds, development tooling and tests.
+  out_of_scope:
+    - Private detection logic, operational data and internal documentation maintained outside the public tree.
+    - LiveKit media hosting, which remains an external service.
+  owned_entities: []
+
+api:
+  openapi_url: ""
+
+db:
+  schema_url: https://github.com/decentraland/dcl-one/tree/main/schemas
+
+dependencies:
+  services: []
+  external:
+    - name: PostgreSQL
+      purpose: Shared database for the Catalyst backend areas.
+      type: storage
+    - name: NATS
+      purpose: Messaging between Pulse and the Catalyst communications components.
+      type: messaging
+    - name: LiveKit
+      purpose: External real-time media transport managed through the gatekeeper.
+      type: api
+
+events:
+  publishes: []
+  consumes: []
+
+configuration:
+  key_env_vars:
+    - name: DATABASE_URL
+      description: PostgreSQL connection configuration for Catalyst.
+      affects: Backend persistence
+    - name: LIVEKIT_HOST
+      description: LiveKit host from which signaling and API URLs are derived.
+      affects: Real-time media integration

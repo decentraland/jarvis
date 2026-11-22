@@ -99,5 +99,7 @@ export const workspaces: Record<string, Repo[]> = {
 }
 
 export const standalone: Repo[] = [
+  { url: 'https://github.com/decentraland/dcl-one', lastCommit: null },
+  { url: 'https://github.com/decentraland/dcl-two', lastCommit: null },
   { url: 'https://github.com/decentraland/monodata', lastCommit: null },
 ]
